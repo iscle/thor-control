@@ -37,6 +37,9 @@ internal class HiddenService<T : IInterface>(private val name: String, private v
         }
     }
 
+    /** The service's binder right now, or null while it isn't registered. */
+    fun binder(): IBinder? = synchronized(this) { get()?.let { binder } }
+
     @Synchronized
     private fun get(): T? {
         val cachedBinder = binder

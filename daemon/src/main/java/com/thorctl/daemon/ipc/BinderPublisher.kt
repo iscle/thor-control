@@ -1,6 +1,7 @@
 package com.thorctl.daemon.ipc
 
 import android.os.Bundle
+import com.thorctl.daemon.core.Clock
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.AppProviderClient
 import com.thorctl.daemon.system.AppProviderUnavailableException
@@ -25,7 +26,10 @@ class BinderPublisher(
     private val appProvider: AppProviderClient,
     private val clients: ClientLink,
     private val binder: Lazy<DaemonBinder>,
+    clock: Clock,
 ) {
+    private val backoff = OfferBackoff(clock)
+
     @Volatile
     private var lastFailure: String? = null
 
@@ -33,7 +37,7 @@ class BinderPublisher(
     private val pending = AtomicBoolean(false)
 
     fun offerIfNeeded() {
-        if (!clients.appConnected) offer()
+        if (!clients.appConnected && backoff.ready()) offer()
     }
 
     /** At most one offer in flight; ticks meanwhile are dropped. */
@@ -54,6 +58,7 @@ class BinderPublisher(
             appProvider.call(ThorIpc.METHOD_OFFER, Bundle().apply { putBinder(ThorIpc.KEY_BINDER, binder.value) })
             if (lastFailure != null) Timber.i("binder offered to the app again")
             lastFailure = null
+            backoff.succeeded()
         } catch (e: AppProviderUnavailableException) {
             offerFailed(e)
         } catch (e: SystemServiceException) {
@@ -63,6 +68,7 @@ class BinderPublisher(
 
     /** Logged once per kind of failure: the app may be missing for a while (reinstall). */
     private fun offerFailed(e: Exception) {
+        backoff.failed()
         val kind = (e.cause ?: e).toString()
         if (kind != lastFailure) Timber.w(e, "offering the binder to the app failed")
         lastFailure = kind

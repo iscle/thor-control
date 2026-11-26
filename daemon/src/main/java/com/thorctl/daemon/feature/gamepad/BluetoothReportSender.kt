@@ -1,12 +1,14 @@
 package com.thorctl.daemon.feature.gamepad
 
 import com.thorctl.daemon.core.Clock
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.protocol.model.DaemonEvent
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import kotlin.concurrent.thread
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Gamepad reports for Bluetooth. The app owns the Bluetooth HID device registration (it needs a
@@ -16,15 +18,13 @@ import kotlin.concurrent.thread
 @Inject
 @SingleIn(DaemonScope::class)
 class BluetoothReportSender(private val link: ClientLink, clock: Clock) {
+    /** Sends a report that had to wait for the interval; at most one waits at a time. */
+    private val timer = Executors.newSingleThreadScheduledExecutor { Thread(it, "gamepad-bt-tx").apply { isDaemon = true } }
+
     private val throttle = ReportThrottle(
         clock,
         BLUETOOTH_INTERVAL_MS,
-        schedule = { delayMs, flush ->
-            thread(name = "gamepad-bt-tx", isDaemon = true) {
-                Thread.sleep(delayMs)
-                flush()
-            }
-        },
+        schedule = { delayMs, flush -> timer.schedule(loggedRunnable("bluetooth report", flush), delayMs, TimeUnit.MILLISECONDS) },
         send = { report -> link.broadcast(DaemonEvent.GamepadReport(report)) },
     )
 

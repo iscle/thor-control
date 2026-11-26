@@ -18,6 +18,8 @@ public interface IDisplayManager extends IInterface {
 
     boolean requestDisplayPower(int displayId, int state) throws RemoteException;
 
+    void registerCallbackWithEventMask(IDisplayManagerCallback callback, long eventsMask) throws RemoteException;
+
     abstract class Stub extends Binder implements IDisplayManager {
         public static IDisplayManager asInterface(IBinder obj) {
             throw new RuntimeException("Stub!");

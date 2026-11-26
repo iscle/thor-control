@@ -1,0 +1,134 @@
+Layer Hierarchy
+ ROOT
+ ├─ Display 0 name="Built-in Screen"#29 pid=1760 uid=1000
+ │  ├─ WindowedMagnification:0:31#3 pid=1760 uid=1000
+ │  │  ├─ OneHanded:0:23#4 pid=1760 uid=1000
+ │  │  │  ├─ AppZoomOut:0:0#5 pid=1760 uid=1000
+ │  │  │  │  └─ Leaf:0:0#6 pid=1760 uid=1000
+ │  │  │  ├─ Leaf:1:1#7 pid=1760 uid=1000
+ │  │  │  │  └─ WallpaperWindowToken{53ce65c}#67 pid=1760 uid=1000
+ │  │  │  │     └─ 8c38519 com.android.systemui.wallpapers.ImageWallpaper#68 pid=1760 uid=1000
+ │  │  │  │        └─ WallpaperService-com.android.systemui#69 pid=2105 uid=10121
+ │  │  │  │           └─ Wallpaper Transform wrapper#70 pid=2105 uid=10121
+ │  │  │  │              └─ Wallpaper BBQ wrapper#71 pid=2105 uid=10121
+ │  │  │  ├─ AppZoomOut:2:14#8 pid=1760 uid=1000
+ │  │  │  │  ├─ DefaultTaskDisplayArea#9 pid=1760 uid=1000
+ │  │  │  │  │  ├─ Task=1#35 pid=1760 uid=1000
+ │  │  │  │  │  │  ├─ Task=64#117 pid=1760 uid=1000
+ │  │  │  │  │  │  │  └─ ActivityRecord{198138190 u0 rip.moth.cocoonshell/.MainActivity t64}#118 pid=1760 uid=1000
+ │  │  │  │  │  │  │     ├─ 99e7c49 ActivityRecordInputSink rip.moth.cocoonshell/.MainActivity#136 pid=1760 uid=1000
+ │  │  │  │  │  │  │     └─ ba3c00c rip.moth.cocoonshell/rip.moth.cocoonshell.MainActivity#120 pid=1760 uid=1000
+ │  │  │  │  │  │  │        └─ VRI-rip.moth.cocoonshell/rip.moth.cocoonshell.MainActivity#126 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::Normal} desiredHdrSdrRatio=1 pid=2758 uid=10170
+ │  │  │  │  │  │  │           ├─ (Relative) Background for e1b82a9 SurfaceView[r[...]p.moth.cocoonshell.MainActivity]#149 parent=147 pid=2758 uid=10170
+ │  │  │  │  │  │  │           ├─ (Relative) e1b82a9 SurfaceView[rip.moth.cocoons[...]p.moth.cocoonshell.MainActivity]#147 parent=129 pid=2758 uid=10170
+ │  │  │  │  │  │  │           │  └─ e1b82a9 SurfaceView[rip.moth.cocoons[...]cocoonshell.MainActivity](BLAST)#148 pid=2758 uid=10170
+ │  │  │  │  │  │  │           └─ Bounds for - rip.moth.cocoonshell/rip.moth.cocoonshell.MainActivity#129 pid=2758 uid=10170
+ │  │  │  │  │  │  └─ home_task_overlay_container#36 pid=2105 uid=10121
+ │  │  │  │  │  ├─ Task=4(SplitRoot)#48 pid=1760 uid=1000
+ │  │  │  │  │  │  ├─ Task=5(main)#49 pid=1760 uid=1000
+ │  │  │  │  │  │  │  └─ Dim layer#54 pid=2105 uid=10121
+ │  │  │  │  │  │  └─ Task=6(side)#50 pid=1760 uid=1000
+ │  │  │  │  │  │     └─ Dim layer#55 pid=2105 uid=10121
+ │  │  │  │  │  └─ Task=3(Bubbles)#47 pid=1760 uid=1000
+ │  │  │  │  │     └─ Task=0(Bubbles-visibility-barrier)#51 pid=1760 uid=1000
+ │  │  │  │  ├─ Leaf:3:12#10 pid=1760 uid=1000
+ │  │  │  │  │  └─ WindowToken{1ee588b type=2038 android.os.BinderProxy@9c5f14c}#52 pid=1760 uid=1000
+ │  │  │  │  │     └─ f4e457c ShellDropTarget#53 pid=1760 uid=1000
+ │  │  │  │  └─ ImePlaceholder:13:14#11 pid=1760 uid=1000
+ │  │  │  │     └─ ImeContainer#12 parent=11 pid=1760 uid=1000
+ │  │  │  ├─ Leaf:15:15#13 pid=1760 uid=1000
+ │  │  │  │  └─ WindowToken{7ede1aa type=2000 android.os.BinderProxy@4e5d44c}#59 pid=1760 uid=1000
+ │  │  │  │     └─ Surface(name=e87119b StatusBar#60)/@[...]mation-leash of insets_animation#127 pid=1760 uid=1000
+ │  │  │  │        └─ e87119b StatusBar#60 pid=1760 uid=1000
+ │  │  │  │           └─ VRI-StatusBar#81 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::NoPreference} desiredHdrSdrRatio=1 pid=2105 uid=10121
+ │  │  │  ├─ AppZoomOut:16:16#14 pid=1760 uid=1000
+ │  │  │  │  └─ Leaf:16:16#15 pid=1760 uid=1000
+ │  │  │  ├─ Leaf:17:19#16 pid=1760 uid=1000
+ │  │  │  │  └─ WindowToken{6be54dc type=2040 android.os.BinderProxy@c8e0db0}#62 pid=1760 uid=1000
+ │  │  │  │     └─ 7bb93ae NotificationShade#63 pid=1760 uid=1000
+ │  │  │  ├─ AppZoomOut:20:22#17 pid=1760 uid=1000
+ │  │  │  │  └─ Leaf:20:22#18 pid=1760 uid=1000
+ │  │  │  └─ Leaf:23:23#19 pid=1760 uid=1000
+ │  │  ├─ Leaf:24:25#20 pid=1760 uid=1000
+ │  │  │  ├─ WindowToken{deedddf type=2019 android.os.BinderProxy@a1e1132}#64 pid=1760 uid=1000
+ │  │  │  │  └─ Surface(name=e27639 Taskbar#65)/@0xc[...]mation-leash of insets_animation#128 pid=1760 uid=1000
+ │  │  │  │     └─ e27639 Taskbar#65 pid=1760 uid=1000
+ │  │  │  │        └─ VRI-Taskbar#72 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::NoPreference} desiredHdrSdrRatio=1 pid=2280 uid=10124
+ │  │  │  └─ WindowToken{9b54e19 type=2024 android.os.BinderProxy@dc16960}#56 pid=1760 uid=1000
+ │  │  │     └─ 540ede DisplayBackGestureHandler 0#57 pid=1760 uid=1000
+ │  │  └─ OneHanded:26:31#21 pid=1760 uid=1000
+ │  │     └─ Leaf:26:31#22 pid=1760 uid=1000
+ │  ├─ OneHanded:32:32#23 pid=1760 uid=1000
+ │  │  └─ Leaf:32:32#24 pid=1760 uid=1000
+ │  ├─ Leaf:33:33#25 pid=1760 uid=1000
+ │  ├─ OneHanded:34:35#26 pid=1760 uid=1000
+ │  │  └─ Leaf:34:35#27 pid=1760 uid=1000
+ │  ├─ Leaf:36:36#28 pid=1760 uid=1000
+ │  ├─ Accessibility Overlays#34 pid=1760 uid=1000
+ │  ├─ Input Overlays#32 pid=1760 uid=1000
+ │  │  ├─ [Gesture Monitor] edge-swipe#58 pid=1760 uid=1000
+ │  │  ├─ [Gesture Monitor] swipe-up#82 pid=1760 uid=1000
+ │  │  └─ PointerEventDispatcherOverlay0#33 pid=1760 uid=1000
+ │  └─ Display Overlays#30 pid=1760 uid=1000
+ │     └─ Pointer Overlays#31 pid=1760 uid=1000
+ ├─ Input Consumer recents_animation_input_consumer#125 pid=1760 uid=1000
+ ├─ WindowToken{44156c type=2024 android.os.BinderProxy@a0a3e1f}#39 pid=1760 uid=1000
+ │  └─ 90c3735 ScreenDecorOverlay#40 pid=1760 uid=1000
+ ├─ WindowToken{229c77a type=2024 android.os.BinderProxy@43a57a5}#41 pid=1760 uid=1000
+ │  └─ 8ed4b2b ScreenDecorOverlayBottom#42 pid=1760 uid=1000
+ └─ Display 1 name="Built-in Screen"#95 pid=1760 uid=1000
+    ├─ WindowedMagnification:0:31#87 pid=1760 uid=1000
+    │  ├─ Leaf:0:1#88 pid=1760 uid=1000
+    │  │  └─ WallpaperWindowToken{c4ed8e}#101 pid=1760 uid=1000
+    │  │     └─ 8f61ab com.android.systemui.wallpapers.ImageWallpaper#102 pid=1760 uid=1000
+    │  │        └─ WallpaperService-com.android.systemui#103 pid=2105 uid=10121
+    │  │           └─ Wallpaper Transform wrapper#104 pid=2105 uid=10121
+    │  │              └─ Wallpaper BBQ wrapper#105 pid=2105 uid=10121
+    │  ├─ DefaultTaskDisplayArea#89 pid=1760 uid=1000
+    │  │  ├─ Task=62#114 pid=1760 uid=1000
+    │  │  │  ├─ Task=63#115 pid=1760 uid=1000
+    │  │  │  │  └─ ActivityRecord{37163944 u0 rip.moth.[...]ll/.ExternalDisplayActivity t63}#116 pid=1760 uid=1000
+    │  │  │  │     ├─ 6f8a789 ActivityRecordInputSink rip.[...]onshell/.ExternalDisplayActivity#135 pid=1760 uid=1000
+    │  │  │  │     └─ 417899d rip.moth.cocoonshell/rip.moth.cocoonshell.ExternalDisplayActivity#119 pid=1760 uid=1000
+    │  │  │  └─ (Relative) overview_overlay_container#124 parent=89 pid=2105 uid=10121
+    │  │  └─ Task=65#150 pid=1760 uid=1000
+    │  │     ├─ 1be0e50 TaskInputSink 65#177 pid=1760 uid=1000
+    │  │     ├─ TaskFragment{b66bc13 mode=fullscreen}#168 pid=1760 uid=1000
+    │  │     │  └─ ActivityRecord{191203376 u0 com.android.settings/.Settings t65}#151 pid=1760 uid=1000
+    │  │     │     ├─ a3a7173 ActivityRecordInputSink com.[...]omepage.SettingsHomepageActivity#155 pid=1760 uid=1000
+    │  │     │     └─ a52a425 com.android.settings/com.android.settings.Settings#158 pid=1760 uid=1000
+    │  │     └─ TaskFragment{e0c154e mode=fullscreen}#169 pid=1760 uid=1000
+    │  │        ├─ ActivityRecord{206209029 u0 com.android.settings/.SubSettings t65}#170 pid=1760 uid=1000
+    │  │        │  ├─ 2fdbf7c ActivityRecordInputSink com.android.settings/.SubSettings#178 pid=1760 uid=1000
+    │  │        │  └─ 774e2f1 com.android.settings/com.android.settings.SubSettings#171 pid=1760 uid=1000
+    │  │        └─ ActivityRecord{256595469 u0 com.android.settings/.SubSettings t65}#180 pid=1760 uid=1000
+    │  │           ├─ 29388a4 ActivityRecordInputSink com.android.settings/.SubSettings#186 pid=1760 uid=1000
+    │  │           ├─ 83439fb com.android.settings/com.android.settings.SubSettings#181 pid=1760 uid=1000
+    │  │           │  ├─ VRI-com.android.settings/com.android.settings.SubSettings#182 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::NoPreference} desiredHdrSdrRatio=1 pid=2244 uid=1000
+    │  │           │  └─ (Relative) ImeContainer#92 parent=180 pid=1760 uid=1000
+    │  │           │     └─ WindowToken{f838fd type=2011 android.os.Binder@f8b6154}#163 pid=1760 uid=1000
+    │  │           │        └─ Surface(name=96186ec InputMethod#164[...]mation-leash of insets_animation#187 pid=1760 uid=1000
+    │  │           │           └─ 96186ec InputMethod#164 pid=1760 uid=1000
+    │  ├─ Leaf:3:12#90 pid=1760 uid=1000
+    │  ├─ ImePlaceholder:13:14#91 pid=1760 uid=1000
+    │  └─ Leaf:15:31#93 pid=1760 uid=1000
+    │     ├─ WindowToken{8c05b38 type=2000 android.os.BinderProxy@a81264c}#106 pid=1760 uid=1000
+    │     │  └─ Surface(name=7f683aa StatusBar(displ[...]mation-leash of insets_animation#183 pid=1760 uid=1000
+    │     │     └─ 7f683aa StatusBar(displayId=1)#107 pid=1760 uid=1000
+    │     │        └─ VRI-StatusBar(displayId=1)#110 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::NoPreference} desiredHdrSdrRatio=1 pid=2105 uid=10121
+    │     └─ WindowToken{a135d7c type=2019 android.os.BinderProxy@18ed610}#111 pid=1760 uid=1000
+    │        └─ Surface(name=c55034e Taskbar#112)/@0[...]mation-leash of insets_animation#184 pid=1760 uid=1000
+    │           └─ c55034e Taskbar#112 pid=1760 uid=1000
+    │              └─ VRI-Taskbar#113 requestedFrameRate: {0.00 Hz FrameRateCompatibility::Default FrameRateCategory::NoPreference} desiredHdrSdrRatio=1 pid=2280 uid=10124
+    ├─ Leaf:32:36#94 pid=1760 uid=1000
+    ├─ Accessibility Overlays#100 pid=1760 uid=1000
+    ├─ Input Overlays#98 pid=1760 uid=1000
+    │  ├─ [Gesture Monitor] swipe-up#108 pid=1760 uid=1000
+    │  └─ PointerEventDispatcherOverlay1#99 pid=1760 uid=1000
+    └─ Display Overlays#96 pid=1760 uid=1000
+       └─ Pointer Overlays#97 pid=1760 uid=1000
+Offscreen Hierarchy
+ ROOT
+
+
+Mergeable Hierarchies

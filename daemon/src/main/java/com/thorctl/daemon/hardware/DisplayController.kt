@@ -1,12 +1,15 @@
 package com.thorctl.daemon.hardware
 
+import com.thorctl.daemon.core.WakeListener
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.input.Touchscreens
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.Screen
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import timber.log.Timber
 
 /**
@@ -19,11 +22,12 @@ import timber.log.Timber
  */
 @Inject
 @SingleIn(DaemonScope::class)
+@ContributesIntoSet(DaemonScope::class, binding = binding<WakeListener>())
 class DisplayController(
     private val displayService: DisplayService,
     private val touchscreens: Touchscreens,
     private val panelHealer: BottomPanelHealer,
-) {
+) : WakeListener {
     @Volatile
     var topId = 0
         private set
@@ -127,7 +131,18 @@ class DisplayController(
         return succeeded
     }
 
-    /** The power overrides can be dropped when the device wakes; put them back. */
+    /**
+     * A display's power state changed. Waking powers every panel on and drops our overrides with
+     * it, while the display manager keeps reporting the overridden state: so whenever a panel we
+     * hold off changes state, hold it off again (asking again for a panel already off changes
+     * nothing).
+     */
+    fun onDisplayStateChanged(displayId: Int) {
+        val heldOff = if (gamepadDark) displayId == topId else bottomForcedOff && displayId == bottomId
+        if (heldOff) reassertOverrides()
+    }
+
+    /** Puts our power overrides back (they can be dropped when the device wakes). */
     fun reassertOverrides() {
         try {
             if (gamepadDark) {
@@ -161,7 +176,9 @@ class DisplayController(
     }
 
     /** The device woke up: the bottom panel watchdog starts over. */
-    fun onWake() = panelHealer.onWake()
+    override fun onWakeChanged(awake: Boolean) {
+        if (awake) panelHealer.onWake()
+    }
 
     /** Called every couple of seconds while the device is awake; see [BottomPanelHealer]. */
     fun healBottomPanel() = panelHealer.heal(bottomId, bottomForcedOff)

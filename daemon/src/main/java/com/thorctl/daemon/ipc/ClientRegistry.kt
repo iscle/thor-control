@@ -16,7 +16,11 @@ import java.util.concurrent.CopyOnWriteArrayList
 /** The registered [IThorClient]s. A client is dropped when its process dies or a call to it fails. */
 @Inject
 @SingleIn(DaemonScope::class)
-class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolicy) : ClientLink {
+class ClientRegistry(
+    private val jpegs: JpegExporter,
+    private val uids: UidPolicy,
+    private val appListeners: Lazy<Set<AppConnectionListener>>,
+) : ClientLink {
     private inner class Client(client: IThorClient, val uid: Int) : IBinder.DeathRecipient {
         val sender = ClientEventSender(client, jpegs)
         val binder: IBinder = client.asBinder()
@@ -52,6 +56,7 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
 
     fun remove(binder: IBinder) {
         val client = clients.firstOrNull { it.binder == binder } ?: return
+        val appWasConnected = appConnected
         if (clients.remove(client)) {
             try {
                 binder.unlinkToDeath(client, 0)
@@ -59,6 +64,7 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
                 // It was never linked (it died while registering).
             }
             Timber.i("client uid=${client.uid} gone (${clients.size} left)")
+            if (appWasConnected && !appConnected) appListeners.value.forEach { it.onAppDisconnected() }
         }
     }
 

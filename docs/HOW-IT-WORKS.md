@@ -31,7 +31,7 @@ What the module changes to leave more RAM for games (measured on the Thor, 8 GB)
 | Trebuchet disabled | `system-tweaks.sh` | ~65 MB; it only provided gesture navigation and recents here. Re-enabled automatically if no other launcher is installed. |
 | No navigation bar | `post-fs-data.sh` (`resetprop qemu.hw.mainkeys 1`, unless `/data/adb/thorctl/keep-top-gestures` exists) | Needed once Trebuchet is gone (its swipe gestures handled home/recents). |
 | Unused services stopped | `system-tweaks.sh`, kept stopped by thorctld | `cameraserver` (no cameras) and the Wi-Fi Display / Miracast HAL. ~15 MB. |
-| zstd swap | `system-tweaks.sh` | zram recompressed with zstd instead of lzo-rle: more fits in the 4 GB swap. |
+| zstd swap | `system-tweaks.sh` | zram recompressed with zstd instead of lzo-rle: more fits in the 4 GB swap. The previous algorithm is kept in `/data/adb/thorctl/zram-algorithm` and put back when the module is disabled or removed. |
 | Bottom screen off while gaming | `GameMode` | The launcher on the bottom screen stops drawing and releases graphics memory (Cocoon: 30–120 MB depending on what it shows). |
 
 Not changed on purpose: the phone service (SystemUI and Settings expect it), MediaProvider / file
@@ -59,9 +59,17 @@ features off), and kernel reservations (CMA, driver slab). thorctld itself costs
   `gpio-keys` (`hall_switch` interrupt).
 * USB gadget: configfs `/config/usb_gadget/g1` on UDC `a600000.dwc3`; the kernel has `CONFIG_USB_CONFIGFS_F_HID`.
 * Lights: `/sys/class/leds/{left,right}:stick:{0..3}` (`multi_intensity` + `brightness`).
+  AynParts restores its own RGB lighting from `LOCKED_BOOT_COMPLETED` (its `BootCompletedReceiver`,
+  which also restores the joystick calibration and settings, so it stays enabled); for three
+  minutes after start the daemon notices when that overwrote its lights and writes them again.
 * Brightness / bottom power / routing: `IDisplayManager.setBrightness`, `requestDisplayPower`,
   `IInputManager.addUniqueIdAssociationByDescriptor`. The brightness shortcuts step 10 % on the
   same perceptual curve as the sliders (SystemUI's HLG mapping).
+* Display events: the daemon registers an `IDisplayManagerCallback` (displays added and removed,
+  power state changes) instead of polling. Waking powers every panel on, several times over
+  ~1.5 s, and the display manager keeps reporting a panel held off with `requestDisplayPower` as
+  off meanwhile (the panel's real state is DRM's `dpms`): so each state change of a panel held off
+  asks for it to be off again. The state changes also tell sleep from wake.
 
 Settings live in `/data/adb/thorctl/config.json` (the daemon's; written with kotlinx.serialization
 from `daemon/config/StoredConfig.kt`, whose `@SerialName` keys are the file format) and the app's
@@ -136,7 +144,8 @@ The daemon runs as root under `app_process`, so it can't publish a system servic
 look up. It hands its `IThorDaemon` binder to the app instead, the way Shizuku does: it calls the
 app's `DaemonBinderProvider` (authority `com.thorctl.ipc`, method `offer_daemon`) through
 `IActivityManager.getContentProviderExternal`, at start and every 2 s while the app isn't
-registered. The provider accepts it only from uid 0. The app checks `IThorDaemon.VERSION` and
+registered (spacing out to every 30 s while the offers fail, as while the app is being
+reinstalled). The provider accepts it only from uid 0. The app checks `IThorDaemon.VERSION` and
 registers an `IThorClient`; the daemon answers with the full state, drops the client when its
 process dies, and only accepts calls from root, system, shell and the app's uid.
 

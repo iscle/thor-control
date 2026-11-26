@@ -1,11 +1,14 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.core.Sys
+import com.thorctl.daemon.core.WakeListener
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
@@ -22,7 +25,8 @@ import kotlin.math.roundToInt
  */
 @Inject
 @SingleIn(DaemonScope::class)
-class LedController(private val sys: Sys) : Thread("leds") {
+@ContributesIntoSet(DaemonScope::class, binding = binding<WakeListener>())
+class LedController(private val sys: Sys) : Thread("leds"), WakeListener {
     private val left = list("left:stick")
     private val right = list("right:stick")
     private val lock = ReentrantLock()
@@ -53,6 +57,8 @@ class LedController(private val sys: Sys) : Thread("leds") {
         }
     }
 
+    override fun onWakeChanged(awake: Boolean) = setAwake(awake)
+
     fun setAwake(value: Boolean) {
         if (awake == value) return
         lock.withLock {
@@ -70,6 +76,21 @@ class LedController(private val sys: Sys) : Thread("leds") {
             changed.signalAll()
         }
     }
+
+    /**
+     * Someone else (AynParts, restoring its own lights after boot) wrote to a node since we did.
+     * Only checked while the lights stand still: an animation rewrites every node on its own.
+     */
+    fun overwritten(): Boolean {
+        val current = state
+        if (current.enabled && current.mode != LedMode.SOLID && (awake || !current.offWhenAsleep)) return false
+        val written = lock.withLock { HashMap(lastWritten) }
+        return written.any { (key, value) -> sys.read(nodeOf(key)) != value }
+    }
+
+    /** The node a [lastWritten] key stands for. */
+    private fun nodeOf(key: String): String =
+        if (key.endsWith("/mi")) key.removeSuffix("/mi") + "/multi_intensity" else key.removeSuffix("/b") + "/brightness"
 
     private fun writeLed(path: String, rgb: Int, brightness: Int) {
         val multiIntensity = "${(rgb shr 16) and 0xFF} ${(rgb shr 8) and 0xFF} ${rgb and 0xFF}"

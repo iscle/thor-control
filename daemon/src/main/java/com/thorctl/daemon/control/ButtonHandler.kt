@@ -101,11 +101,7 @@ class ButtonHandler(
 
     override fun onHomeLong() {
         link.broadcast(DaemonEvent.Haptic)
-        if (!link.appConnected) {
-            // App not connected: fall back to the system's switcher (Trebuchet, if enabled).
-            inputService.injectKey(KeyEvent.KEYCODE_APP_SWITCH, displays.topId)
-            return
-        }
-        recents.homeLong(homeDisplay())
+        // Recents is drawn by the app: without it (starting, or restarting) there is none to open.
+        if (link.appConnected) recents.homeLong(homeDisplay())
     }
 }

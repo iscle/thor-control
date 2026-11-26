@@ -1,18 +1,22 @@
 package com.thorctl.daemon.feature.recents
 
+import com.thorctl.daemon.core.WakeListener
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.daemon.hardware.input.InputWatcher
+import com.thorctl.daemon.ipc.AppConnectionListener
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.RecentsAction
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -39,6 +43,8 @@ import java.util.concurrent.ScheduledFuture
  */
 @Inject
 @SingleIn(DaemonScope::class)
+@ContributesIntoSet(DaemonScope::class, binding = binding<WakeListener>())
+@ContributesIntoSet(DaemonScope::class, binding = binding<AppConnectionListener>())
 class Recents(
     displays: DisplayController,
     private val input: InputWatcher,
@@ -51,7 +57,7 @@ class Recents(
     private val session: RecentsSession,
     /** Told when something else came to front, so it reacts straight away. */
     private val game: Lazy<GameMode>,
-) {
+) : WakeListener, AppConnectionListener {
     private val thread = RecentsThread(Executors.newSingleThreadScheduledExecutor { Thread(it, "recents") })
     private val captureExecutor = Executors.newSingleThreadExecutor { Thread(it, "capture") }
     private val homeButton = HomeButton(
@@ -100,6 +106,16 @@ class Recents(
     // ---- Recents session --------------------------------------------------------------------
 
     fun close() = thread.run { close(notifyApp = true) }
+
+    /** Nobody sees recents with the screens off. */
+    override fun onWakeChanged(awake: Boolean) {
+        if (!awake && isOpen) close()
+    }
+
+    /** Recents is drawn by the app: without it there is nothing to show. */
+    override fun onAppDisconnected() {
+        if (isOpen) close()
+    }
 
     /** AYN while open: same as B (back to where recents was opened from). */
     fun back() = thread.run { if (isOpen) send(RecentsAction.BACK) }

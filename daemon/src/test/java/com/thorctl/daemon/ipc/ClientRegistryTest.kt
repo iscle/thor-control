@@ -12,7 +12,8 @@ import kotlin.test.assertTrue
 class ClientRegistryTest {
     private val appUid = 10_100
     private val uids = UidPolicy { appUid }
-    private val registry = ClientRegistry(JpegExporter { null }, uids)
+    private var appDisconnects = 0
+    private val registry = ClientRegistry(JpegExporter { null }, uids, lazyOf(setOf(AppConnectionListener { appDisconnects++ })))
     private val stats = Stats(0f, 0, emptyList(), 0f, 0f, 0, 0f, 0, 0, 0, "", 0f, 0f, 0f, 0, 0f)
 
     @Test
@@ -24,6 +25,19 @@ class ClientRegistryTest {
         assertTrue(registry.appConnected)
         registry.remove(appClient)
         assertFalse(registry.appConnected)
+    }
+
+    @Test
+    fun theAppGoingAwayIsToldOnce() {
+        val cli = ClientBinder({})
+        val app = ClientBinder({})
+        registry.add(cli, 2000)
+        registry.add(app, appUid)
+        registry.remove(cli)
+        assertEquals(0, appDisconnects)
+        registry.remove(app)
+        registry.remove(app)
+        assertEquals(1, appDisconnects)
     }
 
     @Test
