@@ -92,7 +92,6 @@ class ConfigStore(@ConfigFile private val file: File) {
             ignoreUnknownKeys = true
             encodeDefaults = true
             prettyPrint = true
-            prettyPrintIndent = "  "
         }
     }
 }
