@@ -1,14 +1,15 @@
 package com.thorctl.ui.keyboard
 
 import android.app.Dialog
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import com.thorctl.R
-import com.thorctl.platform.keyboard.KeyboardEditor
 import com.thorctl.platform.accessibility.AccessibilityConnection
+import com.thorctl.platform.keyboard.KeyboardEditor
 import com.thorctl.platform.overlay.OverlayOwner
 import com.thorctl.platform.overlay.OverlayWindows
 import com.thorctl.ui.components.ThorContent
@@ -54,7 +55,7 @@ class KeyboardWindow(
         val keyboardDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
         val window = keyboardDialog.window ?: return
         window.setType(overlayContext.type)
-        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         window.setFormat(PixelFormat.TRANSLUCENT)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)

@@ -1,5 +1,7 @@
 package com.thorctl.protocol.model
 
+import com.thorctl.protocol.GamepadHid
+
 /** Everything the root daemon tells the app. */
 sealed interface DaemonEvent {
     data class StateChanged(val state: DaemonState) : DaemonEvent
@@ -42,6 +44,6 @@ sealed interface DaemonEvent {
     /** A controller key for Thor Keyboard ("shift" for L1 / R1). */
     data class KeyboardKey(val key: String) : DaemonEvent
 
-    /** One gamepad report ([com.thorctl.protocol.GamepadHid] payload, no report ID) for the Bluetooth link. */
+    /** One gamepad report ([GamepadHid] payload, no report ID) for the Bluetooth link. */
     class GamepadReport(val report: ByteArray) : DaemonEvent
 }

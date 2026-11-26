@@ -1,5 +1,6 @@
 package com.thorctl.daemon.config
 
+import com.thorctl.daemon.control.DaemonLock
 import com.thorctl.daemon.control.FanProfiles
 import com.thorctl.daemon.di.ConfigFile
 import com.thorctl.daemon.di.DaemonScope
@@ -17,7 +18,7 @@ import java.io.File
 
 /**
  * Persistent daemon settings in /data/adb/thorctl/config.json (root-only directory), as
- * [StoredConfig]. Not thread-safe by itself: callers hold the [com.thorctl.daemon.control.DaemonLock].
+ * [StoredConfig]. Not thread-safe by itself: callers hold the [DaemonLock].
  */
 @Inject
 @SingleIn(DaemonScope::class)

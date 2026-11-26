@@ -1,5 +1,6 @@
 package com.thorctl.protocol.model
 
+import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -7,7 +8,7 @@ class CloseImagesTest {
     private class CountingJpeg : Jpeg {
         var closed = 0
 
-        override fun open() = java.io.ByteArrayInputStream(ByteArray(0))
+        override fun open() = ByteArrayInputStream(ByteArray(0))
 
         override fun close() {
             closed++

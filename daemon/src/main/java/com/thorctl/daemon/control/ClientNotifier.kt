@@ -1,9 +1,9 @@
 package com.thorctl.daemon.control
 
 import com.thorctl.daemon.di.DaemonScope
+import com.thorctl.daemon.feature.Recents
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.ipc.DaemonNotifier
-import com.thorctl.daemon.feature.Recents
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.HudEvent
 import dev.zacsweers.metro.ContributesBinding
@@ -16,7 +16,7 @@ import dev.zacsweers.metro.SingleIn
  */
 @Inject
 @SingleIn(DaemonScope::class)
-@ContributesBinding(com.thorctl.daemon.di.DaemonScope::class)
+@ContributesBinding(DaemonScope::class)
 class ClientNotifier(
     private val link: ClientLink,
     private val snapshot: Lazy<StateSnapshot>,

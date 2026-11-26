@@ -1,6 +1,6 @@
 package com.thorctl.ui.lights
 
-import com.thorctl.ui.components.DaemonPage
+import android.graphics.Color as AndroidColor
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.ui.components.ConnectedChoice
+import com.thorctl.ui.components.DaemonPage
 import com.thorctl.ui.components.DetailHeader
 import com.thorctl.ui.components.PagePadding
 import com.thorctl.ui.components.QsSlider
@@ -76,10 +77,10 @@ fun LightsScreen(onBack: () -> Unit, viewModel: LightsViewModel = metroViewModel
             }
         }
         Spacer(Modifier.height(10.dp))
-        val hsvComponents = FloatArray(3).also { android.graphics.Color.colorToHSV(0xFF000000.toInt() or content.color, it) }
+        val hsvComponents = FloatArray(3).also { AndroidColor.colorToHSV(0xFF000000.toInt() or content.color, it) }
         QsSlider(
             value = hsvComponents[0] / 360f,
-            onValueChange = { hue -> viewModel.setColor(android.graphics.Color.HSVToColor(floatArrayOf(hue * 360f, 1f, 1f))) },
+            onValueChange = { hue -> viewModel.setColor(AndroidColor.HSVToColor(floatArrayOf(hue * 360f, 1f, 1f))) },
             onValueChangeFinished = {},
             icon = Icons.Rounded.Palette,
             label = "Color",

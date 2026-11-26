@@ -1,17 +1,10 @@
 package com.thorctl.ui.menu
 
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.domain.model.ifConnected
-import com.thorctl.domain.model.DaemonStatus
 import android.app.ActivityOptions
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
 import android.view.Display
@@ -20,6 +13,8 @@ import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import com.thorctl.R
 import com.thorctl.di.ApplicationScope
+import com.thorctl.domain.model.DaemonStatus
+import com.thorctl.domain.model.ifConnected
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.accessibility.AccessibilityConnection
 import com.thorctl.platform.overlay.OverlayLayer
@@ -32,9 +27,15 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -141,7 +142,7 @@ class MenuWindow(
         val menuDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
         val window = menuDialog.window ?: return false
         window.setType(overlayContext.type)
-        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         window.setFormat(PixelFormat.TRANSLUCENT)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)

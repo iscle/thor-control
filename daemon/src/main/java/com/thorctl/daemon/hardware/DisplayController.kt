@@ -1,12 +1,14 @@
 package com.thorctl.daemon.hardware
 
-import timber.log.Timber
+import android.os.SystemClock
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.SystemServices
 import com.thorctl.protocol.model.Screen
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
+import java.io.File
 
 /**
  * Tracks which logical display is the top (6") and bottom (3.92") panel and controls their
@@ -159,7 +161,7 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
     // say the display is ON, but the kernel DSI connector never got enabled. A framework power
     // cycle (off -> back to policy) makes HWC commit the panel again.
 
-    private val bottomConnector: String? = java.io.File("/sys/class/drm").listFiles()
+    private val bottomConnector: String? = File("/sys/class/drm").listFiles()
         ?.filter { it.name.matches(Regex("card\\d+-DSI-\\d+")) }
         ?.sortedBy { it.name }
         ?.takeIf { it.size >= 2 }
@@ -193,7 +195,7 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
             return
         }
         if (++stuckChecks < 2) return
-        val now = android.os.SystemClock.elapsedRealtime()
+        val now = SystemClock.elapsedRealtime()
         if (now - lastHeal < 15_000 || healsThisWake >= 3) return
         lastHeal = now
         healsThisWake++

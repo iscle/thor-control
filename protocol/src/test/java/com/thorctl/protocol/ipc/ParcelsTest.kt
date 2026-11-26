@@ -2,6 +2,9 @@ package com.thorctl.protocol.ipc
 
 import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.GameHudState
+import com.thorctl.protocol.model.GameState
+import com.thorctl.protocol.model.GamepadState
+import com.thorctl.protocol.model.GamepadTransport
 import com.thorctl.protocol.model.HudEvent
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
@@ -50,7 +53,7 @@ class ParcelsTest {
         val state = parcel.toModel()
         assertEquals(ControllerTarget.FREE, state.controller)
         assertEquals(LedMode.SOLID, state.leds.mode)
-        assertEquals(Samples.state.gamepad.copy(transport = com.thorctl.protocol.model.GamepadTransport.USB), state.gamepad)
+        assertEquals(Samples.state.gamepad.copy(transport = GamepadTransport.USB), state.gamepad)
         assertEquals(emptyList(), state.profiles)
         assertEquals("auto", state.fanProfile)
     }
@@ -73,8 +76,8 @@ class ParcelsTest {
         }
         val state = parcel.toModel()
         assertEquals(LedState(), state.leds)
-        assertEquals(com.thorctl.protocol.model.GameState(), state.game)
-        assertEquals(com.thorctl.protocol.model.GamepadState(), state.gamepad)
+        assertEquals(GameState(), state.game)
+        assertEquals(GamepadState(), state.gamepad)
     }
 
     @Test

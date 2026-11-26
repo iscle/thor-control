@@ -2,6 +2,7 @@ package com.thorctl.protocol.ipc
 
 import android.os.ParcelFileDescriptor
 import com.thorctl.protocol.model.DaemonEvent
+import com.thorctl.protocol.model.Jpeg
 import java.io.IOException
 
 /**
@@ -14,7 +15,7 @@ class ClientEventSender(private val client: IThorClient, private val jpegs: Jpeg
     fun send(event: DaemonEvent) {
         // Our copies of the pipes' read ends: the transaction duplicates them for the client.
         val sent = ArrayList<ParcelFileDescriptor>(4)
-        fun export(jpeg: com.thorctl.protocol.model.Jpeg?) = jpegs.export(jpeg)?.also { sent += it }
+        fun export(jpeg: Jpeg?) = jpegs.export(jpeg)?.also { sent += it }
         try {
             when (event) {
                 is DaemonEvent.StateChanged -> client.onState(event.state.toParcel())

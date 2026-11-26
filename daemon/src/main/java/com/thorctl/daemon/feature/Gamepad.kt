@@ -21,6 +21,9 @@ import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
@@ -203,8 +206,8 @@ class Gamepad(
 
     private var powerDownAt = 0L
     private var powerLongFired = false
-    private val powerTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { Thread(it, "gamepad-pwr").apply { isDaemon = true } }
-    private var powerLong: java.util.concurrent.ScheduledFuture<*>? = null
+    private val powerTimer = Executors.newSingleThreadScheduledExecutor { Thread(it, "gamepad-pwr").apply { isDaemon = true } }
+    private var powerLong: ScheduledFuture<*>? = null
 
     @Synchronized
     private fun onPowerKey(down: Boolean) {
@@ -213,7 +216,7 @@ class Gamepad(
             powerDownAt = SystemClock.uptimeMillis()
             powerLongFired = false
             powerLong?.cancel(false)
-            powerLong = powerTimer.schedule({ onPowerLong() }, POWER_LONG_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            powerLong = powerTimer.schedule({ onPowerLong() }, POWER_LONG_MS, TimeUnit.MILLISECONDS)
             return
         }
         powerLong?.cancel(false)

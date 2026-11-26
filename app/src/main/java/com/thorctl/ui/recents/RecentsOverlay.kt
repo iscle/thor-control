@@ -1,12 +1,12 @@
 package com.thorctl.ui.recents
 
-import com.thorctl.domain.model.DaemonStatus
 import android.app.ActivityOptions
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
 import android.os.Handler
@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
 import com.thorctl.R
 import com.thorctl.di.ApplicationScope
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.AppInfoRepository
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.apps.AppIcons
@@ -192,7 +193,7 @@ class RecentsOverlay(
         val recentsDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
         val window = recentsDialog.window ?: return false
         window.setType(overlayContext.type)
-        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         window.setFormat(PixelFormat.TRANSLUCENT)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)

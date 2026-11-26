@@ -1,12 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInkSoft
-import com.thorctl.ui.keyboard.KeyboardColors.Accent
-import com.thorctl.ui.keyboard.KeyboardColors.AccentDeep
-import com.thorctl.ui.keyboard.KeyboardColors.PadFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
-import com.thorctl.ui.keyboard.KeyboardMetrics.STEP
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -42,10 +35,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thorctl.platform.keyboard.KeyboardUi
+import com.thorctl.ui.keyboard.KeyboardColors.Accent
+import com.thorctl.ui.keyboard.KeyboardColors.AccentDeep
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInkSoft
+import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
+import com.thorctl.ui.keyboard.KeyboardColors.PadFill
+import com.thorctl.ui.keyboard.KeyboardMetrics.STEP
 import kotlinx.coroutines.delay
 
 @Composable
@@ -106,7 +107,7 @@ internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
 /** One line of text around the cursor, the caret (or the selection) kept in the middle. */
 @Composable
 private fun Preview(state: KeyboardUi, modifier: Modifier) {
-    val style = androidx.compose.ui.text.TextStyle(color = KeyInk, fontSize = 22.sp)
+    val style = TextStyle(color = KeyInk, fontSize = 22.sp)
     Row(modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).fillMaxHeight().clipToBounds(), contentAlignment = Alignment.CenterEnd) {
             Text(state.before, style = style, softWrap = false, maxLines = 1, modifier = Modifier.wrapContentWidth(Alignment.End, unbounded = true))

@@ -1,16 +1,17 @@
 package com.thorctl.daemon.hardware
 
-import timber.log.Timber
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 
@@ -131,7 +132,7 @@ class LedController(private val sys: Sys) : Thread("leds") {
         /** Fully saturated color for a hue in degrees (pure Kotlin; no native graphics in app_process). */
         fun hue(degrees: Double): Int {
             val sector = ((degrees % 360.0) + 360.0) % 360.0 / 60.0
-            val secondary = 1.0 - kotlin.math.abs(sector % 2.0 - 1.0)
+            val secondary = 1.0 - abs(sector % 2.0 - 1.0)
             val (red, green, blue) = when (sector.toInt()) {
                 0 -> Triple(1.0, secondary, 0.0)
                 1 -> Triple(secondary, 1.0, 0.0)

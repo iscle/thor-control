@@ -21,6 +21,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 /**
  * The Home button's screens, replacing Trebuchet: recent apps (hold) and the animated way home
@@ -449,7 +450,7 @@ class Recents(
                 stickX = when {
                     value <= -STICK_ON -> -1
                     value >= STICK_ON -> 1
-                    kotlin.math.abs(value) < STICK_OFF -> 0
+                    abs(value) < STICK_OFF -> 0
                     else -> stickX
                 }
                 setDir("stick", stickX)

@@ -1,5 +1,6 @@
 package com.thorctl.daemon.hardware
 
+import android.system.Os
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import dev.zacsweers.metro.Inject
@@ -540,7 +541,7 @@ class InputWatcher(private val sys: Sys) {
                 val name = Regex("N: Name=\"([^\"]*)\"").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
                 val handler = Regex("H: Handlers=.*?(event\\d+)").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
                 val bits = Regex("B: KEY=([0-9a-f ]+)").find(block)?.groupValues?.get(1)
-                    ?.trim()?.split(' ')?.reversed()?.map { java.lang.Long.parseUnsignedLong(it, 16) }
+                    ?.trim()?.split(' ')?.reversed()?.map { it.toULong(16).toLong() }
                     ?: emptyList()
                 InputDeviceInfo(name, handler, bits)
             }
@@ -596,7 +597,7 @@ class InputWatcher(private val sys: Sys) {
 
         /** android.system.Os.ioctlInt(fd, cmd) passes a non-null int*, which EVIOCGRAB treats as "grab". */
         private val IOCTL_INT by lazy {
-            android.system.Os::class.java.getMethod("ioctlInt", FileDescriptor::class.java, Int::class.javaPrimitiveType)
+            Os::class.java.getMethod("ioctlInt", FileDescriptor::class.java, Int::class.javaPrimitiveType)
         }
     }
 }
