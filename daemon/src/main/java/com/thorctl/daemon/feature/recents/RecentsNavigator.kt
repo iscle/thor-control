@@ -1,6 +1,6 @@
 package com.thorctl.daemon.feature.recents
 
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.InputWatcher
 import java.util.concurrent.ScheduledFuture
 import kotlin.math.abs
 

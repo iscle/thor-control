@@ -5,7 +5,7 @@ import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.hardware.BottomPanelHealer
 import com.thorctl.daemon.hardware.DisplayController
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.TestInputWatcher
 import com.thorctl.daemon.ipc.FakeClientLink
 import com.thorctl.daemon.ipc.FakeDaemonNotifier
 import com.thorctl.daemon.system.FakeDisplayService
@@ -36,7 +36,7 @@ class GamepadTest {
     private val bluetoothOn = CountDownLatch(1)
 
     private val gamepad = Gamepad(
-        input = InputWatcher(sys),
+        input = TestInputWatcher.create(sys),
         notifier = notifier,
         displays = displays,
         awake = AwakeKeeper(displays, powerService, inputService, sys),

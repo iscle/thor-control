@@ -8,7 +8,8 @@ import com.thorctl.daemon.feature.gamepad.Gamepad
 import com.thorctl.daemon.feature.recents.Recents
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputRouter
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.AynCombo
+import com.thorctl.daemon.hardware.input.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.PowerService
@@ -62,19 +63,19 @@ class ButtonHandler(
         }
     }
 
-    override fun onCombo(combo: InputWatcher.Combo) {
+    override fun onCombo(combo: AynCombo) {
         Timber.i("combo AYN+$combo")
         when (combo) {
-            InputWatcher.Combo.DOWN -> actions.setController(ControllerTarget.BOTTOM, announce = true)
-            InputWatcher.Combo.UP -> actions.setController(ControllerTarget.TOP, announce = true)
-            InputWatcher.Combo.LEFT, InputWatcher.Combo.RIGHT -> actions.setController(ControllerTarget.FREE, announce = true)
-            InputWatcher.Combo.B -> actions.moveApp(Screen.BOTTOM)
-            InputWatcher.Combo.X -> actions.moveApp(Screen.TOP)
-            InputWatcher.Combo.Y -> actions.setGame(!game.enabled, announce = true)
-            InputWatcher.Combo.L1 -> actions.stepBrightness(Screen.BOTTOM, -1)
-            InputWatcher.Combo.R1 -> actions.stepBrightness(Screen.BOTTOM, 1)
-            InputWatcher.Combo.L2 -> actions.stepBrightness(Screen.TOP, -1)
-            InputWatcher.Combo.R2 -> actions.stepBrightness(Screen.TOP, 1)
+            AynCombo.DOWN -> actions.setController(ControllerTarget.BOTTOM, announce = true)
+            AynCombo.UP -> actions.setController(ControllerTarget.TOP, announce = true)
+            AynCombo.LEFT, AynCombo.RIGHT -> actions.setController(ControllerTarget.FREE, announce = true)
+            AynCombo.B -> actions.moveApp(Screen.BOTTOM)
+            AynCombo.X -> actions.moveApp(Screen.TOP)
+            AynCombo.Y -> actions.setGame(!game.enabled, announce = true)
+            AynCombo.L1 -> actions.stepBrightness(Screen.BOTTOM, -1)
+            AynCombo.R1 -> actions.stepBrightness(Screen.BOTTOM, 1)
+            AynCombo.L2 -> actions.stepBrightness(Screen.TOP, -1)
+            AynCombo.R2 -> actions.stepBrightness(Screen.TOP, 1)
         }
     }
 

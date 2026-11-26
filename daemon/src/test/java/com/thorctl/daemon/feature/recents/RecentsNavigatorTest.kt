@@ -2,7 +2,7 @@ package com.thorctl.daemon.feature.recents
 
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.InputWatcher
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -1,6 +1,6 @@
 package com.thorctl.daemon.feature.gamepad
 
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.InputWatcher
 import com.thorctl.protocol.GamepadHid
 
 /**
