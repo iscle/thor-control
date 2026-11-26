@@ -168,19 +168,19 @@ class KeyboardEditor(
 
     // ---- Keys ---------------------------------------------------------------------------------
 
-    override fun type(s: String) {
+    override fun type(text: String) {
         val imeHost = ime ?: return
         val keyboard = _ui.value
-        val out = KeyboardText.output(keyboard, s)
+        val out = KeyboardText.output(keyboard, text)
         if (out.length == 1) imeHost.sendKeyChar(out[0]) else inputConnection?.commitText(out, 1)
         if (keyboard.shift && !keyboard.caps) _ui.value = _ui.value.copy(shift = false)
         endSelecting()
         autoShift()
     }
 
-    override fun typeExact(s: String) {
+    override fun typeExact(text: String) {
         val imeHost = ime ?: return
-        if (s.length == 1) imeHost.sendKeyChar(s[0]) else inputConnection?.commitText(s, 1)
+        if (text.length == 1) imeHost.sendKeyChar(text[0]) else inputConnection?.commitText(text, 1)
         val keyboard = _ui.value
         if (keyboard.shift && !keyboard.caps) _ui.value = keyboard.copy(shift = false)
         endSelecting()
@@ -230,8 +230,8 @@ class KeyboardEditor(
         wordLengths = KeyboardText.wordsBack(before)
     }
 
-    override fun selectWords(n: Int) {
-        val words = n.coerceIn(0, wordLengths.size)
+    override fun selectWords(count: Int) {
+        val words = count.coerceIn(0, wordLengths.size)
         if (words == wordCount) return
         wordCount = words
         val start = wordBase - (if (words == 0) 0 else wordLengths[words - 1])
@@ -266,8 +266,8 @@ class KeyboardEditor(
         lastShiftTap = now
     }
 
-    override fun layer(l: KeyboardLayer) {
-        _ui.value = _ui.value.copy(layer = l, shift = false)
+    override fun layer(target: KeyboardLayer) {
+        _ui.value = _ui.value.copy(layer = target, shift = false)
     }
 
     override fun hideKeyboard() {
@@ -308,13 +308,13 @@ class KeyboardEditor(
         text = null
     }
 
-    override fun move(dir: Int): Boolean {
+    override fun move(direction: Int): Boolean {
         val connection = inputConnection ?: return false
         val snapshot = text
         val selecting = _ui.value.selecting
         if (snapshot == null) {
             // The field can't report its text: arrow keys (with shift while selecting).
-            val keyCode = if (dir < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+            val keyCode = if (direction < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
             val metaState = if (selecting) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
             val now = SystemClock.uptimeMillis()
             connection.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
@@ -323,10 +323,10 @@ class KeyboardEditor(
         }
         val from = when {
             selecting -> moving
-            dir < 0 -> selectionStart
+            direction < 0 -> selectionStart
             else -> selectionEnd
         }
-        val to = KeyboardText.step(snapshot, textOffset, from, dir)
+        val to = KeyboardText.step(snapshot, textOffset, from, direction)
         val collapsing = !selecting && selectionStart != selectionEnd
         if (to == from && !collapsing) return false
         if (selecting) {
