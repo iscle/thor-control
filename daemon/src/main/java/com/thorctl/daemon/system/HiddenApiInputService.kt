@@ -1,5 +1,6 @@
 package com.thorctl.daemon.system
 
+import android.content.Context
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyCharacterMap
@@ -14,12 +15,11 @@ import dev.zacsweers.metro.SingleIn
 @SingleIn(DaemonScope::class)
 @ContributesBinding(DaemonScope::class)
 class HiddenApiInputService : InputService {
-    private val service = SystemServiceProxy("input", "android.hardware.input.IInputManager")
+    private val service = SystemServiceProxy(Context.INPUT_SERVICE, "android.hardware.input.IInputManager")
 
     override fun devices(): List<InputDeviceInfo> {
-        val ids = service.call("getInputDeviceIds") as IntArray
-        return ids.toList().mapNotNull { id ->
-            val device = service.call("getInputDevice", id) as InputDevice? ?: return@mapNotNull null
+        return service.getInputDeviceIds().toList().mapNotNull { id ->
+            val device = service.getInputDevice(id) ?: return@mapNotNull null
             InputDeviceInfo(
                 id = device.id,
                 name = device.name,
@@ -31,15 +31,15 @@ class HiddenApiInputService : InputService {
     }
 
     override fun associate(descriptor: String, displayUniqueId: String) {
-        service.call("addUniqueIdAssociationByDescriptor", descriptor, displayUniqueId)
+        service.addUniqueIdAssociationByDescriptor(descriptor, displayUniqueId)
     }
 
     override fun removeAssociation(descriptor: String) {
-        service.call("removeUniqueIdAssociationByDescriptor", descriptor)
+        service.removeUniqueIdAssociationByDescriptor(descriptor)
     }
 
     override fun setDeviceEnabled(deviceId: Int, enabled: Boolean) {
-        service.call(if (enabled) "enableInputDevice" else "disableInputDevice", deviceId)
+        service.setInputDeviceEnabled(deviceId, enabled)
     }
 
     override fun injectKey(keyCode: Int, displayId: Int) {
@@ -50,10 +50,8 @@ class HiddenApiInputService : InputService {
                 KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
                 KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD,
             )
-            if (displayId >= 0) {
-                KeyEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType).invoke(event, displayId)
-            }
-            service.call("injectInputEvent", event, INJECT_ASYNC)
+            if (displayId >= 0) event.setTargetDisplay(displayId)
+            service.injectInputEvent(event, INJECT_ASYNC)
         }
     }
 

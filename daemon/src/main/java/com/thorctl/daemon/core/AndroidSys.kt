@@ -38,13 +38,7 @@ class AndroidSys : Sys {
 
     override fun mkdirs(directory: String): Boolean = File(directory).mkdirs()
 
-    private val getProp by lazy { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java) }
-
-    override fun prop(name: String): String = try {
-        getProp.invoke(null, name) as String
-    } catch (_: Throwable) {
-        ""
-    }
+    override fun prop(name: String): String = systemProperty(name)
 
     override fun sh(command: String, timeoutMs: Long): String? = try {
         val process = ProcessBuilder("/system/bin/sh", "-c", command).redirectErrorStream(true).start()
