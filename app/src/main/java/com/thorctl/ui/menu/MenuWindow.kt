@@ -1,5 +1,6 @@
 package com.thorctl.ui.menu
 
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOf
@@ -25,7 +26,6 @@ import com.thorctl.platform.overlay.OverlayLayer
 import com.thorctl.platform.overlay.OverlayMenu
 import com.thorctl.platform.overlay.OverlayOwner
 import com.thorctl.platform.overlay.OverlayWindows
-import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.ui.components.ThorContent
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -35,7 +35,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -74,13 +73,17 @@ class MenuWindow(
 
     private val isShowing: Boolean get() = view != null && visible.value
 
-    fun start() {
-        scope.launch { daemon.events.filterIsInstance<DaemonEvent.MenuButton>().collect { toggle() } }
-        scope.launch { bottomScreenOff().collect { off -> if (off) removeNow() } }
-        scope.launch {
+    /** What the open menu follows; cancelled when its window goes. */
+    private var whileOpen: Job? = null
+
+    private fun watchWhileOpen(): Job = scope.launch {
+        // The daemon turned the bottom screen off: nothing to show the menu on.
+        launch { bottomScreenOff().collect { off -> if (off) removeNow() } }
+        // The accessibility service came or went (not its value now: only changes count).
+        launch {
             accessibility.bound.drop(1).collect { bound ->
-                if (bound && view != null && _shownAs.value != OverlayLayer.ACCESSIBILITY) {
-                    // Re-host an open menu in the stronger window layer.
+                if (bound && _shownAs.value != OverlayLayer.ACCESSIBILITY) {
+                    // Re-host the menu in the stronger window layer.
                     removeNow()
                     show()
                 } else if (!bound && _shownAs.value == OverlayLayer.ACCESSIBILITY) {
@@ -178,6 +181,7 @@ class MenuWindow(
             dialog = menuDialog
             view = composeView
             owner = overlayOwner
+            whileOpen = watchWhileOpen()
             Timber.i("menu shown on display ${display.displayId} as $layer (blur=$blur)")
             true
         } catch (e: Exception) {
@@ -197,6 +201,8 @@ class MenuWindow(
 
     private fun removeNow() {
         val shownDialog = dialog ?: return
+        whileOpen?.cancel()
+        whileOpen = null
         dialog = null
         view = null
         lastBlur = -1

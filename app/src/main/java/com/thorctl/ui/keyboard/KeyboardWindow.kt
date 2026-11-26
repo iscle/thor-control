@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import com.thorctl.R
-import com.thorctl.di.ApplicationScope
 import com.thorctl.platform.keyboard.KeyboardEditor
 import com.thorctl.platform.accessibility.AccessibilityConnection
 import com.thorctl.platform.overlay.OverlayOwner
@@ -29,15 +28,19 @@ class KeyboardWindow(
     private val windows: OverlayWindows,
     private val accessibility: AccessibilityConnection,
     private val content: ThorContent,
-    @ApplicationScope private val scope: CoroutineScope,
 ) {
     private var dialog: Dialog? = null
     private var owner: OverlayOwner? = null
 
-    fun start() {
-        // Also when the accessibility service binds: a window that couldn't be shown before can be now.
-        scope.launch {
-            combine(editor.panelWanted, accessibility.bound) { wanted, _ -> wanted }.collect { if (it) show() else remove() }
+    /** Shows the panel whenever the editor wants it, for as long as [serviceScope] (the keyboard service) lives. */
+    fun attach(serviceScope: CoroutineScope) {
+        serviceScope.launch {
+            try {
+                // Also when the accessibility service binds: a window that couldn't be shown before can be now.
+                combine(editor.panelWanted, accessibility.bound) { wanted, _ -> wanted }.collect { if (it) show() else remove() }
+            } finally {
+                remove()
+            }
         }
     }
 

@@ -74,24 +74,10 @@ class RecentsOverlay(
     private var frameShown = false
     private var homeGoPending = false
 
-    fun start() {
-        scope.launch {
-            daemon.events.collect { event ->
-                when (event) {
-                    is DaemonEvent.RecentsOpened -> openRecents(event)
-                    is DaemonEvent.HomeAnimation -> openHomePress(event)
-                    is DaemonEvent.RecentsThumb -> updateThumb(event.taskId, event.thumb)
-                    is DaemonEvent.RecentsKey -> keys.tryEmit(event.key)
-                    DaemonEvent.RecentsClosed -> removeNow()
-                    else -> {}
-                }
-            }
-        }
-    }
-
     // ---- Opening ------------------------------------------------------------------------------
 
-    private fun openRecents(event: DaemonEvent.RecentsOpened) {
+    /** Recent apps open (Home held). */
+    fun open(event: DaemonEvent.RecentsOpened) {
         removeNow()
         val sessionId = ++session
         val display = windows.display(event.displayId) ?: run {
@@ -138,7 +124,8 @@ class RecentsOverlay(
         return appCards.reversed() + Card(Card.HOME_KEY, "", "Home", image = decode(event.home), isHome = true)
     }
 
-    private fun openHomePress(event: DaemonEvent.HomeAnimation) {
+    /** Home pressed inside an app: the zoom to the home screen. */
+    fun openHomePress(event: DaemonEvent.HomeAnimation) {
         removeNow()
         val sessionId = ++session
         homeSequence = event.seq
@@ -159,6 +146,17 @@ class RecentsOverlay(
             show(display, Session(sessionId, Intro.HOME_PRESS, 0, Card.PRESS_APP_KEY))
         }
     }
+
+    /** A fresher preview of one app. */
+    fun updateThumb(event: DaemonEvent.RecentsThumb) = updateThumb(event.taskId, event.thumb)
+
+    /** A controller button while recents is open. */
+    fun onKey(key: String) {
+        keys.tryEmit(key)
+    }
+
+    /** The daemon closed recents. */
+    fun close() = removeNow()
 
     private fun updateThumb(id: Int, jpeg: Jpeg) {
         val sessionId = session

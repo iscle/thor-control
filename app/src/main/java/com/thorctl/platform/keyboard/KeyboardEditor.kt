@@ -14,7 +14,6 @@ import com.thorctl.di.ApplicationScope
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.haptics.Haptics
 import com.thorctl.protocol.model.DaemonCommand
-import com.thorctl.protocol.model.DaemonEvent
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -77,20 +76,20 @@ class KeyboardEditor(
 
     val isShown: Boolean get() = _visible.value || inlineShown
 
-    fun start() {
-        scope.launch {
-            daemon.events.filterIsInstance<DaemonEvent.KeyboardKey>().collect { if (it.key == "shift" && isShown) shift() }
-        }
-        // A daemon (re)start doesn't know the keyboard is up: L1 / R1 are shift only then.
-        scope.launch {
-            daemon.status.filterIsInstance<DaemonStatus.Connected>().collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
-        }
+    /** A controller key the daemon forwards while the keyboard is up (L1 / R1 = shift). */
+    fun onControllerKey(key: String) {
+        if (key == "shift" && isShown) shift()
     }
 
     // ---- From the keyboard service ------------------------------------------------------------
 
-    fun attach(host: ImeHost) {
+    /** The keyboard service is up; [serviceScope] lives as long as it does. */
+    fun attach(host: ImeHost, serviceScope: CoroutineScope) {
         ime = host
+        // A daemon (re)start doesn't know the keyboard is up: L1 / R1 are shift only then.
+        serviceScope.launch {
+            daemon.status.filterIsInstance<DaemonStatus.Connected>().collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
+        }
     }
 
     fun detach(host: ImeHost) {

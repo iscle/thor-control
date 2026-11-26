@@ -1,5 +1,8 @@
 package com.thorctl.ui.blackout
 
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.ContributesIntoSet
+import com.thorctl.platform.startup.ProcessObserver
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -9,7 +12,6 @@ import android.graphics.PixelFormat
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import com.thorctl.di.ApplicationScope
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.overlay.OverlayWindows
 import dev.zacsweers.metro.AppScope
@@ -30,16 +32,16 @@ import timber.log.Timber
  */
 @Inject
 @SingleIn(AppScope::class)
+@ContributesIntoSet(AppScope::class, binding = binding<ProcessObserver>())
 class BlackoutWindow(
     private val daemon: DaemonRepository,
     private val windows: OverlayWindows,
-    @ApplicationScope private val scope: CoroutineScope,
-) {
+) : ProcessObserver {
     private var view: View? = null
     private var windowManager: WindowManager? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun start() {
+    override fun observe(scope: CoroutineScope) {
         scope.launch {
             // Every state push, not only changes: a show that failed (no overlay layer yet) is retried.
             daemon.status

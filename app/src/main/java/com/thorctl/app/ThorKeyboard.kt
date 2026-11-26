@@ -1,5 +1,10 @@
 package com.thorctl.app
 
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import com.thorctl.ui.keyboard.KeyboardWindow
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.view.Display
@@ -33,6 +38,8 @@ class ThorKeyboard : InputMethodService() {
 
     @Inject lateinit var content: ThorContent
 
+    @Inject lateinit var keyboardWindow: KeyboardWindow
+
     private var root: FrameLayout? = null
     private var inlineView: ComposeView? = null
     private var owner: OverlayOwner? = null
@@ -50,15 +57,20 @@ class ThorKeyboard : InputMethodService() {
         override fun requestHideSelf(flags: Int) = this@ThorKeyboard.requestHideSelf(flags)
     }
 
+    /** Everything that follows the daemon or the editor for this keyboard service. */
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onCreate() {
         graph.inject(this)
         super.onCreate()
-        editor.attach(host)
+        editor.attach(host, serviceScope)
+        keyboardWindow.attach(serviceScope)
     }
 
     override fun onDestroy() {
         dropInline()
         editor.detach(host)
+        serviceScope.cancel()
         super.onDestroy()
     }
 

@@ -1,5 +1,8 @@
 package com.thorctl.platform.bluetooth
 
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.ContributesIntoSet
+import com.thorctl.platform.startup.ProcessObserver
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,7 +18,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import com.thorctl.di.ApplicationScope
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.domain.repository.GamepadHostRepository
 import com.thorctl.domain.repository.GamepadPairing
@@ -45,13 +47,13 @@ import java.util.concurrent.atomic.AtomicReference
 @SuppressLint("MissingPermission")
 @Inject
 @SingleIn(AppScope::class)
+@ContributesIntoSet(AppScope::class, binding = binding<ProcessObserver>())
 class BluetoothGamepad(
     private val context: Context,
     private val daemon: DaemonRepository,
     private val hosts: GamepadHostRepository,
     private val menu: Lazy<OverlayMenu>,
-    @ApplicationScope private val scope: CoroutineScope,
-) : GamepadPairing {
+) : GamepadPairing, ProcessObserver {
     private val radioExecutor = Executors.newSingleThreadExecutor { Thread(it, "gamepad-bt") }
 
     private var wanted = false
@@ -72,7 +74,7 @@ class BluetoothGamepad(
         get() = context.getSystemService(BluetoothManager::class.java)?.adapter
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun start() {
+    override fun observe(scope: CoroutineScope) {
         scope.launch {
             daemon.status
                 .flatMapLatest { status ->
@@ -86,23 +88,33 @@ class BluetoothGamepad(
         }
         // Reports go straight to the radio's thread, not through the main thread.
         scope.launch(Dispatchers.Default) { daemon.gamepadReports.collect(::send) }
-        // Gamepad mode turns Bluetooth on if it was off: register once the adapter is up.
-        context.registerReceiver(object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val adapterState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
-                if (adapterState == BluetoothAdapter.STATE_ON && wanted && proxy == null) open()
-                if (adapterState == BluetoothAdapter.STATE_OFF) {
-                    proxy = null
-                    setHost(null)
-                }
+    }
+
+    /**
+     * While gamepad mode wants Bluetooth: gamepad mode turns Bluetooth on if it was off, so
+     * register once the adapter is up; if it goes off, the host is gone.
+     */
+    private val adapterReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val adapterState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+            if (adapterState == BluetoothAdapter.STATE_ON && wanted && proxy == null) open()
+            if (adapterState == BluetoothAdapter.STATE_OFF) {
+                proxy = null
+                setHost(null)
             }
-        }, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        }
     }
 
     private fun update(want: Boolean) {
         if (want == wanted) return
         wanted = want
-        if (want) open() else close()
+        if (want) {
+            context.registerReceiver(adapterReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            open()
+        } else {
+            context.unregisterReceiver(adapterReceiver)
+            close()
+        }
     }
 
     private fun open() {

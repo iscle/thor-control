@@ -1,5 +1,6 @@
 package com.thorctl.ui.hud
 
+import com.thorctl.protocol.model.HudEvent
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -7,31 +8,23 @@ import android.view.Display
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
-import com.thorctl.di.ApplicationScope
-import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.haptics.Haptics
 import com.thorctl.platform.overlay.OverlayOwner
 import com.thorctl.platform.overlay.OverlayWindows
-import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.ui.theme.ThorTheme
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /** The short confirmation pill for AYN shortcuts, on the screen the shortcut acted on. */
 @Inject
 @SingleIn(AppScope::class)
 class HudWindow(
-    private val daemon: DaemonRepository,
     private val windows: OverlayWindows,
     private val mapper: HudMessageMapper,
     private val haptics: Haptics,
-    @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val main = Handler(Looper.getMainLooper())
     private var view: ComposeView? = null
@@ -41,11 +34,8 @@ class HudWindow(
     private val hud = MutableStateFlow<HudMessage?>(null)
     private val hide = Runnable { hud.value = null }
 
-    fun start() {
-        scope.launch {
-            daemon.events.filterIsInstance<DaemonEvent.Hud>().collect { show(mapper.map(it.hud, it.displayId)) }
-        }
-    }
+    /** Confirms an AYN shortcut on [displayId]. */
+    fun show(event: HudEvent, displayId: Int) = show(mapper.map(event, displayId))
 
     private fun show(message: HudMessage) {
         val display = windows.display(message.displayId) ?: windows.display(Display.DEFAULT_DISPLAY) ?: return
