@@ -1,7 +1,7 @@
 package com.thorctl.daemon.control
 
-import com.thorctl.daemon.feature.Gamepad
 import com.thorctl.daemon.feature.gamemode.GameMode
+import com.thorctl.daemon.feature.gamepad.Gamepad
 import dev.zacsweers.metro.Inject
 import timber.log.Timber
 import kotlin.system.exitProcess
