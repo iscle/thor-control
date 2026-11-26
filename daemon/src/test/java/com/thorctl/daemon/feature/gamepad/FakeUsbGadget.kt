@@ -25,7 +25,12 @@ class FakeUsbGadget(
         return setupError
     }
 
+    /** Runs as the function is removed, before anything changes (to check what is still open then). */
+    @Volatile
+    var onRemove: () -> Unit = {}
+
     override fun removeHidFunction() {
+        onRemove()
         teardowns.incrementAndGet()
         linked = false
         leftovers = false

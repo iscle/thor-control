@@ -60,6 +60,49 @@ class PowerButtonTest {
     }
 
     @Test
+    fun cancelStopsAPendingHoldAndSpendsThePress() {
+        button.onKey(true)
+        button.cancel()
+        assertTrue(timers.single().second.isCancelled)
+        fireTimers()
+        button.onKey(false)
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun aHoldTimerAlreadyRunningWhenCancelledDoesNothing() {
+        button.onKey(true)
+        // The timer started but waits for the owner's lock while the owner cancels.
+        val lateAction = timers.single().second
+        button.cancel()
+        lateAction.run() // FutureTask.cancel(false) already marked it; run() is a no-op either way
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun aHoldTimerRunningLateAfterTheReleaseDoesNothing() {
+        val actions = mutableListOf<() -> Unit>()
+        val lateButton = PowerButton(
+            schedule = { _, action -> FutureTask { }.also { actions += action } },
+            onPress = { events += "press" },
+            onHold = { events += "hold" },
+        )
+        lateButton.onKey(true)
+        lateButton.onKey(false)
+        // The executor had already started the hold when the release cancelled its future.
+        actions.single().invoke()
+        assertEquals(listOf("press"), events)
+    }
+
+    @Test
+    fun cancelWithTheButtonUpLeavesTheNextPressAlone() {
+        button.cancel()
+        button.onKey(true)
+        button.onKey(false)
+        assertEquals(listOf("press"), events)
+    }
+
+    @Test
     fun aReleaseWithoutADownIsAPress() {
         button.onKey(false)
         assertEquals(listOf("press"), events)

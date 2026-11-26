@@ -32,7 +32,7 @@ class AwakeKeeper(
             if (id < 0) continue
             try {
                 powerService.userActivity(id)
-            } catch (e: Throwable) {
+            } catch (e: ReflectiveOperationException) {
                 Timber.w(e, "gamepad: user activity on display $id failed")
             }
         }
@@ -46,7 +46,13 @@ class AwakeKeeper(
     fun isInteractive(): Boolean = powerService.isInteractive()
 
     /** Android went to sleep anyway (not the lid): wake it. */
-    fun wakeUp() = inputService.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
+    fun wakeUp() {
+        try {
+            inputService.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
+        } catch (e: ReflectiveOperationException) {
+            Timber.w(e, "gamepad: waking Android failed")
+        }
+    }
 
     companion object {
         const val WAKE_LOCK = "/sys/power/wake_lock"
