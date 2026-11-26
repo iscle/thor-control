@@ -60,8 +60,8 @@ class KeyboardEditor(
     private var editor: EditorInfo? = null
 
     // Selection as the editor last reported it, and the end the touchpad moves while selecting.
-    private var selStart = 0
-    private var selEnd = 0
+    private var selectionStart = 0
+    private var selectionEnd = 0
     private var anchor = 0
     private var moving = 0
 
@@ -89,28 +89,28 @@ class KeyboardEditor(
 
     // ---- From the keyboard service ------------------------------------------------------------
 
-    fun attach(s: ImeHost) {
-        ime = s
+    fun attach(host: ImeHost) {
+        ime = host
     }
 
-    fun detach(s: ImeHost) {
-        if (ime === s) ime = null
+    fun detach(host: ImeHost) {
+        if (ime === host) ime = null
         setPanel(false, delayMs = 0)
     }
 
-    fun onStartInput(info: EditorInfo) {
-        editor = info
-        selStart = info.initialSelStart.coerceAtLeast(0)
-        selEnd = info.initialSelEnd.coerceAtLeast(0)
+    fun onStartInput(editorInfo: EditorInfo) {
+        editor = editorInfo
+        selectionStart = editorInfo.initialSelStart.coerceAtLeast(0)
+        selectionEnd = editorInfo.initialSelEnd.coerceAtLeast(0)
     }
 
     /**
      * Typing starts. [inline]: the keyboard service shows the keys itself, on the top screen (the
      * Thor is held upright); otherwise they go on the bottom screen.
      */
-    fun onShow(info: EditorInfo, inline: Boolean) {
-        editor = info
-        _ui.value = KeyboardUi(layer = KeyboardText.layerFor(info.inputType), enter = KeyboardText.enterFor(info.inputType, info.imeOptions))
+    fun onShow(editorInfo: EditorInfo, inline: Boolean) {
+        editor = editorInfo
+        _ui.value = KeyboardUi(layer = KeyboardText.layerFor(editorInfo.inputType), enter = KeyboardText.enterFor(editorInfo.inputType, editorInfo.imeOptions))
         autoShift()
         refreshPreview()
         inlineShown = inline
@@ -132,8 +132,8 @@ class KeyboardEditor(
     }
 
     fun onSelection(start: Int, end: Int) {
-        selStart = start
-        selEnd = end
+        selectionStart = start
+        selectionEnd = end
         refreshPreview()
     }
 
@@ -162,27 +162,27 @@ class KeyboardEditor(
         }
     }
 
-    private val ic: InputConnection? get() = ime?.currentInputConnection
+    private val inputConnection: InputConnection? get() = ime?.currentInputConnection
 
     private fun isPassword(): Boolean = KeyboardText.isPassword(editor?.inputType ?: return false)
 
     // ---- Keys ---------------------------------------------------------------------------------
 
     override fun type(s: String) {
-        val k = ime ?: return
-        val u = _ui.value
-        val out = KeyboardText.output(u, s)
-        if (out.length == 1) k.sendKeyChar(out[0]) else ic?.commitText(out, 1)
-        if (u.shift && !u.caps) _ui.value = _ui.value.copy(shift = false)
+        val imeHost = ime ?: return
+        val keyboard = _ui.value
+        val out = KeyboardText.output(keyboard, s)
+        if (out.length == 1) imeHost.sendKeyChar(out[0]) else inputConnection?.commitText(out, 1)
+        if (keyboard.shift && !keyboard.caps) _ui.value = _ui.value.copy(shift = false)
         endSelecting()
         autoShift()
     }
 
     override fun typeExact(s: String) {
-        val k = ime ?: return
-        if (s.length == 1) k.sendKeyChar(s[0]) else ic?.commitText(s, 1)
-        val u = _ui.value
-        if (u.shift && !u.caps) _ui.value = u.copy(shift = false)
+        val imeHost = ime ?: return
+        if (s.length == 1) imeHost.sendKeyChar(s[0]) else inputConnection?.commitText(s, 1)
+        val keyboard = _ui.value
+        if (keyboard.shift && !keyboard.caps) _ui.value = keyboard.copy(shift = false)
         endSelecting()
         autoShift()
     }
@@ -194,13 +194,13 @@ class KeyboardEditor(
     }
 
     override fun backspace() {
-        val k = ime ?: return
-        val c = ic
+        val imeHost = ime ?: return
+        val connection = inputConnection
         val raw = editor?.inputType == InputType.TYPE_NULL
         when {
-            c == null || raw -> k.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
-            selStart != selEnd -> c.commitText("", 1)
-            else -> if (!c.deleteSurroundingTextInCodePoints(1, 0)) k.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            connection == null || raw -> imeHost.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            selectionStart != selectionEnd -> connection.commitText("", 1)
+            else -> if (!connection.deleteSurroundingTextInCodePoints(1, 0)) imeHost.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
         endSelecting()
         autoShift()
@@ -209,53 +209,53 @@ class KeyboardEditor(
     // ---- Backspace swipe ----------------------------------------------------------------------
 
     /** Lengths (from the cursor back) of 1, 2, 3, … words; empty if the field can't report text. */
-    private var wordLens: List<Int> = emptyList()
+    private var wordLengths: List<Int> = emptyList()
     private var wordBase = 0
     private var wordEnd = 0
     private var wordCount = 0
 
     override fun beginWordDelete() {
-        wordLens = emptyList()
+        wordLengths = emptyList()
         wordCount = 0
-        val c = ic ?: return
-        val et = try {
-            c.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 100_000 }, 0)
+        val connection = inputConnection ?: return
+        val extracted = try {
+            connection.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 100_000 }, 0)
         } catch (_: Exception) {
             null
         } ?: return
-        val off = et.startOffset
-        wordBase = minOf(et.selectionStart, et.selectionEnd) + off
-        wordEnd = maxOf(et.selectionStart, et.selectionEnd) + off
-        val before = et.text?.subSequence(0, (wordBase - off).coerceIn(0, et.text.length))?.toString() ?: return
-        wordLens = KeyboardText.wordsBack(before)
+        val offset = extracted.startOffset
+        wordBase = minOf(extracted.selectionStart, extracted.selectionEnd) + offset
+        wordEnd = maxOf(extracted.selectionStart, extracted.selectionEnd) + offset
+        val before = extracted.text?.subSequence(0, (wordBase - offset).coerceIn(0, extracted.text.length))?.toString() ?: return
+        wordLengths = KeyboardText.wordsBack(before)
     }
 
     override fun selectWords(n: Int) {
-        val k = n.coerceIn(0, wordLens.size)
-        if (k == wordCount) return
-        wordCount = k
-        val start = wordBase - (if (k == 0) 0 else wordLens[k - 1])
-        ic?.setSelection(start, wordEnd)
+        val words = n.coerceIn(0, wordLengths.size)
+        if (words == wordCount) return
+        wordCount = words
+        val start = wordBase - (if (words == 0) 0 else wordLengths[words - 1])
+        inputConnection?.setSelection(start, wordEnd)
         haptics.tick()
     }
 
     override fun endWordDelete(commit: Boolean) {
         if (wordCount > 0) {
-            if (commit) ic?.commitText("", 1) else ic?.setSelection(wordBase, wordEnd)
+            if (commit) inputConnection?.commitText("", 1) else inputConnection?.setSelection(wordBase, wordEnd)
         }
-        wordLens = emptyList()
+        wordLengths = emptyList()
         wordCount = 0
         endSelecting()
         autoShift()
     }
 
     override fun enter() {
-        val k = ime ?: return
+        val imeHost = ime ?: return
         val action = (editor?.imeOptions ?: 0) and EditorInfo.IME_MASK_ACTION
         if (_ui.value.enter != EnterKey.RETURN && action != EditorInfo.IME_ACTION_NONE) {
-            ic?.performEditorAction(action)
+            inputConnection?.performEditorAction(action)
         } else {
-            k.sendKeyChar('\n')
+            imeHost.sendKeyChar('\n')
         }
         endSelecting()
     }
@@ -276,31 +276,31 @@ class KeyboardEditor(
 
     /** Capital letter at the start of a sentence, when the field asks for it. */
     private fun autoShift() {
-        val u = _ui.value
-        if (u.caps || u.layer != KeyboardLayer.LETTERS) return
+        val keyboard = _ui.value
+        if (keyboard.caps || keyboard.layer != KeyboardLayer.LETTERS) return
         val type = editor?.inputType ?: return
         val caps = try {
-            ic?.getCursorCapsMode(type) ?: 0
+            inputConnection?.getCursorCapsMode(type) ?: 0
         } catch (_: Exception) {
             0
         }
-        _ui.value = u.copy(shift = caps != 0)
+        _ui.value = keyboard.copy(shift = caps != 0)
     }
 
     // ---- Touchpad / selection -----------------------------------------------------------------
 
     override fun beginSwipe() {
-        val et = try {
-            ic?.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 100_000 }, 0)
+        val extracted = try {
+            inputConnection?.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 100_000 }, 0)
         } catch (_: Exception) {
             null
         }
-        text = et?.text
-        textOffset = et?.startOffset ?: 0
-        if (et != null) {
-            selStart = et.selectionStart + textOffset
-            selEnd = et.selectionEnd + textOffset
-            if (!_ui.value.selecting) moving = selEnd
+        text = extracted?.text
+        textOffset = extracted?.startOffset ?: 0
+        if (extracted != null) {
+            selectionStart = extracted.selectionStart + textOffset
+            selectionEnd = extracted.selectionEnd + textOffset
+            if (!_ui.value.selecting) moving = selectionEnd
         }
     }
 
@@ -309,37 +309,37 @@ class KeyboardEditor(
     }
 
     override fun move(dir: Int): Boolean {
-        val c = ic ?: return false
-        val t = text
+        val connection = inputConnection ?: return false
+        val snapshot = text
         val selecting = _ui.value.selecting
-        if (t == null) {
+        if (snapshot == null) {
             // The field can't report its text: arrow keys (with shift while selecting).
-            val code = if (dir < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
-            val meta = if (selecting) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
+            val keyCode = if (dir < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+            val metaState = if (selecting) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
             val now = SystemClock.uptimeMillis()
-            c.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, meta))
-            c.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, meta))
+            connection.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
+            connection.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState))
             return true
         }
         val from = when {
             selecting -> moving
-            dir < 0 -> selStart
-            else -> selEnd
+            dir < 0 -> selectionStart
+            else -> selectionEnd
         }
-        val to = KeyboardText.step(t, textOffset, from, dir)
-        val collapsing = !selecting && selStart != selEnd
+        val to = KeyboardText.step(snapshot, textOffset, from, dir)
+        val collapsing = !selecting && selectionStart != selectionEnd
         if (to == from && !collapsing) return false
         if (selecting) {
             moving = to
-            c.setSelection(anchor, to)
-            selStart = minOf(anchor, to)
-            selEnd = maxOf(anchor, to)
+            connection.setSelection(anchor, to)
+            selectionStart = minOf(anchor, to)
+            selectionEnd = maxOf(anchor, to)
         } else {
-            val p = if (collapsing) from else to
-            c.setSelection(p, p)
-            selStart = p
-            selEnd = p
-            moving = p
+            val cursor = if (collapsing) from else to
+            connection.setSelection(cursor, cursor)
+            selectionStart = cursor
+            selectionEnd = cursor
+            moving = cursor
         }
         haptics.tick()
         return true
@@ -350,8 +350,8 @@ class KeyboardEditor(
         if (on) {
             beginSwipe()
             endSwipe()
-            anchor = selStart
-            moving = selEnd
+            anchor = selectionStart
+            moving = selectionEnd
         }
         _ui.value = _ui.value.copy(selecting = on)
     }
@@ -361,12 +361,12 @@ class KeyboardEditor(
     }
 
     override fun copy() {
-        val sel = try {
-            ic?.getSelectedText(0)
+        val selection = try {
+            inputConnection?.getSelectedText(0)
         } catch (_: Exception) {
             null
         }
-        if (sel.isNullOrEmpty()) {
+        if (selection.isNullOrEmpty()) {
             flash("Nothing selected")
             return
         }
@@ -374,42 +374,42 @@ class KeyboardEditor(
             flash("Can't copy passwords")
             return
         }
-        clipboard()?.setPrimaryClip(ClipData.newPlainText("text", sel))
+        clipboard()?.setPrimaryClip(ClipData.newPlainText("text", selection))
         endSelecting()
         flash("Copied")
     }
 
     override fun paste() {
         val clip = clipboard()?.primaryClip
-        val t = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)?.toString() else null
-        if (t.isNullOrEmpty()) {
+        val pasted = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)?.toString() else null
+        if (pasted.isNullOrEmpty()) {
             flash("Clipboard is empty")
             return
         }
-        ic?.commitText(t, 1)
+        inputConnection?.commitText(pasted, 1)
         endSelecting()
         autoShift()
     }
 
     private fun clipboard(): ClipboardManager? = context.getSystemService(ClipboardManager::class.java)
 
-    private fun flash(msg: String) {
-        _ui.value = _ui.value.copy(flash = msg, flashId = SystemClock.uptimeMillis())
+    private fun flash(message: String) {
+        _ui.value = _ui.value.copy(flash = message, flashId = SystemClock.uptimeMillis())
     }
 
     /** Text around the cursor for the touchpad preview (masked in password fields). */
     private fun refreshPreview() {
-        val c = ic ?: return
+        val connection = inputConnection ?: return
         try {
             val (before, selected, after) = KeyboardText.preview(
-                c.getTextBeforeCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
-                c.getSelectedText(0)?.toString().orEmpty(),
-                c.getTextAfterCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
+                connection.getTextBeforeCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
+                connection.getSelectedText(0)?.toString().orEmpty(),
+                connection.getTextAfterCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
                 isPassword(),
             )
             _ui.value = _ui.value.copy(before = before, selected = selected, after = after)
-        } catch (e: Exception) {
-            Timber.w(e, "preview")
+        } catch (error: Exception) {
+            Timber.w(error, "preview")
         }
     }
 }

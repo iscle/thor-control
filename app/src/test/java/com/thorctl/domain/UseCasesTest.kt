@@ -26,16 +26,16 @@ class UseCasesTest {
     @Test
     fun customProfilesGetTheFirstFreeName() {
         val taken = FanProfile.BUILTINS + FanProfile("custom-a", "Custom 2", emptyList())
-        val p = CreateCustomFanProfileUseCase.newCustom(taken, FanProfile.BUILTINS.first { it.id == "max" }, now = 35)
-        assertEquals("Custom 3", p.name)
-        assertEquals("custom-z", p.id)
-        assertTrue(!p.isBuiltin)
+        val profile = CreateCustomFanProfileUseCase.newCustom(taken, FanProfile.BUILTINS.first { it.id == "max" }, now = 35)
+        assertEquals("Custom 3", profile.name)
+        assertEquals("custom-z", profile.id)
+        assertTrue(!profile.isBuiltin)
     }
 
     @Test
     fun autoHasNoCurveSoSmartsIsCopied() {
-        val p = CreateCustomFanProfileUseCase.newCustom(FanProfile.BUILTINS, FanProfile.BUILTINS.first(), now = 1)
-        assertEquals(FanProfile.BUILTINS.first { it.id == FanProfile.SMART_ID }.points, p.points)
-        assertEquals("Custom 1", p.name)
+        val profile = CreateCustomFanProfileUseCase.newCustom(FanProfile.BUILTINS, FanProfile.BUILTINS.first(), now = 1)
+        assertEquals(FanProfile.BUILTINS.first { it.id == FanProfile.SMART_ID }.points, profile.points)
+        assertEquals("Custom 1", profile.name)
     }
 }

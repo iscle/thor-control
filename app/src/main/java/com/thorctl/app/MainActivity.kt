@@ -41,8 +41,8 @@ class MainActivity : ComponentActivity() {
     private fun openControllerSettings() {
         try {
             startActivity(Intent().setComponent(ComponentName("org.lineageos.settings.ayn", "org.lineageos.settings.ayn.AynSettingsActivity")))
-        } catch (e: Exception) {
-            Timber.w(e, "AYN settings not found")
+        } catch (error: Exception) {
+            Timber.w(error, "AYN settings not found")
         }
     }
 }

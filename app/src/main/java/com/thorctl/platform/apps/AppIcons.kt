@@ -13,12 +13,12 @@ import dev.zacsweers.metro.SingleIn
 class AppIcons(private val context: Context) {
     /** [packageName]'s icon, [sizeDp] square; null if the package is unknown. */
     fun icon(packageName: String, sizeDp: Int = 40): Bitmap? = try {
-        val d = context.packageManager.getApplicationIcon(packageName)
-        val px = (sizeDp * context.resources.displayMetrics.density).toInt()
-        val b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
-        d.setBounds(0, 0, px, px)
-        d.draw(Canvas(b))
-        b
+        val drawable = context.packageManager.getApplicationIcon(packageName)
+        val sizePixels = (sizeDp * context.resources.displayMetrics.density).toInt()
+        val bitmap = Bitmap.createBitmap(sizePixels, sizePixels, Bitmap.Config.ARGB_8888)
+        drawable.setBounds(0, 0, sizePixels, sizePixels)
+        drawable.draw(Canvas(bitmap))
+        bitmap
     } catch (_: Exception) {
         null
     }

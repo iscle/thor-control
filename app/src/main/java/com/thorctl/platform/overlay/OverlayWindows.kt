@@ -16,11 +16,11 @@ import dev.zacsweers.metro.SingleIn
 @Inject
 @SingleIn(AppScope::class)
 class OverlayWindows(
-    private val app: Context,
+    private val context: Context,
     private val accessibility: AccessibilityConnection,
     private val daemon: DaemonRepository,
 ) {
-    private val displays: DisplayManager get() = app.getSystemService(DisplayManager::class.java)
+    private val displays: DisplayManager get() = context.getSystemService(DisplayManager::class.java)
 
     fun display(id: Int): Display? = displays.getDisplay(id)
 
@@ -39,7 +39,7 @@ class OverlayWindows(
     /** The layers that can host an overlay right now, strongest first. */
     fun availableLayers(): List<OverlayLayer> = buildList {
         if (accessibility.service != null) add(OverlayLayer.ACCESSIBILITY)
-        if (Settings.canDrawOverlays(app)) add(OverlayLayer.APPLICATION)
+        if (Settings.canDrawOverlays(context)) add(OverlayLayer.APPLICATION)
     }
 
     /** An accessibility overlay when the service is bound, else an application overlay; null if neither works. */
@@ -51,7 +51,7 @@ class OverlayWindows(
             }
             OverlayLayer.APPLICATION -> {
                 val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                OverlayContext(app.createDisplayContext(display).createWindowContext(type, null), type, layer)
+                OverlayContext(context.createDisplayContext(display).createWindowContext(type, null), type, layer)
             }
             null -> null
         }

@@ -43,7 +43,7 @@ class ThorKeyboard : InputMethodService() {
     private val host = object : ImeHost {
         override val currentInputConnection: InputConnection? get() = this@ThorKeyboard.currentInputConnection
 
-        override fun sendKeyChar(c: Char) = this@ThorKeyboard.sendKeyChar(c)
+        override fun sendKeyChar(charCode: Char) = this@ThorKeyboard.sendKeyChar(charCode)
 
         override fun sendDownUpKeyEvents(keyCode: Int) = this@ThorKeyboard.sendDownUpKeyEvents(keyCode)
 
@@ -76,9 +76,9 @@ class ThorKeyboard : InputMethodService() {
     override fun onComputeInsets(outInsets: Insets) {
         super.onComputeInsets(outInsets)
         if (inline) return
-        val h = window?.window?.decorView?.height ?: 0
-        outInsets.contentTopInsets = h
-        outInsets.visibleTopInsets = h
+        val windowHeight = window?.window?.decorView?.height ?: 0
+        outInsets.contentTopInsets = windowHeight
+        outInsets.visibleTopInsets = windowHeight
         outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
         outInsets.touchableRegion.setEmpty()
     }
@@ -88,11 +88,11 @@ class ThorKeyboard : InputMethodService() {
         editor.onStartInput(attribute)
     }
 
-    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
+    override fun onStartInputView(editorInfo: EditorInfo, restarting: Boolean) {
+        super.onStartInputView(editorInfo, restarting)
         inline = uprightTopScreen()
         if (inline) showInline() else dropInline()
-        editor.onShow(info, inline)
+        editor.onShow(editorInfo, inline)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -102,32 +102,32 @@ class ThorKeyboard : InputMethodService() {
 
     /** This keyboard window is on the top screen and that screen is in portrait. */
     private fun uprightTopScreen(): Boolean {
-        val d = try {
+        val keyboardDisplay = try {
             display
         } catch (_: Exception) {
             null
         } ?: return false
-        return d.displayId == Display.DEFAULT_DISPLAY &&
+        return keyboardDisplay.displayId == Display.DEFAULT_DISPLAY &&
             resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     }
 
     private fun showInline() {
-        val r = root ?: return
+        val container = root ?: return
         if (inlineView != null) return
-        val o = OverlayOwner()
-        val v = ComposeView(this)
-        o.attach(v)
+        val overlayOwner = OverlayOwner()
+        val composeView = ComposeView(this)
+        overlayOwner.attach(composeView)
         // Compose looks for its lifecycle from the window's root view as well.
-        window?.window?.decorView?.let { decor ->
-            decor.setViewTreeLifecycleOwner(o)
-            decor.setViewTreeSavedStateRegistryOwner(o)
-            decor.setViewTreeViewModelStoreOwner(o)
+        window?.window?.decorView?.let { decorView ->
+            decorView.setViewTreeLifecycleOwner(overlayOwner)
+            decorView.setViewTreeSavedStateRegistryOwner(overlayOwner)
+            decorView.setViewTreeViewModelStoreOwner(overlayOwner)
         }
-        v.setContent { content { UprightKeyboard() } }
-        r.addView(v, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        o.resume()
-        inlineView = v
-        owner = o
+        composeView.setContent { content { UprightKeyboard() } }
+        container.addView(composeView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        overlayOwner.resume()
+        inlineView = composeView
+        owner = overlayOwner
     }
 
     private fun dropInline() {
@@ -147,7 +147,7 @@ class ThorKeyboard : InputMethodService() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
         if (isShoulder(keyCode) && editor.isShown) true else super.onKeyUp(keyCode, event)
 
-    private fun isShoulder(code: Int) = code == KeyEvent.KEYCODE_BUTTON_L1 || code == KeyEvent.KEYCODE_BUTTON_R1
+    private fun isShoulder(keyCode: Int) = keyCode == KeyEvent.KEYCODE_BUTTON_L1 || keyCode == KeyEvent.KEYCODE_BUTTON_R1
 
     override fun onUpdateSelection(
         oldSelStart: Int,

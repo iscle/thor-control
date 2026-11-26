@@ -29,8 +29,8 @@ class KeyboardTextTest {
 
     @Test
     fun shiftTapsAndCapsLock() {
-        val ui = KeyboardUi()
-        val shifted = KeyboardText.shifted(ui, 10_000)
+        val keyboard = KeyboardUi()
+        val shifted = KeyboardText.shifted(keyboard, 10_000)
         assertTrue(shifted.shift)
         val locked = KeyboardText.shifted(shifted, 100)
         assertTrue(locked.caps)

@@ -26,9 +26,9 @@ class HudMessageMapperTest {
 
     @Test
     fun brightnessShowsALevel() {
-        val m = mapper.map(HudEvent.Brightness(Screen.BOTTOM, 45), 2)
-        assertEquals(0.45f, m.level)
-        assertEquals(2, m.displayId)
+        val message = mapper.map(HudEvent.Brightness(Screen.BOTTOM, 45), 2)
+        assertEquals(0.45f, message.level)
+        assertEquals(2, message.displayId)
     }
 
     @Test

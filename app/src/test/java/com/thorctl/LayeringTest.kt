@@ -17,8 +17,8 @@ class LayeringTest {
     private fun files(packageName: String) = File(root, packageName).walkTopDown().filter { it.extension == "kt" }.toList()
 
     /** Imports, and fully qualified class names in code (comments, strings and the package line removed). */
-    private fun references(f: File): List<String> {
-        val code = f.readText()
+    private fun references(file: File): List<String> {
+        val code = file.readText()
             .replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "")
             .replace(Regex("//.*"), "")
             .replace(Regex("\"(\\\\.|[^\"\\\\])*\""), "\"\"")
@@ -29,8 +29,8 @@ class LayeringTest {
         return imports + qualified
     }
 
-    private fun violations(packageName: String, forbidden: List<String>): List<String> = files(packageName).flatMap { f ->
-        references(f).filter { ref -> forbidden.any { ref == it || ref.startsWith("$it.") } }.map { "${f.name}: $it" }
+    private fun violations(packageName: String, forbidden: List<String>): List<String> = files(packageName).flatMap { file ->
+        references(file).filter { reference -> forbidden.any { reference == it || reference.startsWith("$it.") } }.map { "${file.name}: $it" }
     }.distinct()
 
     @Test
@@ -59,7 +59,7 @@ class LayeringTest {
 
     @Test
     fun theCheckFindsQualifiedNamesButNotComments() {
-        val f = File.createTempFile("Bad", ".kt").apply {
+        val file = File.createTempFile("Bad", ".kt").apply {
             writeText(
                 """
                 package com.thorctl.domain
@@ -69,7 +69,7 @@ class LayeringTest {
                 """.trimIndent(),
             )
         }
-        assertEquals(listOf("android.content.Context", "com.thorctl.data"), references(f))
-        f.delete()
+        assertEquals(listOf("android.content.Context", "com.thorctl.data"), references(file))
+        file.delete()
     }
 }

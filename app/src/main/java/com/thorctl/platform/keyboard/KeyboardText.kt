@@ -25,68 +25,68 @@ object KeyboardText {
 
     /** Numbers and phone numbers start on the symbols layer. */
     fun layerFor(inputType: Int): KeyboardLayer {
-        val cls = inputType and InputType.TYPE_MASK_CLASS
-        return if (cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE) KeyboardLayer.SYMBOLS else KeyboardLayer.LETTERS
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        return if (inputClass == InputType.TYPE_CLASS_NUMBER || inputClass == InputType.TYPE_CLASS_PHONE) KeyboardLayer.SYMBOLS else KeyboardLayer.LETTERS
     }
 
     fun isPassword(inputType: Int): Boolean {
-        val v = inputType and InputType.TYPE_MASK_VARIATION
-        val cls = inputType and InputType.TYPE_MASK_CLASS
-        return cls == InputType.TYPE_CLASS_TEXT &&
-            (v == InputType.TYPE_TEXT_VARIATION_PASSWORD || v == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-                v == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) ||
-            cls == InputType.TYPE_CLASS_NUMBER && v == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        return inputClass == InputType.TYPE_CLASS_TEXT &&
+            (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) ||
+            inputClass == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
 
     /** Shift key: tap toggles shift, a quick second tap locks caps, a tap with caps on releases both. */
-    fun shifted(ui: KeyboardUi, sinceLastTapMs: Long): KeyboardUi = when {
-        ui.caps -> ui.copy(caps = false, shift = false)
-        ui.shift && sinceLastTapMs < SHIFT_DOUBLE_TAP_MS -> ui.copy(caps = true, shift = false)
-        else -> ui.copy(shift = !ui.shift)
+    fun shifted(keyboard: KeyboardUi, sinceLastTapMs: Long): KeyboardUi = when {
+        keyboard.caps -> keyboard.copy(caps = false, shift = false)
+        keyboard.shift && sinceLastTapMs < SHIFT_DOUBLE_TAP_MS -> keyboard.copy(caps = true, shift = false)
+        else -> keyboard.copy(shift = !keyboard.shift)
     }
 
     /** What a typed key commits: upper case on the letters layer with shift or caps. */
-    fun output(ui: KeyboardUi, key: String): String =
-        if (ui.layer == KeyboardLayer.LETTERS && (ui.shift || ui.caps)) key.uppercase() else key
+    fun output(keyboard: KeyboardUi, key: String): String =
+        if (keyboard.layer == KeyboardLayer.LETTERS && (keyboard.shift || keyboard.caps)) key.uppercase() else key
 
     /** Lengths (from the cursor back) of 1, 2, 3, … words: spaces, then a run of letters/digits or of punctuation. */
     fun wordsBack(before: String, max: Int = MAX_WORDS): List<Int> {
         val out = ArrayList<Int>()
-        var i = before.length
-        while (i > 0 && out.size < max) {
-            while (i > 0 && before[i - 1].isWhitespace()) i--
-            if (i > 0) {
-                val word = before[i - 1].isLetterOrDigit()
-                while (i > 0 && !before[i - 1].isWhitespace() && before[i - 1].isLetterOrDigit() == word) i--
+        var position = before.length
+        while (position > 0 && out.size < max) {
+            while (position > 0 && before[position - 1].isWhitespace()) position--
+            if (position > 0) {
+                val word = before[position - 1].isLetterOrDigit()
+                while (position > 0 && !before[position - 1].isWhitespace() && before[position - 1].isLetterOrDigit() == word) position--
             }
-            out += before.length - i
+            out += before.length - position
         }
         return out
     }
 
     /** The touchpad preview: this line only, passwords masked, long selections shortened. */
     fun preview(before: String, selected: String, after: String, password: Boolean): Triple<String, String, String> {
-        var b = before
-        var s = selected
-        var a = after
+        var shownBefore = before
+        var shownSelected = selected
+        var shownAfter = after
         if (password) {
-            b = "•".repeat(b.length)
-            s = "•".repeat(s.length)
-            a = "•".repeat(a.length)
+            shownBefore = "•".repeat(shownBefore.length)
+            shownSelected = "•".repeat(shownSelected.length)
+            shownAfter = "•".repeat(shownAfter.length)
         }
-        if (s.length > 40) s = s.take(18) + " … " + s.takeLast(18)
-        return Triple(b.substringAfterLast('\n'), s, a.substringBefore('\n'))
+        if (shownSelected.length > 40) shownSelected = shownSelected.take(18) + " … " + shownSelected.takeLast(18)
+        return Triple(shownBefore.substringAfterLast('\n'), shownSelected, shownAfter.substringBefore('\n'))
     }
 
     /**
-     * Where the cursor goes one step in [dir] from [from], in a field whose text (from offset
+     * Where the cursor goes one step in [direction] from [from], in a field whose text (from offset
      * [offset]) is [text]: never between the two halves of a surrogate pair.
      */
-    fun step(text: CharSequence, offset: Int, from: Int, dir: Int): Int {
-        val len = offset + text.length
-        var to = (from + dir).coerceIn(0, len)
-        val i = to - offset
-        if (i in 1 until text.length && Character.isHighSurrogate(text[i - 1]) && Character.isLowSurrogate(text[i])) to += dir
-        return to.coerceIn(0, len)
+    fun step(text: CharSequence, offset: Int, from: Int, direction: Int): Int {
+        val textEnd = offset + text.length
+        var to = (from + direction).coerceIn(0, textEnd)
+        val index = to - offset
+        if (index in 1 until text.length && Character.isHighSurrogate(text[index - 1]) && Character.isLowSurrogate(text[index])) to += direction
+        return to.coerceIn(0, textEnd)
     }
 }

@@ -13,29 +13,29 @@ import kotlin.test.assertTrue
 class MenuNavigatorTest {
     @Test
     fun theMainPageIsAlwaysAtTheBottom() {
-        val nav = MenuNavigator()
-        assertEquals(MainKey, nav.current)
-        assertFalse(nav.back())
-        assertEquals(listOf(MainKey), nav.backStack.toList())
+        val navigator = MenuNavigator()
+        assertEquals(MainKey, navigator.current)
+        assertFalse(navigator.back())
+        assertEquals(listOf(MainKey), navigator.backStack.toList())
         assertEquals(listOf(MainKey), MenuNavigator(emptyList()).backStack.toList())
     }
 
     @Test
     fun gamepadGoesBackToTheControllerPage() {
-        val nav = MenuNavigator()
-        nav.open(ControllerKey)
-        nav.open(GamepadKey)
-        assertTrue(nav.back())
-        assertEquals(ControllerKey, nav.current)
-        assertTrue(nav.back())
-        assertEquals(MainKey, nav.current)
+        val navigator = MenuNavigator()
+        navigator.open(ControllerKey)
+        navigator.open(GamepadKey)
+        assertTrue(navigator.back())
+        assertEquals(ControllerKey, navigator.current)
+        assertTrue(navigator.back())
+        assertEquals(MainKey, navigator.current)
     }
 
     @Test
     fun openingThePageShownChangesNothing() {
-        val nav = MenuNavigator()
-        nav.open(FanKey)
-        nav.open(FanKey)
-        assertEquals(listOf(MainKey, FanKey), nav.backStack.toList())
+        val navigator = MenuNavigator()
+        navigator.open(FanKey)
+        navigator.open(FanKey)
+        assertEquals(listOf(MainKey, FanKey), navigator.backStack.toList())
     }
 }

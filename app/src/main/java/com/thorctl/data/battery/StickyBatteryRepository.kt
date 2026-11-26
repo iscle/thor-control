@@ -15,10 +15,10 @@ import dev.zacsweers.metro.Inject
 @ContributesBinding(AppScope::class)
 class StickyBatteryRepository(private val context: Context) : BatteryRepository {
     override fun current(): BatteryStatus {
-        val i: Intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return BatteryStatus.UNKNOWN
-        val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / i.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
-        val status = i.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
-        val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        val batteryIntent: Intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return BatteryStatus.UNKNOWN
+        val level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
+        val status = batteryIntent.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
+        val plugged = batteryIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
         return BatteryStatus(level, isCharging(status, plugged))
     }
 

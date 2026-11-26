@@ -84,46 +84,46 @@ class BinderDaemonRepository(
 
     override fun currentBinder(): IBinder? = binder.takeIf { registered }
 
-    private fun connect(b: IBinder) {
-        if (b == binder && registered) {
+    private fun connect(newBinder: IBinder) {
+        if (newBinder == binder && registered) {
             // The daemon offers its binder only while it doesn't count us as registered: it
             // dropped us (a failed call), so register again. Registering twice changes nothing.
             try {
                 daemon?.register(client)
-            } catch (e: RemoteException) {
-                Timber.w("registering again failed: ${e.javaClass.simpleName}")
+            } catch (error: RemoteException) {
+                Timber.w("registering again failed: ${error.javaClass.simpleName}")
                 disconnected("register failed")
             }
             return
         }
         if (binder != null) disconnected("daemon restarted")
-        val d = asInterface(b)
+        val newDaemon = asInterface(newBinder)
         try {
-            val version = d.version
+            val version = newDaemon.version
             if (version != IThorDaemon.VERSION) {
                 // A daemon from another APK version (an update not fully applied yet): its calls
                 // may not mean what ours do. Wait for the matching one.
                 Timber.w("daemon speaks version $version, the app ${IThorDaemon.VERSION}: not connecting")
                 return
             }
-            b.linkToDeath(death, 0)
+            newBinder.linkToDeath(death, 0)
             // Set before registering: the daemon's first state can arrive before register returns.
-            binder = b
-            daemon = d
-            d.register(client)
-            if (statsWanted > 0) d.setStatsSubscribed(client, true)
+            binder = newBinder
+            daemon = newDaemon
+            newDaemon.register(client)
+            if (statsWanted > 0) newDaemon.setStatsSubscribed(client, true)
             registered = true
             Timber.i("connected to the daemon")
-        } catch (e: RemoteException) {
-            Timber.w(e, "connecting to the daemon failed")
+        } catch (error: RemoteException) {
+            Timber.w(error, "connecting to the daemon failed")
             disconnected("connect failed")
         }
     }
 
     private fun disconnected(why: String) {
-        val b = binder ?: return
+        val lostBinder = binder ?: return
         try {
-            b.unlinkToDeath(death, 0)
+            lostBinder.unlinkToDeath(death, 0)
         } catch (_: Exception) {
         }
         binder = null
@@ -139,16 +139,16 @@ class BinderDaemonRepository(
         Timber.i("disconnected from the daemon: $why")
     }
 
-    private fun onEvent(e: DaemonEvent) {
-        when (e) {
+    private fun onEvent(event: DaemonEvent) {
+        when (event) {
             // Only from the daemon we're connected to: a late call from a dead one changes nothing.
-            is DaemonEvent.StateChanged -> onState(e.state)
-            is DaemonEvent.StatsUpdated -> onStats(e.stats)
-            is DaemonEvent.GamepadReport -> _gamepadReports.tryEmit(e.report)
-            else -> if (_events.subscriptionCount.value == 0 || !_events.tryEmit(e)) {
+            is DaemonEvent.StateChanged -> onState(event.state)
+            is DaemonEvent.StatsUpdated -> onStats(event.stats)
+            is DaemonEvent.GamepadReport -> _gamepadReports.tryEmit(event.report)
+            else -> if (_events.subscriptionCount.value == 0 || !_events.tryEmit(event)) {
                 // Nobody would read its images: free the daemon's pipes now.
-                Timber.w("event dropped, nobody keeps up: $e")
-                e.closeImages()
+                Timber.w("event dropped, nobody keeps up: $event")
+                event.closeImages()
             }
         }
     }
@@ -186,13 +186,13 @@ class BinderDaemonRepository(
     }
 
     /** Commands whose effect sliders and switches must show at once, before the daemon echoes it. */
-    private fun optimistic(c: DaemonCommand) {
+    private fun optimistic(command: DaemonCommand) {
         val flow = state ?: return
         flow.update { current ->
-            when (c) {
-                is DaemonCommand.SetLeds -> current.copy(leds = c.state)
-                is DaemonCommand.SetGameMode -> current.copy(game = current.game.copy(enabled = c.on))
-                is DaemonCommand.SetGameOptions -> current.copy(game = current.game.copy(options = c.options))
+            when (command) {
+                is DaemonCommand.SetLeds -> current.copy(leds = command.state)
+                is DaemonCommand.SetGameMode -> current.copy(game = current.game.copy(enabled = command.on))
+                is DaemonCommand.SetGameOptions -> current.copy(game = current.game.copy(options = command.options))
                 else -> return
             }
         }
@@ -205,13 +205,13 @@ class BinderDaemonRepository(
 
     private fun call(block: (IThorDaemon) -> Unit) {
         calls.execute {
-            val d = daemon ?: return@execute
+            val currentDaemon = daemon ?: return@execute
             try {
-                block(d)
-            } catch (e: RemoteException) {
+                block(currentDaemon)
+            } catch (error: RemoteException) {
                 // A oneway call fails when the daemon's buffer is full too: only a dead binder
                 // ends the connection (its death recipient then fires as well).
-                Timber.w("call to the daemon failed: ${e.javaClass.simpleName}")
+                Timber.w("call to the daemon failed: ${error.javaClass.simpleName}")
                 if (binder?.isBinderAlive != true) disconnected("daemon gone")
             }
         }

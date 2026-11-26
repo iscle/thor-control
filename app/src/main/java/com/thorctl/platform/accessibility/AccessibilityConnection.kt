@@ -22,14 +22,14 @@ class AccessibilityConnection {
     private val _bound = MutableStateFlow(false)
     val bound: StateFlow<Boolean> = _bound
 
-    fun onConnected(s: AccessibilityService) {
-        service = s
+    fun onConnected(accessibilityService: AccessibilityService) {
+        service = accessibilityService
         _bound.value = true
         Timber.i("accessibility service connected")
     }
 
-    fun onDisconnected(s: AccessibilityService) {
-        if (service !== s) return
+    fun onDisconnected(accessibilityService: AccessibilityService) {
+        if (service !== accessibilityService) return
         service = null
         _bound.value = false
         Timber.i("accessibility service disconnected")

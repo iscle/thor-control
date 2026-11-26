@@ -6,7 +6,7 @@ import android.view.inputmethod.InputConnection
 interface ImeHost {
     val currentInputConnection: InputConnection?
 
-    fun sendKeyChar(c: Char)
+    fun sendKeyChar(charCode: Char)
 
     fun sendDownUpKeyEvents(keyCode: Int)
 

@@ -46,13 +46,13 @@ import java.util.concurrent.atomic.AtomicReference
 @Inject
 @SingleIn(AppScope::class)
 class BluetoothGamepad(
-    private val app: Context,
+    private val context: Context,
     private val daemon: DaemonRepository,
     private val hosts: GamepadHostRepository,
     private val menu: Lazy<OverlayMenu>,
     @ApplicationScope private val scope: CoroutineScope,
 ) : GamepadPairing {
-    private val tx = Executors.newSingleThreadExecutor { Thread(it, "gamepad-bt") }
+    private val radioExecutor = Executors.newSingleThreadExecutor { Thread(it, "gamepad-bt") }
 
     private var wanted = false
 
@@ -69,7 +69,7 @@ class BluetoothGamepad(
     private val pending = AtomicReference<ByteArray?>(null)
 
     private val adapter: BluetoothAdapter?
-        get() = app.getSystemService(BluetoothManager::class.java)?.adapter
+        get() = context.getSystemService(BluetoothManager::class.java)?.adapter
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun start() {
@@ -87,11 +87,11 @@ class BluetoothGamepad(
         // Reports go straight to the radio's thread, not through the main thread.
         scope.launch(Dispatchers.Default) { daemon.gamepadReports.collect(::send) }
         // Gamepad mode turns Bluetooth on if it was off: register once the adapter is up.
-        app.registerReceiver(object : BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) {
-                val st = i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
-                if (st == BluetoothAdapter.STATE_ON && wanted && proxy == null) open()
-                if (st == BluetoothAdapter.STATE_OFF) {
+        context.registerReceiver(object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context, intent: Intent) {
+                val adapterState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+                if (adapterState == BluetoothAdapter.STATE_ON && wanted && proxy == null) open()
+                if (adapterState == BluetoothAdapter.STATE_OFF) {
                     proxy = null
                     setHost(null)
                 }
@@ -106,24 +106,24 @@ class BluetoothGamepad(
     }
 
     private fun open() {
-        val a = adapter ?: return
-        if (!a.isEnabled) return // the daemon is switching Bluetooth on; ACTION_STATE_CHANGED follows
+        val bluetoothAdapter = adapter ?: return
+        if (!bluetoothAdapter.isEnabled) return // the daemon is switching Bluetooth on; ACTION_STATE_CHANGED follows
         try {
-            a.getProfileProxy(app, listener, BluetoothProfile.HID_DEVICE)
-        } catch (e: Exception) {
-            Timber.w(e, "no HID device profile")
+            bluetoothAdapter.getProfileProxy(context, listener, BluetoothProfile.HID_DEVICE)
+        } catch (error: Exception) {
+            Timber.w(error, "no HID device profile")
         }
     }
 
     private val listener = object : BluetoothProfile.ServiceListener {
-        override fun onServiceConnected(profile: Int, p: BluetoothProfile) {
-            val hid = p as BluetoothHidDevice
+        override fun onServiceConnected(profile: Int, serviceProxy: BluetoothProfile) {
+            val hidDevice = serviceProxy as BluetoothHidDevice
             if (!wanted) {
-                adapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, hid)
+                adapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, hidDevice)
                 return
             }
-            proxy = hid
-            val sdp = BluetoothHidDeviceAppSdpSettings(
+            proxy = hidDevice
+            val sdpSettings = BluetoothHidDeviceAppSdpSettings(
                 "Thor Controller",
                 "Gamepad",
                 "Thor Control",
@@ -131,9 +131,9 @@ class BluetoothGamepad(
                 GamepadHid.DESCRIPTOR,
             )
             try {
-                if (!hid.registerApp(sdp, null, null, tx, callback)) Timber.w("registerApp refused")
-            } catch (e: Exception) {
-                Timber.w(e, "registerApp failed")
+                if (!hidDevice.registerApp(sdpSettings, null, null, radioExecutor, callback)) Timber.w("registerApp refused")
+            } catch (error: Exception) {
+                Timber.w(error, "registerApp failed")
             }
         }
 
@@ -154,8 +154,8 @@ class BluetoothGamepad(
             val target = pluggedDevice ?: lastHost() ?: return
             try {
                 proxy?.connect(target)
-            } catch (e: Exception) {
-                Timber.w(e, "reconnect failed")
+            } catch (error: Exception) {
+                Timber.w(error, "reconnect failed")
             }
         }
 
@@ -193,50 +193,50 @@ class BluetoothGamepad(
     }
 
     private fun lastHost(): BluetoothDevice? {
-        val addr = hosts.lastHost.value ?: return null
-        val a = adapter ?: return null
-        return a.bondedDevices?.firstOrNull { it.address == addr }
+        val address = hosts.lastHost.value ?: return null
+        val bluetoothAdapter = adapter ?: return null
+        return bluetoothAdapter.bondedDevices?.firstOrNull { it.address == address }
     }
 
-    private fun setHost(d: BluetoothDevice?) {
-        host = d
-        val name = d?.let { it.alias ?: it.name ?: it.address } ?: ""
-        daemon.send(DaemonCommand.GamepadBluetooth(d != null, name))
+    private fun setHost(device: BluetoothDevice?) {
+        host = device
+        val name = device?.let { it.alias ?: it.name ?: it.address } ?: ""
+        daemon.send(DaemonCommand.GamepadBluetooth(device != null, name))
     }
 
     private fun close() {
-        val p = proxy
+        val oldProxy = proxy
         proxy = null
         host = null
-        if (p != null) {
-            tx.execute {
+        if (oldProxy != null) {
+            radioExecutor.execute {
                 try {
-                    p.unregisterApp()
+                    oldProxy.unregisterApp()
                 } catch (_: Exception) {
                 }
-                adapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, p)
+                adapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, oldProxy)
             }
         }
     }
 
     /** A report from the daemon (payload, no report ID). */
-    private fun send(r: ByteArray) {
-        if (r.size != GamepadHid.PAYLOAD) return
-        lastReport = r
+    private fun send(report: ByteArray) {
+        if (report.size != GamepadHid.PAYLOAD) return
+        lastReport = report
         if (host == null) return
         // Only one hand-off in flight; a newer report replaces one still waiting.
-        if (pending.getAndSet(r) == null) flush()
+        if (pending.getAndSet(report) == null) flush()
     }
 
     private fun flush() {
-        tx.execute {
-            val r = pending.getAndSet(null) ?: return@execute
-            val p = proxy ?: return@execute
-            val h = host ?: return@execute
+        radioExecutor.execute {
+            val report = pending.getAndSet(null) ?: return@execute
+            val currentProxy = proxy ?: return@execute
+            val currentHost = host ?: return@execute
             try {
-                p.sendReport(h, GamepadHid.REPORT_ID, r)
-            } catch (e: Exception) {
-                Timber.w(e, "sendReport failed")
+                currentProxy.sendReport(currentHost, GamepadHid.REPORT_ID, report)
+            } catch (error: Exception) {
+                Timber.w(error, "sendReport failed")
             }
         }
     }
@@ -247,13 +247,13 @@ class BluetoothGamepad(
      */
     override fun makeDiscoverable() {
         menu.value.hide()
-        val i = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+        val intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
             .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
-            app.startActivity(i)
-        } catch (e: Exception) {
-            Timber.w(e, "discoverable prompt failed")
+            context.startActivity(intent)
+        } catch (error: Exception) {
+            Timber.w(error, "discoverable prompt failed")
         }
     }
 }

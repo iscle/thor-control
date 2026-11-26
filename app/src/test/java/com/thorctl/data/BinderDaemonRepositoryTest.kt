@@ -48,28 +48,28 @@ class BinderDaemonRepositoryTest {
     private val endpoint = Endpoint()
     private val daemonBinder = DaemonBinder(endpoint, callingUid = { 10_100 })
     private var daemonVersion = IThorDaemon.VERSION
-    private val repo = BinderDaemonRepository(calls = { it.run() }) { daemon ->
+    private val repository = BinderDaemonRepository(calls = { it.run() }) { daemon ->
         object : IThorDaemon by daemon as IThorDaemon {
             override fun getVersion() = daemonVersion
         }
     }
 
-    private fun connect() = repo.onDaemonBinder(daemonBinder)
+    private fun connect() = repository.onDaemonBinder(daemonBinder)
 
     @Test
     fun connectingRegistersAClient() {
-        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        assertEquals(DaemonStatus.Disconnected, repository.status.value)
         connect()
         assertTrue(endpoint.client != null)
         // Connected once the daemon's first state and first reading are both in.
-        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        assertEquals(DaemonStatus.Disconnected, repository.status.value)
         endpoint.client!!.onState(sampleState.toParcel())
-        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        assertEquals(DaemonStatus.Disconnected, repository.status.value)
         endpoint.client!!.onStats(sampleStats.toParcel())
-        val connected = assertIs<DaemonStatus.Connected>(repo.status.value)
+        val connected = assertIs<DaemonStatus.Connected>(repository.status.value)
         assertEquals(sampleState, connected.state.value)
         assertEquals(sampleStats, connected.stats.value)
-        assertEquals(daemonBinder, repo.currentBinder())
+        assertEquals(daemonBinder, repository.currentBinder())
     }
 
     @Test
@@ -78,16 +78,16 @@ class BinderDaemonRepositoryTest {
         connect()
         connect()
         assertEquals(2, endpoint.registrations)
-        assertEquals(daemonBinder, repo.currentBinder())
+        assertEquals(daemonBinder, repository.currentBinder())
     }
 
     @Test
     fun aDaemonOfAnotherVersionIsLeftAlone() {
         daemonVersion = IThorDaemon.VERSION + 1
         connect()
-        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        assertEquals(DaemonStatus.Disconnected, repository.status.value)
         assertNull(endpoint.client)
-        assertNull(repo.currentBinder())
+        assertNull(repository.currentBinder())
     }
 
     @Test
@@ -95,13 +95,13 @@ class BinderDaemonRepositoryTest {
         connect()
         endpoint.client!!.onState(sampleState.toParcel())
         endpoint.client!!.onStats(sampleStats.toParcel())
-        val connected = assertIs<DaemonStatus.Connected>(repo.status.value)
+        val connected = assertIs<DaemonStatus.Connected>(repository.status.value)
         val later = sampleState.copy(bottomOn = false)
         val hotter = sampleStats.copy(cpuTemp = 90f)
         endpoint.client!!.onState(later.toParcel())
         endpoint.client!!.onStats(hotter.toParcel())
         // The status itself doesn't change: only what flows inside it.
-        assertSame(connected, repo.status.value)
+        assertSame(connected, repository.status.value)
         assertEquals(later, connected.state.value)
         assertEquals(hotter, connected.stats.value)
     }
@@ -109,14 +109,14 @@ class BinderDaemonRepositoryTest {
     @Test
     fun commandsReachTheDaemonInOrder() {
         connect()
-        repo.send(DaemonCommand.SetFanProfile("quiet"))
-        repo.send(DaemonCommand.RecentsClose)
+        repository.send(DaemonCommand.SetFanProfile("quiet"))
+        repository.send(DaemonCommand.RecentsClose)
         assertEquals(listOf(DaemonCommand.SetFanProfile("quiet"), DaemonCommand.RecentsClose), endpoint.commands)
     }
 
     @Test
     fun nothingIsSentWhileDisconnected() {
-        repo.send(DaemonCommand.SetFanProfile("quiet"))
+        repository.send(DaemonCommand.SetFanProfile("quiet"))
         assertTrue(endpoint.commands.isEmpty())
     }
 
@@ -126,21 +126,21 @@ class BinderDaemonRepositoryTest {
         endpoint.client!!.onState(sampleState.toParcel())
         endpoint.client!!.onStats(sampleStats.toParcel())
         val leds = LedState(brightness = 12)
-        repo.send(DaemonCommand.SetLeds(leds))
-        repo.send(DaemonCommand.SetGameMode(true))
-        val state = assertIs<DaemonStatus.Connected>(repo.status.value).state.value
+        repository.send(DaemonCommand.SetLeds(leds))
+        repository.send(DaemonCommand.SetGameMode(true))
+        val state = assertIs<DaemonStatus.Connected>(repository.status.value).state.value
         assertEquals(leds, state.leds)
         assertTrue(state.game.enabled)
     }
 
     @Test
     fun statsAreReferenceCounted() {
-        repo.subscribeStats(true) // before connecting: subscribed on connect
+        repository.subscribeStats(true) // before connecting: subscribed on connect
         connect()
-        repo.subscribeStats(true)
-        repo.subscribeStats(false)
-        repo.subscribeStats(false)
-        repo.subscribeStats(false) // never below zero
+        repository.subscribeStats(true)
+        repository.subscribeStats(false)
+        repository.subscribeStats(false)
+        repository.subscribeStats(false) // never below zero
         assertEquals(listOf(true, true, true, false, false), endpoint.stats)
     }
 }
