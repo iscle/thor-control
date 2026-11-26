@@ -75,7 +75,7 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
         }
         if (value != 1) return
         when (code) {
-            EvdevCodes.BTN_SOUTH, BTN_START -> sendKey("a")
+            EvdevCodes.BTN_SOUTH, EvdevCodes.BTN_START -> sendKey("a")
             EvdevCodes.BTN_EAST, EvdevCodes.KEY_BACK -> sendKey("b")
             EvdevCodes.BTN_NORTH -> sendKey("x")
             EvdevCodes.BTN_WEST -> sendKey("y")
@@ -85,7 +85,7 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
     private fun onAxis(code: Int, value: Int) {
         when (code) {
             EvdevCodes.ABS_HAT0X -> setDirection("hat", value.coerceIn(-1, 1))
-            ABS_X -> {
+            EvdevCodes.ABS_X -> {
                 stickX = stickDirection(value, stickX)
                 setDirection("stick", stickX)
             }
@@ -111,10 +111,6 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
         const val REPEAT_EVERY_MS = 170L
         const val STICK_ON = 20000
         const val STICK_OFF = 8000
-
-        // Not in EvdevCodes (only recents reads them).
-        const val BTN_START = 315
-        const val ABS_X = 0
 
         /**
          * Where the stick points (-1, 0, 1) at [value], given where it pointed before: it takes

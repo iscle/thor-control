@@ -28,7 +28,7 @@ class HidReportEncoderTest {
     @Test
     fun onlySynReportCompletesAFrame() {
         assertNull(key(EvdevCodes.BTN_SOUTH))
-        assertNull(abs(HidReportEncoder.ABS_X, 1000))
+        assertNull(abs(EvdevCodes.ABS_X, 1000))
         assertNull(encoder.onEvent(EvdevCodes.EV_SYN, 3, 0)) // SYN_DROPPED
         assertNull(encoder.onEvent(EvdevCodes.EV_SW, 0, 1))
         assertEquals(GamepadHid.B2_A, byte(sync(), 2))
@@ -40,9 +40,9 @@ class HidReportEncoderTest {
             EvdevCodes.BTN_THUMBR to GamepadHid.B1_R3,
             EvdevCodes.BTN_TL2 to GamepadHid.B1_L2,
             EvdevCodes.BTN_TR2 to GamepadHid.B1_R2,
-            HidReportEncoder.BTN_SELECT to GamepadHid.B1_SELECT,
-            HidReportEncoder.BTN_START to GamepadHid.B1_START,
-            HidReportEncoder.BTN_MODE to GamepadHid.B1_HOME,
+            EvdevCodes.BTN_SELECT to GamepadHid.B1_SELECT,
+            EvdevCodes.BTN_START to GamepadHid.B1_START,
+            EvdevCodes.BTN_MODE to GamepadHid.B1_HOME,
             EvdevCodes.KEY_HOME to GamepadHid.B1_HOME,
             EvdevCodes.KEY_BACK to GamepadHid.B1_CAPTURE,
         )
@@ -53,7 +53,7 @@ class HidReportEncoderTest {
             EvdevCodes.BTN_WEST to GamepadHid.B2_Y,
             EvdevCodes.BTN_TL to GamepadHid.B2_L1,
             EvdevCodes.BTN_TR to GamepadHid.B2_R1,
-            HidReportEncoder.BTN_THUMBL to GamepadHid.B2_L3,
+            EvdevCodes.BTN_THUMBL to GamepadHid.B2_L3,
         )
         for ((code, bit) in byte1) {
             encoder.reset()
@@ -75,7 +75,7 @@ class HidReportEncoderTest {
     fun heldButtonsCombineAndReleaseClearsThem() {
         key(EvdevCodes.BTN_SOUTH)
         key(EvdevCodes.BTN_EAST)
-        key(HidReportEncoder.BTN_START)
+        key(EvdevCodes.BTN_START)
         var report = sync()
         assertEquals(GamepadHid.B2_A or GamepadHid.B2_B, byte(report, 2))
         assertEquals(GamepadHid.B1_START, byte(report, 1))
@@ -91,7 +91,7 @@ class HidReportEncoderTest {
     @Test
     fun sticksScaleToOneTo255CentredOn128() {
         fun stick(value: Int): Int {
-            abs(HidReportEncoder.ABS_X, value)
+            abs(EvdevCodes.ABS_X, value)
             return byte(sync(), 3)
         }
         assertEquals(128, stick(0))
@@ -105,10 +105,10 @@ class HidReportEncoderTest {
 
     @Test
     fun eachAxisHasItsByte() {
-        abs(HidReportEncoder.ABS_X, -32767)
-        abs(HidReportEncoder.ABS_Y, 32767)
-        abs(HidReportEncoder.ABS_RX, 256)
-        abs(HidReportEncoder.ABS_RY, -256)
+        abs(EvdevCodes.ABS_X, -32767)
+        abs(EvdevCodes.ABS_Y, 32767)
+        abs(EvdevCodes.ABS_RX, 256)
+        abs(EvdevCodes.ABS_RY, -256)
         abs(EvdevCodes.ABS_Z, 255)
         abs(EvdevCodes.ABS_RZ, 10)
         val report = sync()
@@ -158,7 +158,7 @@ class HidReportEncoderTest {
     fun loadStartsFromASnapshotAndResetClearsIt() {
         key(EvdevCodes.BTN_WEST)
         val axisValues = IntArray(EvdevCodes.ABS_CNT)
-        axisValues[HidReportEncoder.ABS_X] = 32767
+        axisValues[EvdevCodes.ABS_X] = 32767
         axisValues[EvdevCodes.ABS_Z] = 255
         axisValues[EvdevCodes.ABS_HAT0X] = 1
         encoder.load(setOf(EvdevCodes.BTN_SOUTH), axisValues)

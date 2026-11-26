@@ -28,13 +28,21 @@ object EvdevCodes {
     const val BTN_TR = 311 // R1
     const val BTN_TL2 = 312 // L2 (digital)
     const val BTN_TR2 = 313 // R2 (digital)
+    const val BTN_SELECT = 314
+    const val BTN_START = 315
+    const val BTN_MODE = 316
+    const val BTN_THUMBL = 317
     const val BTN_THUMBR = 318
     const val BTN_DPAD_UP = 544
     const val BTN_DPAD_DOWN = 545
     const val BTN_DPAD_LEFT = 546
     const val BTN_DPAD_RIGHT = 547
 
+    const val ABS_X = 0x00 // left stick
+    const val ABS_Y = 0x01
     const val ABS_Z = 0x02 // L2 (analog, 0..255)
+    const val ABS_RX = 0x03 // right stick
+    const val ABS_RY = 0x04
     const val ABS_RZ = 0x05 // R2 (analog, 0..255)
     const val ABS_HAT0X = 0x10
     const val ABS_HAT0Y = 0x11

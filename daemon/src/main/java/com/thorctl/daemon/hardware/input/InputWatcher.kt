@@ -74,39 +74,4 @@ class InputWatcher(
         ayn.start(newListener)
         controller.start(newListener)
     }
-
-    /** Evdev codes the features read raw controller events with; the same as [EvdevCodes]. */
-    companion object {
-        const val EV_SYN = EvdevCodes.EV_SYN
-        const val EV_KEY = EvdevCodes.EV_KEY
-        const val EV_ABS = EvdevCodes.EV_ABS
-        const val EV_SW = EvdevCodes.EV_SW
-        const val SW_LID = EvdevCodes.SW_LID
-        const val KEY_HOME = EvdevCodes.KEY_HOME
-        const val KEY_UP = EvdevCodes.KEY_UP
-        const val KEY_LEFT = EvdevCodes.KEY_LEFT
-        const val KEY_RIGHT = EvdevCodes.KEY_RIGHT
-        const val KEY_DOWN = EvdevCodes.KEY_DOWN
-        const val KEY_POWER = EvdevCodes.KEY_POWER
-        const val KEY_BACK = EvdevCodes.KEY_BACK
-        const val KEY_F24 = EvdevCodes.KEY_F24
-        const val BTN_SOUTH = EvdevCodes.BTN_SOUTH
-        const val BTN_EAST = EvdevCodes.BTN_EAST
-        const val BTN_NORTH = EvdevCodes.BTN_NORTH
-        const val BTN_WEST = EvdevCodes.BTN_WEST
-        const val BTN_TL = EvdevCodes.BTN_TL
-        const val BTN_TR = EvdevCodes.BTN_TR
-        const val BTN_TL2 = EvdevCodes.BTN_TL2
-        const val BTN_TR2 = EvdevCodes.BTN_TR2
-        const val BTN_THUMBR = EvdevCodes.BTN_THUMBR
-        const val BTN_DPAD_UP = EvdevCodes.BTN_DPAD_UP
-        const val BTN_DPAD_DOWN = EvdevCodes.BTN_DPAD_DOWN
-        const val BTN_DPAD_LEFT = EvdevCodes.BTN_DPAD_LEFT
-        const val BTN_DPAD_RIGHT = EvdevCodes.BTN_DPAD_RIGHT
-        const val ABS_Z = EvdevCodes.ABS_Z
-        const val ABS_RZ = EvdevCodes.ABS_RZ
-        const val ABS_HAT0X = EvdevCodes.ABS_HAT0X
-        const val ABS_HAT0Y = EvdevCodes.ABS_HAT0Y
-        const val ABS_CNT = EvdevCodes.ABS_CNT
-    }
 }

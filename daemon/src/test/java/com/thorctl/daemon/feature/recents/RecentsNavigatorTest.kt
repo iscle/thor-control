@@ -34,7 +34,7 @@ class RecentsNavigatorTest {
     @Test
     fun buttonsSendTheirKeyOncePerPress() {
         tap(EvdevCodes.BTN_SOUTH)
-        tap(RecentsNavigator.BTN_START)
+        tap(EvdevCodes.BTN_START)
         tap(EvdevCodes.BTN_EAST)
         tap(EvdevCodes.KEY_BACK)
         tap(EvdevCodes.BTN_NORTH)
@@ -106,18 +106,18 @@ class RecentsNavigatorTest {
 
     @Test
     fun theStickNeedsAFirmPushAndLetsGoNearTheMiddle() {
-        axis(RecentsNavigator.ABS_X, 15000)
+        axis(EvdevCodes.ABS_X, 15000)
         assertEquals(emptyList(), keys)
-        axis(RecentsNavigator.ABS_X, RecentsNavigator.STICK_ON)
-        axis(RecentsNavigator.ABS_X, 10000) // still held
+        axis(EvdevCodes.ABS_X, RecentsNavigator.STICK_ON)
+        axis(EvdevCodes.ABS_X, 10000) // still held
         executor.advanceBy(RecentsNavigator.REPEAT_DELAY_MS)
         assertEquals(listOf("right", "right"), keys)
 
-        axis(RecentsNavigator.ABS_X, RecentsNavigator.STICK_OFF - 1)
+        axis(EvdevCodes.ABS_X, RecentsNavigator.STICK_OFF - 1)
         executor.advanceBy(1000)
         assertEquals(2, keys.size)
 
-        axis(RecentsNavigator.ABS_X, -RecentsNavigator.STICK_ON)
+        axis(EvdevCodes.ABS_X, -RecentsNavigator.STICK_ON)
         assertEquals("left", keys.last())
     }
 

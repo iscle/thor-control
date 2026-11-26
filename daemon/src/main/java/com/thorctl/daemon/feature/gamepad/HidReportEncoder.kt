@@ -28,7 +28,7 @@ class HidReportEncoder {
     fun load(keys: Set<Int>, axisValues: IntArray) {
         reset()
         held += keys
-        leftX = axisValues[ABS_X]; leftY = axisValues[ABS_Y]; rightX = axisValues[ABS_RX]; rightY = axisValues[ABS_RY]
+        leftX = axisValues[EvdevCodes.ABS_X]; leftY = axisValues[EvdevCodes.ABS_Y]; rightX = axisValues[EvdevCodes.ABS_RX]; rightY = axisValues[EvdevCodes.ABS_RY]
         leftTrigger = axisValues[EvdevCodes.ABS_Z]; rightTrigger = axisValues[EvdevCodes.ABS_RZ]
         hatX = axisValues[EvdevCodes.ABS_HAT0X]; hatY = axisValues[EvdevCodes.ABS_HAT0Y]
     }
@@ -49,10 +49,10 @@ class HidReportEncoder {
 
     private fun abs(code: Int, value: Int) {
         when (code) {
-            ABS_X -> leftX = value
-            ABS_Y -> leftY = value
-            ABS_RX -> rightX = value
-            ABS_RY -> rightY = value
+            EvdevCodes.ABS_X -> leftX = value
+            EvdevCodes.ABS_Y -> leftY = value
+            EvdevCodes.ABS_RX -> rightX = value
+            EvdevCodes.ABS_RY -> rightY = value
             EvdevCodes.ABS_Z -> leftTrigger = value
             EvdevCodes.ABS_RZ -> rightTrigger = value
             EvdevCodes.ABS_HAT0X -> hatX = value
@@ -74,13 +74,13 @@ class HidReportEncoder {
                 EvdevCodes.BTN_WEST -> buttonByte2 = buttonByte2 or GamepadHid.B2_Y
                 EvdevCodes.BTN_TL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L1
                 EvdevCodes.BTN_TR -> buttonByte2 = buttonByte2 or GamepadHid.B2_R1
-                BTN_THUMBL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L3
+                EvdevCodes.BTN_THUMBL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L3
                 EvdevCodes.BTN_THUMBR -> buttonByte1 = buttonByte1 or GamepadHid.B1_R3
                 EvdevCodes.BTN_TL2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_L2
                 EvdevCodes.BTN_TR2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_R2
-                BTN_SELECT -> buttonByte1 = buttonByte1 or GamepadHid.B1_SELECT
-                BTN_START -> buttonByte1 = buttonByte1 or GamepadHid.B1_START
-                BTN_MODE, EvdevCodes.KEY_HOME -> buttonByte1 = buttonByte1 or GamepadHid.B1_HOME
+                EvdevCodes.BTN_SELECT -> buttonByte1 = buttonByte1 or GamepadHid.B1_SELECT
+                EvdevCodes.BTN_START -> buttonByte1 = buttonByte1 or GamepadHid.B1_START
+                EvdevCodes.BTN_MODE, EvdevCodes.KEY_HOME -> buttonByte1 = buttonByte1 or GamepadHid.B1_HOME
                 EvdevCodes.KEY_BACK -> buttonByte1 = buttonByte1 or GamepadHid.B1_CAPTURE
             }
         }
@@ -121,14 +121,6 @@ class HidReportEncoder {
         ((value - TRIGGER_DEAD) * 255 / (255 - TRIGGER_DEAD)).coerceIn(0, 255)
 
     companion object {
-        const val ABS_X = 0x00
-        const val ABS_Y = 0x01
-        const val ABS_RX = 0x03
-        const val ABS_RY = 0x04
-        const val BTN_SELECT = 314
-        const val BTN_START = 315
-        const val BTN_MODE = 316
-        const val BTN_THUMBL = 317
         const val TRIGGER_DEAD = 10
     }
 }
