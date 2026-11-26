@@ -1,0 +1,62 @@
+package com.thorctl.daemon.hardware
+
+import android.view.InputDevice
+import com.thorctl.daemon.di.DaemonScope
+import com.thorctl.daemon.system.SystemServices
+import com.thorctl.protocol.model.ControllerTarget
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
+
+/**
+ * Routes the built-in controller to a display by associating its input device descriptor with
+ * the display's unique id (the same mechanism LineageOS AynParts uses). [ControllerTarget.FREE]
+ * removes the association so the controller follows the focused display.
+ */
+@Inject
+@SingleIn(DaemonScope::class)
+class InputRouter(private val displays: DisplayController, private val system: SystemServices) {
+    @Volatile
+    var target = ControllerTarget.FREE
+        private set
+
+    private fun descriptor(): String {
+        return try {
+            val devs = system.inputDevices()
+            devs.firstOrNull { it.descriptor == KNOWN_DESCRIPTOR }?.descriptor
+                ?: devs.firstOrNull {
+                    it.name == CONTROLLER_NAME && !it.isExternal &&
+                        (it.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
+                }?.descriptor
+                ?: KNOWN_DESCRIPTOR
+        } catch (_: Throwable) {
+            KNOWN_DESCRIPTOR
+        }
+    }
+
+    fun apply(t: ControllerTarget) {
+        val desc = descriptor()
+        try {
+            when (t) {
+                ControllerTarget.TOP -> {
+                    if (displays.topUniqueId.isEmpty()) return
+                    system.associateByDescriptor(desc, displays.topUniqueId)
+                }
+                ControllerTarget.BOTTOM -> {
+                    if (displays.bottomUniqueId.isEmpty()) return
+                    system.associateByDescriptor(desc, displays.bottomUniqueId)
+                }
+                ControllerTarget.FREE -> system.removeAssociationByDescriptor(desc)
+            }
+            target = t
+            Timber.i("controller -> ${t.wire} ($desc)")
+        } catch (e: Throwable) {
+            Timber.w(e, "controller routing failed")
+        }
+    }
+
+    companion object {
+        const val KNOWN_DESCRIPTOR = "90dfbbe0bbbab74642c53cae4ae0aa640d40ec21"
+        const val CONTROLLER_NAME = "Xbox Wireless Controller"
+    }
+}

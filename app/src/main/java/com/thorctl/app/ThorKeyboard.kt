@@ -7,23 +7,32 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.thorctl.ui.InlineKeyboard
-import com.thorctl.ui.ThorTheme
+import com.thorctl.platform.keyboard.ImeHost
+import com.thorctl.platform.keyboard.KeyboardEditor
+import com.thorctl.platform.overlay.OverlayOwner
+import com.thorctl.ui.components.ThorContent
+import com.thorctl.ui.keyboard.UprightKeyboard
+import dev.zacsweers.metro.Inject
 
 /**
  * The system keyboard service. Android always puts a keyboard window on the screen of the text
  * field being edited. Normally ours is empty and zero-height there (apps are neither covered nor
- * resized) and the real keyboard, with its touchpad, is drawn on the bottom screen by
- * [KeyboardController]. Held upright (the top screen in portrait, where the bottom screen is off
- * to the side), the keys appear in this window instead, as an ordinary keyboard under the app.
- * Both live in this persistent process, so keys go straight into [getCurrentInputConnection].
+ * resized) and the real keyboard, with its touchpad, is drawn on the bottom screen
+ * (`KeyboardWindow`). Held upright (the top screen in portrait, where the bottom screen is off to
+ * the side), the keys appear in this window instead, as an ordinary keyboard under the app. Both
+ * live in this persistent process, so keys go straight into [getCurrentInputConnection].
  */
 class ThorKeyboard : InputMethodService() {
+    @Inject lateinit var editor: KeyboardEditor
+
+    @Inject lateinit var content: ThorContent
+
     private var root: FrameLayout? = null
     private var inlineView: ComposeView? = null
     private var owner: OverlayOwner? = null
@@ -31,14 +40,25 @@ class ThorKeyboard : InputMethodService() {
     /** Keys are in this window (top screen, portrait). */
     private var inline = false
 
+    private val host = object : ImeHost {
+        override val currentInputConnection: InputConnection? get() = this@ThorKeyboard.currentInputConnection
+
+        override fun sendKeyChar(c: Char) = this@ThorKeyboard.sendKeyChar(c)
+
+        override fun sendDownUpKeyEvents(keyCode: Int) = this@ThorKeyboard.sendDownUpKeyEvents(keyCode)
+
+        override fun requestHideSelf(flags: Int) = this@ThorKeyboard.requestHideSelf(flags)
+    }
+
     override fun onCreate() {
+        graph.inject(this)
         super.onCreate()
-        KeyboardController.attach(this)
+        editor.attach(host)
     }
 
     override fun onDestroy() {
         dropInline()
-        KeyboardController.detach(this)
+        editor.detach(host)
         super.onDestroy()
     }
 
@@ -65,18 +85,18 @@ class ThorKeyboard : InputMethodService() {
 
     override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        KeyboardController.onStartInput(attribute)
+        editor.onStartInput(attribute)
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         inline = uprightTopScreen()
         if (inline) showInline() else dropInline()
-        KeyboardController.onShow(info, inline)
+        editor.onShow(info, inline)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        KeyboardController.onHide()
+        editor.onHide()
         super.onFinishInputView(finishingInput)
     }
 
@@ -103,7 +123,7 @@ class ThorKeyboard : InputMethodService() {
             decor.setViewTreeSavedStateRegistryOwner(o)
             decor.setViewTreeViewModelStoreOwner(o)
         }
-        v.setContent { ThorTheme { InlineKeyboard(KeyboardController.ui) } }
+        v.setContent { content { UprightKeyboard() } }
         r.addView(v, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         o.resume()
         inlineView = v
@@ -122,17 +142,22 @@ class ThorKeyboard : InputMethodService() {
      * the controller is routed to); when they also reach us, swallow them so the app doesn't react.
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        if (isShoulder(keyCode) && KeyboardController.isShown) true else super.onKeyDown(keyCode, event)
+        if (isShoulder(keyCode) && editor.isShown) true else super.onKeyDown(keyCode, event)
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        if (isShoulder(keyCode) && KeyboardController.isShown) true else super.onKeyUp(keyCode, event)
+        if (isShoulder(keyCode) && editor.isShown) true else super.onKeyUp(keyCode, event)
 
     private fun isShoulder(code: Int) = code == KeyEvent.KEYCODE_BUTTON_L1 || code == KeyEvent.KEYCODE_BUTTON_R1
 
     override fun onUpdateSelection(
-        oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int,
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        KeyboardController.onSelection(newSelStart, newSelEnd)
+        editor.onSelection(newSelStart, newSelEnd)
     }
 }

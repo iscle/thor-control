@@ -2,18 +2,19 @@ import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.metro)
 }
 
 android {
     namespace = "com.thorctl"
-    compileSdk = 37
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.thorctl"
-        minSdk = 34
-        targetSdk = 36
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 14
         versionName = "2.2.1"
     }
@@ -58,6 +59,13 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            // Framework calls the tests don't care about (Log, SystemClock) return defaults.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 kotlin {
@@ -67,12 +75,37 @@ kotlin {
     }
 }
 
+// LayeringTest reads the main sources to check the package layering.
+val mainSources = file("src/main/java")
+tasks.withType<Test>().configureEach {
+    inputs.dir(mainSources)
+    systemProperty("sources.path", mainSources.absolutePath)
+}
+
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3:1.5.0-rc01")
-    implementation("androidx.compose.material:material-icons-extended:1.7.8")
-    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation(project(":protocol"))
+    // The daemon ships in this APK (service.sh runs it from here) but the app never calls it:
+    // runtime only, so app code can't even compile against it.
+    runtimeOnly(project(":daemon"))
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.metrox.viewmodel.compose)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.timber)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

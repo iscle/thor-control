@@ -76,6 +76,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- The root daemon hands its binder over here (only uid 0 is accepted). Root reaches
+             it with getContentProviderExternal, so it can't be guarded by a permission. -->
+        <provider
+            android:name=".app.DaemonBinderProvider"
+            android:authorities="com.thorctl.ipc"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+
         <receiver
             android:name=".app.BootReceiver"
             android:exported="true">

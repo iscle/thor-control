@@ -1,0 +1,55 @@
+package com.thorctl.platform.overlay
+
+import android.content.Context
+import android.hardware.display.DisplayManager
+import android.provider.Settings
+import android.view.Display
+import android.view.WindowManager
+import com.thorctl.domain.repository.DaemonRepository
+import com.thorctl.platform.accessibility.AccessibilityConnection
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+
+/** Where and how overlays (menu, HUD, keyboard, recents, blackout) get their windows. */
+@Inject
+@SingleIn(AppScope::class)
+class OverlayWindows(
+    private val app: Context,
+    private val accessibility: AccessibilityConnection,
+    private val daemon: DaemonRepository,
+) {
+    private val displays: DisplayManager get() = app.getSystemService(DisplayManager::class.java)
+
+    fun display(id: Int): Display? = displays.getDisplay(id)
+
+    /** The bottom screen: the daemon's word for it, or else the smaller built-in non-default display. */
+    fun bottomDisplay(): Display? {
+        val wanted = daemon.state.value?.bottomDisplayId ?: -1
+        if (wanted >= 0) displays.getDisplay(wanted)?.let { return it }
+        return displays.displays
+            .filter { it.displayId != Display.DEFAULT_DISPLAY }
+            .minByOrNull { it.mode.physicalWidth * it.mode.physicalHeight }
+    }
+
+    /** The layers that can host an overlay right now, strongest first. */
+    fun availableLayers(): List<OverlayLayer> = buildList {
+        if (accessibility.service != null) add(OverlayLayer.ACCESSIBILITY)
+        if (Settings.canDrawOverlays(app)) add(OverlayLayer.APPLICATION)
+    }
+
+    /** An accessibility overlay when the service is bound, else an application overlay; null if neither works. */
+    fun contextFor(display: Display, layer: OverlayLayer? = availableLayers().firstOrNull()): OverlayContext? {
+        val service = accessibility.service
+        return when (layer) {
+            OverlayLayer.ACCESSIBILITY -> service?.let {
+                OverlayContext(it.createDisplayContext(display), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, layer)
+            }
+            OverlayLayer.APPLICATION -> {
+                val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                OverlayContext(app.createDisplayContext(display).createWindowContext(type, null), type, layer)
+            }
+            null -> null
+        }
+    }
+}
