@@ -51,6 +51,7 @@ class DisplayWatcher(
                 displays.onDisplayStateChanged(displayId)
                 followWake()
             }
+            DisplayChange.BRIGHTNESS -> displays.onBrightnessChanged(displayId)
         }
     }
 

@@ -115,7 +115,7 @@ class BottomPanelHealerTest {
 
     @Test
     fun healsThroughTheDisplayController() {
-        val displays = DisplayController(displayService, FakeTouchscreens(), healer).apply { refresh() }
+        val displays = DisplayController(displayService, FakeTouchscreens(), healer, PanelBacklight(FakeSys())).apply { refresh() }
         repeat(2) { displays.healBottomPanel() }
         assertEquals(1, powerCycles)
     }

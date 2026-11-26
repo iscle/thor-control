@@ -1,5 +1,6 @@
 package com.thorctl.daemon.feature.gamepad
 
+import com.thorctl.daemon.hardware.PanelBacklight
 import android.view.KeyEvent
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
@@ -24,7 +25,7 @@ class AwakeKeeperTest {
     private val displayService = FakeDisplayService()
     private val inputService = FakeInputService()
     private val powerService = FakePowerService()
-    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, FakeClock(), displayService, FakeScheduledExecutor(FakeClock())), PanelBacklight(sys))
     private val awake = AwakeKeeper(displays, powerService, inputService, sys)
 
     @Test

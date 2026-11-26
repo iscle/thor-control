@@ -12,7 +12,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 
-/** Where and how overlays (menu, HUD, keyboard, recents, blackout) get their windows. */
+/** Where and how overlays (menu, HUD, keyboard, recents) get their windows. */
 @Inject
 @SingleIn(AppScope::class)
 class OverlayWindows(

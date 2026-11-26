@@ -15,11 +15,11 @@ object ThorDisplays {
 
     /** A refreshed controller over [displayService] (which should list [TOP] and [BOTTOM]). */
     fun controller(displayService: DisplayService): DisplayController =
-        DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
+        DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())), PanelBacklight(FakeSys())).apply { refresh() }
 
     /** A controller that has found no displays (never refreshed). */
     fun unknown(): DisplayController {
         val displayService = FakeDisplayService()
-        return DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+        return DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())), PanelBacklight(FakeSys()))
     }
 }

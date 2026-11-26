@@ -2,6 +2,7 @@
 # Hand the kernel back its defaults whenever thorctld is not running:
 #  - fan trip points (saved by thorctld on first start each boot)
 #  - CPU/GPU floors raised by game mode (saved before game mode writes them)
+#  - the bottom panel's backlight, if gamepad mode turned it off
 #  - the Bluetooth Device ID, if Bluetooth gamepad mode changed it (Bluetooth restarts to read it)
 F=/dev/thorctl/trips.orig
 if [ -f "$F" ]; then
@@ -16,6 +17,13 @@ if [ -f "$G" ]; then
     [ -n "$path" ] && [ -n "$value" ] && echo "$value" > "$path"
   done < "$G"
   rm -f "$G"
+fi
+
+L=/dev/thorctl/backlight.orig
+if [ -f "$L" ]; then
+  read -r node value < "$L"
+  [ -n "$node" ] && [ -n "$value" ] && echo "$value" > "$node"
+  rm -f "$L"
 fi
 
 B=/dev/thorctl/bt-device-id.orig

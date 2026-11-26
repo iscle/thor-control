@@ -18,7 +18,12 @@ class DisplayControllerTest {
     private val external = DisplayInfo(5, "virtual:cast", type = 3, width = 3840, height = 2160, state = DisplayController.STATE_ON)
     private val displayService = FakeDisplayService(listOf(external, ThorDisplays.BOTTOM, ThorDisplays.TOP))
     private val touchscreens = FakeTouchscreens()
-    private val displays = DisplayController(displayService, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+    private val bottomBacklight = "/sys/class/backlight/panel1-backlight/brightness"
+    private val backlightSys = FakeSys().apply {
+        this["/sys/class/backlight/panel0-backlight/brightness"] = 2954
+        this[bottomBacklight] = 2954
+    }
+    private val displays = DisplayController(displayService, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())), PanelBacklight(backlightSys))
 
     @Test
     fun aDeadDisplayManagerChangesNothing() {
@@ -31,7 +36,7 @@ class DisplayControllerTest {
             override fun requestDisplayPower(displayId: Int, state: Int): Boolean =
                 if (dead) throw SystemServiceException("gone") else displayService.requestDisplayPower(displayId, state)
         }
-        val displays = DisplayController(flaky, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())))
+        val displays = DisplayController(flaky, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())), PanelBacklight(backlightSys))
         displays.refresh()
         dead = true
 
@@ -151,9 +156,15 @@ class DisplayControllerTest {
         displays.reassertOverrides()
         assertEquals(listOf(ThorDisplays.TOP.id to DisplayController.STATE_OFF), displayService.powerRequests)
 
+        assertEquals("0", backlightSys[bottomBacklight])
+        backlightSys[bottomBacklight] = 1500 // Android set a new brightness meanwhile
+        displays.onBrightnessChanged(ThorDisplays.BOTTOM.id)
+        assertEquals("0", backlightSys[bottomBacklight])
+
         displayService.powerRequests.clear()
         displays.setGamepadDark(false)
         assertEquals(listOf(ThorDisplays.TOP.id to DisplayController.STATE_UNKNOWN), displayService.powerRequests)
+        assertEquals("1500", backlightSys[bottomBacklight]) // Android's newest brightness
         assertTrue(touchscreens.disabled.isEmpty())
     }
 

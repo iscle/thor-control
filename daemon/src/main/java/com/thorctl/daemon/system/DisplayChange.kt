@@ -7,4 +7,7 @@ enum class DisplayChange {
 
     /** Its power state changed (on, off, doze...). */
     STATE,
+
+    /** Its brightness changed (Android set its backlight again). */
+    BRIGHTNESS,
 }

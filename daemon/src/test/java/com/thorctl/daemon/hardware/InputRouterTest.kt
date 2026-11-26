@@ -23,7 +23,7 @@ class InputRouterTest {
         ),
     )
     private val inputService = FakeInputService()
-    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())), PanelBacklight(FakeSys())).apply { refresh() }
     private val router = InputRouter(displays, inputService)
 
     @Test

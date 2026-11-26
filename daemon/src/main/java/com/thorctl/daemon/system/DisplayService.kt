@@ -12,7 +12,7 @@ interface DisplayService {
     fun requestDisplayPower(displayId: Int, state: Int): Boolean
 
     /**
-     * Tells [listener] about displays added, removed or changing power state, from now on. The
+     * Tells [listener] about displays added, removed, or changing power state or brightness, from now on. The
      * registration dies with the display manager (a system_server restart): calling this again
      * registers anew if that happened, and does nothing otherwise.
      */

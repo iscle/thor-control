@@ -29,6 +29,7 @@ class HiddenApiDisplayService : DisplayService {
                 EVENT_DISPLAY_ADDED -> DisplayChange.ADDED
                 EVENT_DISPLAY_REMOVED -> DisplayChange.REMOVED
                 EVENT_DISPLAY_STATE_CHANGED -> DisplayChange.STATE
+                EVENT_DISPLAY_BRIGHTNESS_CHANGED -> DisplayChange.BRIGHTNESS
                 else -> return
             }
             listener?.onDisplayChanged(displayId, change)
@@ -65,10 +66,12 @@ class HiddenApiDisplayService : DisplayService {
         // DisplayManagerGlobal's INTERNAL_EVENT_FLAG_DISPLAY_* and EVENT_DISPLAY_* (Android 17).
         const val FLAG_DISPLAY_ADDED = 1L shl 2
         const val FLAG_DISPLAY_STATE = 1L shl 5
+        const val FLAG_DISPLAY_BRIGHTNESS = 1L shl 8
         const val FLAG_DISPLAY_REMOVED = 1L shl 9
-        const val EVENTS = FLAG_DISPLAY_ADDED or FLAG_DISPLAY_REMOVED or FLAG_DISPLAY_STATE
+        const val EVENTS = FLAG_DISPLAY_ADDED or FLAG_DISPLAY_REMOVED or FLAG_DISPLAY_STATE or FLAG_DISPLAY_BRIGHTNESS
         const val EVENT_DISPLAY_ADDED = 2
         const val EVENT_DISPLAY_STATE_CHANGED = 16
+        const val EVENT_DISPLAY_BRIGHTNESS_CHANGED = 128
         const val EVENT_DISPLAY_REMOVED = 256
     }
 }

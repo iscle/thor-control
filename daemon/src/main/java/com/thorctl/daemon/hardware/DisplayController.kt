@@ -27,6 +27,7 @@ class DisplayController(
     private val displayService: DisplayService,
     private val touchscreens: Touchscreens,
     private val panelHealer: BottomPanelHealer,
+    private val backlight: PanelBacklight,
 ) : WakeListener {
     @Volatile
     var topId = 0
@@ -140,6 +141,12 @@ class DisplayController(
     fun onDisplayStateChanged(displayId: Int) {
         val heldOff = if (gamepadDark) displayId == topId else bottomForcedOff && displayId == bottomId
         if (heldOff) reassertOverrides()
+        if (gamepadDark && displayId == bottomId) backlight.holdDark()
+    }
+
+    /** Android sets a panel's backlight whenever its brightness changes: the dark bottom one stays at 0. */
+    fun onBrightnessChanged(displayId: Int) {
+        if (gamepadDark && displayId == bottomId) backlight.holdDark()
     }
 
     /** Puts our power overrides back (they can be dropped when the device wakes). */
@@ -157,8 +164,8 @@ class DisplayController(
     /**
      * Gamepad mode's "screens off". The controller's driver cuts the controller's power as soon
      * as both panels are off (it follows the panels, not Android's sleep), so only the top panel
-     * goes off; the bottom one stays powered and the app covers it in black, which on OLED is no
-     * light, next to no power and no burn-in. Touch is off on both meanwhile.
+     * goes off; the bottom one stays powered with its backlight at 0, which on this OLED is no
+     * light at all, next to no power and no burn-in. Touch is off on both meanwhile.
      */
     fun setGamepadDark(dark: Boolean) {
         if (dark == gamepadDark) return
@@ -170,9 +177,10 @@ class DisplayController(
         } catch (e: SystemServiceException) {
             Timber.w(e, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
         }
+        if (dark) backlight.darken() else backlight.restore()
         touchscreens.setEnabled(TOP_TOUCH_NAME, !dark)
         setBottomTouch(!dark && !bottomForcedOff)
-        Timber.i("gamepad screens ${if (dark) "dark (top off, bottom black)" else "back on"}")
+        Timber.i("gamepad screens ${if (dark) "dark (top off, bottom backlight off)" else "back on"}")
     }
 
     /** The device woke up: the bottom panel watchdog starts over. */

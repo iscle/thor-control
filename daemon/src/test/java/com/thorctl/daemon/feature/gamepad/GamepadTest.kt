@@ -1,5 +1,6 @@
 package com.thorctl.daemon.feature.gamepad
 
+import com.thorctl.daemon.hardware.PanelBacklight
 import android.view.KeyEvent
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
@@ -38,7 +39,7 @@ class GamepadTest {
     private val inputService = FakeInputService()
     private val powerService = FakePowerService()
     private val displayService = FakeDisplayService()
-    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, clock, displayService, FakeScheduledExecutor(clock)))
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, clock, displayService, FakeScheduledExecutor(clock)), PanelBacklight(sys))
     private val gadget = FakeUsbGadget()
     private val hidg = FakeHidgNode()
     private val usb = UsbHidEndpoint(hidg)
