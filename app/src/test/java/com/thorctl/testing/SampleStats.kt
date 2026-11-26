@@ -1,5 +1,6 @@
 package com.thorctl.testing
 
+import com.thorctl.protocol.model.FanSpeed
 import com.thorctl.protocol.model.Stats
 
 val sampleStats = Stats(
@@ -17,6 +18,6 @@ val sampleStats = Stats(
     6.25f,
     0f,
     31f,
-    128,
+    FanSpeed.pwmFor(50f),
     58f
 )

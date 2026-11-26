@@ -1,7 +1,5 @@
 package com.thorctl.protocol.model
 
-import kotlin.math.roundToInt
-
 /** Live telemetry, pushed once per second while a client is subscribed. */
 data class Stats(
     val cpuLoad: Float,
@@ -25,7 +23,8 @@ data class Stats(
 ) {
     val charging: Boolean get() = batteryStatus.equals("Charging", true)
     val plugged: Boolean get() = inputWatts > 0.05f
-    val fanPercent: Int get() = (fanPwm * 100f / 255f).roundToInt()
+    /** The fan's speed on the curves' scale ([FanSpeed]). */
+    val fanPercent: Int get() = FanSpeed.percentOf(fanPwm)
     val ramUsedMb: Int get() = ramTotalMb - ramAvailMb
 
     /** Share of memory in use, 0..1. */

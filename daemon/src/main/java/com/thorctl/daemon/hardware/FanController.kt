@@ -4,11 +4,11 @@ import com.thorctl.daemon.core.Clock
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.protocol.model.FanProfile
+import com.thorctl.protocol.model.FanSpeed
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 /**
  * Drives the pwm-fan (hwmon "pwmfan", pwm1 0..255).
@@ -152,19 +152,17 @@ class FanController(private val sys: Sys, private val clock: Clock) {
         controlTemp = filtered
         var percent = profile.percentAt(filtered)
 
-        // Charging heat: the stock zones spin the fan for a hot USB port, keep that behaviour.
-        val chargingPortTemperature = readMax(usbSensors)
-        if (chargingPortTemperature >= 45f) percent = max(percent, 40f) else if (chargingPortTemperature >= 43f) percent = max(percent, 20f)
-
-        // Safety net independent of the selected curve.
+        // Safety nets, independent of the selected curve, which decides everywhere else: the chip
+        // at 90 °C, and the charging port (the stock zones already spin the fan from 43 °C there;
+        // normal charging sits around 45 °C, so the curve keeps the say until the port is hotter).
+        if (readMax(usbSensors) >= PORT_SAFETY_TEMP) percent = max(percent, PORT_SAFETY_PERCENT)
         if (filtered >= SAFETY_TEMP || temperature >= SAFETY_TEMP + 8f) percent = 100f
 
-        var desired = (percent * 2.55f).roundToInt().coerceIn(0, 255)
-        if (desired in 1 until MIN_SPIN_PWM) desired = MIN_SPIN_PWM
+        val desired = FanSpeed.pwmFor(percent)
         var target = desired
         if (target < currentPwm) target = max(target, currentPwm - MAX_STEP_DOWN)
         // Never park the fan in its stall band while ramping down: either min spin or off.
-        if (target in 1 until MIN_SPIN_PWM) target = if (desired == 0) 0 else MIN_SPIN_PWM
+        if (target in 1 until FanSpeed.MIN_SPIN_PWM) target = if (desired == 0) 0 else FanSpeed.MIN_SPIN_PWM
 
         // If the kernel keeps overwriting our PWM, its governor has latched targets; release them.
         val actual = sys.readInt(pwm)
@@ -226,7 +224,8 @@ class FanController(private val sys: Sys, private val clock: Clock) {
         const val SAFETY_TEMP = 90f
         const val SCREEN_OFF_MAX_TEMP = 62f
         const val SCREEN_OFF_MAX_USB_TEMP = 48f
-        const val MIN_SPIN_PWM = 40
+        const val PORT_SAFETY_TEMP = 50f
+        const val PORT_SAFETY_PERCENT = 40f
         const val MAX_STEP_DOWN = 12
     }
 }

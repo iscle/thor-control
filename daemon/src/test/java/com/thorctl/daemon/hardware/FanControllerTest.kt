@@ -4,6 +4,7 @@ import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeSys
 import com.thorctl.protocol.model.FanPoint
 import com.thorctl.protocol.model.FanProfile
+import com.thorctl.protocol.model.FanSpeed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -66,7 +67,7 @@ class FanControllerTest {
         assertFalse(fan.kernelMode)
         assertEquals(FanController.DISABLED_TEMP.toString(), sys[cpuTrip])
         assertEquals(FanController.DISABLED_TEMP.toString(), sys[usbTrip])
-        assertEquals(128, pwm()) // 50 % of 255
+        assertEquals(FanSpeed.pwmFor(50f), pwm()) // 50 % on the curve
     }
 
     @Test
@@ -89,11 +90,12 @@ class FanControllerTest {
     }
 
     @Test
-    fun neverParksInTheStallBand() {
+    fun theCurvesPercentIsTheSpeedTheFanRunsAt() {
         val fan = FanController(sys, clock)
-        temp(42) // 5 % = pwm 13, too slow to spin
+        temp(42) // 5 % on the curve: just above the slowest the fan turns
         fan.tick(linear, screenOn = true)
-        assertEquals(FanController.MIN_SPIN_PWM, pwm())
+        assertEquals(FanSpeed.pwmFor(5f), pwm())
+        assertEquals(5, FanSpeed.percentOf(pwm()))
     }
 
     @Test
@@ -108,11 +110,19 @@ class FanControllerTest {
     }
 
     @Test
+    fun aWarmChargingPortLeavesItToTheCurve() {
+        val fan = FanController(sys, clock)
+        temp(30, usb = 46) // normal charging
+        fan.tick(linear, screenOn = true)
+        assertEquals(0, pwm())
+    }
+
+    @Test
     fun aHotChargingPortKeepsSomeAir() {
         val fan = FanController(sys, clock)
-        temp(30, usb = 46)
+        temp(30, usb = 51)
         fan.tick(linear, screenOn = true)
-        assertEquals(102, pwm()) // 40 %
+        assertEquals(FanSpeed.pwmFor(FanController.PORT_SAFETY_PERCENT), pwm())
     }
 
     @Test
