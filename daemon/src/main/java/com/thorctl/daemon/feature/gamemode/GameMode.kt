@@ -69,6 +69,7 @@ class GameMode(
             try {
                 tick(powerService.isInteractive())
             } catch (e: Throwable) {
+                // Task boundary: the scheduler would keep anything thrown in a future nobody reads.
                 Timber.w(e, "game mode tick failed")
             }
         }, delayMs, TimeUnit.MILLISECONDS)
@@ -108,12 +109,20 @@ class GameMode(
         Timber.i("game mode: cpu knobs=${boost.cpuKnobCount} gpu knobs=${boost.gpuKnobCount} enabled=$enabled")
     }
 
-    /** Turning on only arms it; the next [tick] picks the game (it may block while closing apps). */
+    /**
+     * Turning on only arms it; the next [tick] picks the game. It stays off if game.on can't be
+     * written, since a restarted daemon would not know it was on. Turning off always works (a
+     * game.on that can't be deleted only means a restarted daemon turns it back on). Returns
+     * whether game mode is on now.
+     */
     @Synchronized
-    fun setEnabled(on: Boolean) {
-        if (on == enabled) return
+    fun setEnabled(on: Boolean): Boolean {
+        if (on == enabled) return enabled
+        if (!files.markOn(on)) {
+            Timber.w("game mode: ${if (on) "marking it on failed, leaving it off" else "unmarking it failed"}")
+            if (on) return false
+        }
         enabled = on
-        files.markOn(on)
         if (!on) {
             boost.release()
             bottomScreen.turnBackOn()
@@ -122,6 +131,7 @@ class GameMode(
             bottomScreen.gameEnded()
         }
         Timber.i("game mode ${if (on) "on" else "off"}")
+        return enabled
     }
 
     @Synchronized
@@ -138,11 +148,15 @@ class GameMode(
     /** Called every couple of seconds, and right after game mode is turned on. */
     @Synchronized
     fun tick(interactive: Boolean) {
-        if (!enabled) return
+        if (!enabled) {
+            // Turning the bottom screen back on may have failed when game mode was turned off.
+            if (bottomScreen.turnBackOn()) onChanged()
+            return
+        }
         val before = state()
         val running = try {
             packageService.runningApps()
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "game mode: listing processes failed")
             return
         }
@@ -159,8 +173,12 @@ class GameMode(
             picker.pick()?.let { packageName ->
                 game = packageName
                 Timber.i("game mode: game is $packageName")
-                freedMb = if (options.closeApps) closer.closeOthers(packageName, running) else 0
-                onStarted(packageName, freedMb)
+                freedMb = 0
+                if (options.closeApps) {
+                    closer.closeOthers(packageName, running) { freed -> onAppsClosed(packageName, freed) }
+                } else {
+                    onStarted(packageName, 0)
+                }
             }
         } else if (options.closeApps && ++ticks % TRIM_EVERY_TICKS == 0) {
             closer.trimCached(playing, running)
@@ -171,6 +189,16 @@ class GameMode(
         val bottomChange = bottomScreen.update(game, options.bottomOff, running, interactive)
         if (bottomChange == BottomScreenChange.TURNED_OFF) onBottomOff()
         if (state() != before || bottomChange != BottomScreenChange.UNCHANGED) onChanged()
+    }
+
+    /** [AppCloser] measured what closing the other apps freed: announce the game with it. */
+    @Synchronized
+    private fun onAppsClosed(packageName: String, freed: Int) {
+        // Game mode was turned off, or the game closed, while the memory settled.
+        if (game != packageName) return
+        freedMb = freed
+        onStarted(packageName, freed)
+        onChanged()
     }
 
     companion object {

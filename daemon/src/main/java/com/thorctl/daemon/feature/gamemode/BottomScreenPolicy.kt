@@ -44,7 +44,7 @@ class BottomScreenPolicy(
             keepOn = true
         }
         val inFront = game != null && bottomOff && !keepOn && displays.bottomId >= 0 &&
-            (try { taskService.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == game
+            (try { taskService.topAppTask(displays.topId)?.packageName } catch (_: ReflectiveOperationException) { null }) == game
         if (!inFront) {
             frontTicks = 0
             return if (turnBackOn()) BottomScreenChange.TURNED_ON else BottomScreenChange.UNCHANGED
@@ -61,11 +61,16 @@ class BottomScreenPolicy(
         return BottomScreenChange.TURNED_OFF
     }
 
-    /** Turns the bottom screen back on if game mode turned it off. Returns true when its power changed. */
+    /**
+     * Turns the bottom screen back on if game mode turned it off. Returns true when its power
+     * changed. If that fails (say the panel is gone for now), it is still ours to turn back on:
+     * the next call tries again.
+     */
     fun turnBackOn(): Boolean {
         if (!offByUs) return false
+        if (!displays.setBottomPower(true)) return false
         offByUs = false
-        return displays.setBottomPower(true)
+        return true
     }
 
     /**
@@ -78,7 +83,7 @@ class BottomScreenPolicy(
         val bottomDisplay = displays.bottomId
         try {
             if (game in taskService.visiblePackages(bottomDisplay)) return true
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
         }
         val uids = running.filter { game in it.packageNames }.map { it.uid }.toSet()
         if (uids.isEmpty()) return false

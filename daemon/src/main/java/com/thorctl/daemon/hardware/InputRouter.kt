@@ -27,7 +27,7 @@ class InputRouter(private val displays: DisplayController, private val inputServ
                     it.name == CONTROLLER_NAME && !it.isExternal && it.isGamepad
                 }?.descriptor
                 ?: KNOWN_DESCRIPTOR
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
             KNOWN_DESCRIPTOR
         }
     }
@@ -48,7 +48,7 @@ class InputRouter(private val displays: DisplayController, private val inputServ
             }
             target = newTarget
             Timber.i("controller -> ${newTarget.wire} ($deviceDescriptor)")
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "controller routing failed")
         }
     }

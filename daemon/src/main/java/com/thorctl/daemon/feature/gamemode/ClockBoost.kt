@@ -64,11 +64,19 @@ class ClockBoost(private val sys: Sys, private val files: GameModeFiles) {
             sys.read(path)
         }
 
+    /**
+     * Raises the floors [options] asks for. Nothing is written unless the originals were saved
+     * first: if the daemon then died, nothing could put them back. Not boosted in that case; the
+     * next game mode tick tries again.
+     */
     fun apply(options: GameOptions) {
         val knobs = (if (options.cpu) cpuKnobs else emptyList()) + (if (options.gpu) gpuKnobs else emptyList())
         val originals = LinkedHashMap(files.loadOriginals())
         for (knob in knobs) if (knob.path !in originals) originalOf(knob.path)?.let { originals[knob.path] = it }
-        files.saveOriginals(originals)
+        if (!files.saveOriginals(originals)) {
+            Timber.w("game mode: saving the original clocks failed, not boosting")
+            return
+        }
         for (knob in knobs) sys.write(knob.path, knob.boost)
         applied = knobs
         boosted = true

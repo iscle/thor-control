@@ -10,6 +10,8 @@ import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.Proto
 import dev.zacsweers.metro.Inject
 import timber.log.Timber
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /**
  * Frees memory for the game: closes every other app when the game is picked (user apps are
@@ -23,9 +25,13 @@ class AppCloser(
     private val packageService: PackageService,
     private val taskService: TaskService,
     private val sys: Sys,
+    private val scheduler: ScheduledExecutorService,
 ) {
-    /** Closes everything but the game and what keeps the device usable. Returns MB freed. */
-    fun closeOthers(game: String, running: List<AppProcess>): Int {
+    /**
+     * Closes everything but the game and what keeps the device usable. [onMeasured] gets the MB
+     * freed once the processes died and the kernel settled, [SETTLE_MS] later, on [scheduler].
+     */
+    fun closeOthers(game: String, running: List<AppProcess>, onMeasured: (freedMb: Int) -> Unit) {
         val before = memAvailableMb()
         val keep = keepSet(game)
         val home = packageService.homePackage()
@@ -43,15 +49,17 @@ class AppCloser(
                     packageService.forceStop(packageName)
                     stopped++
                 }
-            } catch (e: Throwable) {
+            } catch (e: ReflectiveOperationException) {
                 Timber.w(e, "game mode: closing $packageName failed")
             }
         }
         sys.write(COMPACT_MEMORY, "1")
-        Thread.sleep(SETTLE_MS) // let the processes die and the kernel settle before measuring
-        val freed = (memAvailableMb() - before).coerceAtLeast(0)
-        Timber.i("game mode: stopped $stopped apps, trimmed $trimmed system apps, ${freed} MB freed")
-        return freed
+        // Let the processes die and the kernel settle before measuring.
+        scheduler.schedule({
+            val freed = (memAvailableMb() - before).coerceAtLeast(0)
+            Timber.i("game mode: stopped $stopped apps, trimmed $trimmed system apps, ${freed} MB freed")
+            onMeasured(freed)
+        }, SETTLE_MS, TimeUnit.MILLISECONDS)
     }
 
     /** Clears background processes that came back (or were opened and left) while playing. */
@@ -64,7 +72,7 @@ class AppCloser(
         for (packageName in packageNames) {
             try {
                 packageService.killBackground(packageName)
-            } catch (_: Throwable) {
+            } catch (_: ReflectiveOperationException) {
             }
         }
         Timber.i("game mode: cleared ${packageNames.size} background apps (${packageNames.joinToString(limit = 6)})")
@@ -78,7 +86,7 @@ class AppCloser(
             if (displayId < 0) continue
             try {
                 keep += taskService.visiblePackages(displayId) // e.g. a guide open on the other screen
-            } catch (_: Throwable) {
+            } catch (_: ReflectiveOperationException) {
             }
         }
         sys.sh("cmd settings get secure default_input_method")?.let { keep += it.substringBefore('/') }

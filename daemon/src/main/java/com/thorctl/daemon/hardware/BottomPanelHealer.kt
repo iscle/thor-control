@@ -7,6 +7,8 @@ import com.thorctl.daemon.system.DisplayService
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /**
  * Bottom panel watchdog. LineageOS sometimes boots with the bottom panel dark: the framework and
@@ -14,7 +16,8 @@ import timber.log.Timber
  * framework power cycle (off -> back to policy) makes HWC commit the panel again.
  *
  * A panel has to look stuck on two checks in a row; heals are at least [HEAL_INTERVAL_MS] apart
- * and at most [MAX_HEALS_PER_WAKE] per wake.
+ * and at most [MAX_HEALS_PER_WAKE] per wake. The panel stays off [POWER_CYCLE_OFF_MS] before its
+ * power is handed back, on [scheduler] rather than by blocking the caller.
  */
 @Inject
 @SingleIn(DaemonScope::class)
@@ -22,6 +25,7 @@ class BottomPanelHealer(
     private val sys: Sys,
     private val clock: Clock,
     private val displayService: DisplayService,
+    private val scheduler: ScheduledExecutorService,
 ) {
     /** The bottom panel's DRM connector: the last of the (two) DSI connectors. */
     private val connector: String? = sys.list(DRM)
@@ -48,7 +52,7 @@ class BottomPanelHealer(
         }
         val frameworkOn = try {
             displayService.displays().firstOrNull { it.id == bottomId }?.state == DisplayController.STATE_ON
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
             false
         }
         val panelEnabled = sys.read("$connector/enabled") == "enabled"
@@ -65,9 +69,18 @@ class BottomPanelHealer(
         Timber.i("bottom panel stuck (display ON, ${connector.substringAfterLast('/')} not enabled); power-cycling it")
         try {
             displayService.requestDisplayPower(bottomId, DisplayController.STATE_OFF)
-            Thread.sleep(500)
+        } catch (e: ReflectiveOperationException) {
+            Timber.w(e, "bottom panel power cycle failed")
+            return
+        }
+        scheduler.schedule({ handBack(bottomId) }, POWER_CYCLE_OFF_MS, TimeUnit.MILLISECONDS)
+    }
+
+    /** Second half of the power cycle: the panel's power goes back to the framework's policy. */
+    private fun handBack(bottomId: Int) {
+        try {
             displayService.requestDisplayPower(bottomId, DisplayController.STATE_UNKNOWN)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "bottom panel power cycle failed")
         }
     }
@@ -76,6 +89,7 @@ class BottomPanelHealer(
         const val DRM = "/sys/class/drm"
         const val HEAL_INTERVAL_MS = 15_000L
         const val MAX_HEALS_PER_WAKE = 3
+        const val POWER_CYCLE_OFF_MS = 500L
         val DSI_CONNECTOR = Regex("card\\d+-DSI-\\d+")
     }
 }

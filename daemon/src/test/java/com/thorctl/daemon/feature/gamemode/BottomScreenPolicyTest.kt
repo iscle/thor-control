@@ -5,6 +5,7 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.ThorDisplays
 import com.thorctl.daemon.system.AppProcess
 import com.thorctl.daemon.system.AppTask
+import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeTaskService
 import kotlin.test.Test
@@ -16,7 +17,16 @@ class BottomScreenPolicyTest {
     private val sys = FakeSys()
     private val taskService = FakeTaskService()
     private val displayService = FakeDisplayService(listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM))
-    private val displays = ThorDisplays.controller(displayService)
+
+    /** While set, display power requests fail as a dead display manager's would. */
+    private var powerFails = false
+    private val flakyDisplayService = object : DisplayService by displayService {
+        override fun requestDisplayPower(displayId: Int, state: Int): Boolean {
+            if (powerFails) throw ReflectiveOperationException("display manager died")
+            return displayService.requestDisplayPower(displayId, state)
+        }
+    }
+    private val displays = ThorDisplays.controller(flakyDisplayService)
     private val policy = BottomScreenPolicy(displays, taskService, sys)
     private val running = listOf(AppProcess(100, 10234, GAME, listOf(GAME), 100))
 
@@ -115,6 +125,49 @@ class BottomScreenPolicyTest {
         displays.setBottomPower(false) // the user's choice
         assertFalse(policy.turnBackOn())
         assertTrue(displays.bottomForcedOff)
+    }
+
+    @Test
+    fun keepsTryingToTurnItBackOnUntilThatWorks() {
+        inFront(GAME)
+        update()
+        update()
+        inFront("com.browser")
+        powerFails = true
+        assertEquals(BottomScreenChange.UNCHANGED, update())
+        assertFalse(policy.turnBackOn())
+        assertTrue(displays.bottomForcedOff)
+
+        powerFails = false
+        assertEquals(BottomScreenChange.TURNED_ON, update())
+        assertFalse(displays.bottomForcedOff)
+        assertFalse(policy.turnBackOn())
+    }
+
+    @Test
+    fun retriesWhenTheBottomPanelComesBack() {
+        inFront(GAME)
+        update()
+        update()
+        // The bottom panel can disappear while it is off.
+        displayService.displays = listOf(ThorDisplays.TOP)
+        displays.refresh()
+        assertFalse(policy.turnBackOn())
+
+        displayService.displays = listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM)
+        displays.refresh()
+        assertTrue(policy.turnBackOn())
+        assertFalse(displays.bottomForcedOff)
+    }
+
+    @Test
+    fun aFailedTurnOffLeavesItOn() {
+        inFront(GAME)
+        update()
+        powerFails = true
+        assertEquals(BottomScreenChange.UNCHANGED, update())
+        assertFalse(displays.bottomForcedOff)
+        assertFalse(policy.turnBackOn())
     }
 
     private companion object {

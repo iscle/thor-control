@@ -1,6 +1,7 @@
 package com.thorctl.daemon.feature.recents
 
 import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.hardware.BottomPanelHealer
 import com.thorctl.daemon.hardware.DisplayController
@@ -17,6 +18,6 @@ object ScreenshotTestDisplays {
                 DisplayInfo(1, "local:222", type = 1, width = 1240, height = 1080, state = 2),
             ),
         )
-        return DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService)).apply { refresh() }
+        return DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
     }
 }

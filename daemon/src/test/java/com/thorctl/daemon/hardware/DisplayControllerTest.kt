@@ -1,8 +1,10 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.system.DisplayInfo
+import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
 import com.thorctl.daemon.system.InputDeviceInfo
@@ -21,7 +23,31 @@ class DisplayControllerTest {
             InputDeviceInfo(BOTTOM_TOUCH, DisplayController.BOTTOM_TOUCH_NAME, "bottom", isExternal = false, isGamepad = false),
         ),
     )
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService))
+    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+
+    @Test
+    fun aDeadDisplayManagerChangesNothing() {
+        var dead = false
+        val flaky = object : DisplayService by displayService {
+            override fun displays(): List<DisplayInfo> = if (dead) throw ReflectiveOperationException("gone") else displayService.displays()
+
+            override fun brightness(displayId: Int): Float = if (dead) throw ReflectiveOperationException("gone") else displayService.brightness(displayId)
+
+            override fun requestDisplayPower(displayId: Int, state: Int): Boolean =
+                if (dead) throw ReflectiveOperationException("gone") else displayService.requestDisplayPower(displayId, state)
+        }
+        val displays = DisplayController(flaky, inputService, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())))
+        displays.refresh()
+        dead = true
+
+        displays.refresh()
+        assertEquals(ThorDisplays.TOP.id, displays.topId)
+        assertEquals(ThorDisplays.BOTTOM.id, displays.bottomId)
+        assertEquals(0f, displays.getBrightness(Screen.TOP))
+        assertFalse(displays.setBottomPower(false))
+        assertFalse(displays.bottomForcedOff)
+        assertTrue(inputService.disabledDevices.isEmpty())
+    }
 
     @Test
     fun theLargerInternalPanelIsTheTopOne() {
