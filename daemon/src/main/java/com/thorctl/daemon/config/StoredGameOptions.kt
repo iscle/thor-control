@@ -15,6 +15,6 @@ class StoredGameOptions(
     fun toModel() = GameOptions(closeApps, cpu, gpu, fan, bottomOff)
 
     companion object {
-        fun of(o: GameOptions) = StoredGameOptions(o.closeApps, o.cpu, o.gpu, o.fan, o.bottomOff)
+        fun of(options: GameOptions) = StoredGameOptions(options.closeApps, options.cpu, options.gpu, options.fan, options.bottomOff)
     }
 }

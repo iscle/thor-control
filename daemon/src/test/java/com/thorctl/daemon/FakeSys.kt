@@ -8,7 +8,7 @@ class FakeSys : Sys {
     val links = HashMap<String, String>()
     val writes = mutableListOf<Pair<String, String>>()
     val commands = mutableListOf<String>()
-    val props = HashMap<String, String>()
+    val properties = HashMap<String, String>()
     var shell: (String) -> String? = { null }
 
     operator fun set(path: String, value: Any) {
@@ -27,17 +27,17 @@ class FakeSys : Sys {
 
     override fun exists(path: String): Boolean = path in files || files.keys.any { it.startsWith("$path/") } || path in links
 
-    override fun list(dir: String): List<String> =
-        (files.keys + links.keys).filter { it.startsWith("$dir/") }.map { "$dir/" + it.removePrefix("$dir/").substringBefore('/') }.distinct()
+    override fun list(directory: String): List<String> =
+        (files.keys + links.keys).filter { it.startsWith("$directory/") }.map { "$directory/" + it.removePrefix("$directory/").substringBefore('/') }.distinct()
 
     override fun canonical(path: String): String? = links[path] ?: path.takeIf { exists(it) }
 
-    override fun mkdirs(dir: String): Boolean = true
+    override fun mkdirs(directory: String): Boolean = true
 
-    override fun prop(name: String): String = props[name].orEmpty()
+    override fun prop(name: String): String = properties[name].orEmpty()
 
-    override fun sh(cmd: String, timeoutMs: Long): String? {
-        commands += cmd
-        return shell(cmd)
+    override fun sh(command: String, timeoutMs: Long): String? {
+        commands += command
+        return shell(command)
     }
 }

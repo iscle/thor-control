@@ -18,7 +18,7 @@ class SystemUpkeepTest {
 
     @Test
     fun restartsNothingThatIsStopped() {
-        val sys = FakeSys().apply { props["init.svc.cameraserver"] = "running"; props["init.svc.wifidisplayhalservice"] = "stopped" }
+        val sys = FakeSys().apply { properties["init.svc.cameraserver"] = "running"; properties["init.svc.wifidisplayhalservice"] = "stopped" }
         SystemUpkeep(sys).keepServicesStopped()
         assertEquals(listOf("stop cameraserver"), sys.commands)
     }
@@ -38,7 +38,7 @@ class SystemUpkeepTest {
         val sys = FakeSys()
         val upkeep = SystemUpkeep(sys)
         assertEquals(false, upkeep.moduleTurnedOff())
-        sys["${SystemUpkeep.MODULE_DIR}/disable"] = ""
+        sys["${SystemUpkeep.MODULE_DIRECTORY}/disable"] = ""
         assertTrue(upkeep.moduleTurnedOff())
     }
 }

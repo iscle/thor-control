@@ -52,10 +52,10 @@ class BinderPublisher(
             system.callAppProvider(ThorIpc.METHOD_OFFER, Bundle().apply { putBinder(ThorIpc.KEY_BINDER, binder.value) })
             if (lastFailure != null) Timber.i("binder offered to the app again")
             lastFailure = null
-        } catch (e: Throwable) {
+        } catch (error: Throwable) {
             // Logged once per kind of failure: the app may be missing for a while (reinstall).
-            val kind = (e.cause ?: e).toString()
-            if (kind != lastFailure) Timber.w(e, "offering the binder to the app failed")
+            val kind = (error.cause ?: error).toString()
+            if (kind != lastFailure) Timber.w(error, "offering the binder to the app failed")
             lastFailure = kind
         }
     }

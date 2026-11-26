@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
 @Inject
 @SingleIn(DaemonScope::class)
 class DaemonActions(
-    private val cfg: ConfigStore,
+    private val config: ConfigStore,
     private val displays: DisplayController,
     private val router: InputRouter,
     private val fan: FanController,
@@ -34,7 +34,7 @@ class DaemonActions(
     private val system: SystemServices,
     private val notifier: DaemonNotifier,
     private val lock: DaemonLock,
-    private val sched: ScheduledExecutorService,
+    private val scheduler: ScheduledExecutorService,
 ) {
     private var saveTask: ScheduledFuture<*>? = null
 
@@ -42,21 +42,21 @@ class DaemonActions(
     fun saveSoon() {
         synchronized(lock) {
             saveTask?.cancel(false)
-            saveTask = sched.schedule({ cfg.save() }, 400, TimeUnit.MILLISECONDS)
+            saveTask = scheduler.schedule({ config.save() }, 400, TimeUnit.MILLISECONDS)
         }
     }
 
     /** One fan step with the profile that should drive it now (game mode's, or the selected one). */
     fun fanTick() {
         synchronized(lock) {
-            val override = game.fanOverride?.let { cfg.profile(it) }
-            fan.tick(override ?: cfg.profile(cfg.fanProfile) ?: FanProfile.BUILTINS.first(), screenOn = system.isInteractive())
+            val override = game.fanOverride?.let { config.profile(it) }
+            fan.tick(override ?: config.profile(config.fanProfile) ?: FanProfile.BUILTINS.first(), screenOn = system.isInteractive())
         }
     }
 
     fun setController(target: ControllerTarget, announce: Boolean) {
         synchronized(lock) {
-            cfg.controller = target
+            config.controller = target
             router.apply(target)
             saveSoon()
         }
@@ -84,12 +84,12 @@ class DaemonActions(
     fun moveApp(to: Screen) {
         val toBottom = to == Screen.BOTTOM
         val from = if (toBottom) displays.topId else displays.bottomId
-        val dest = if (toBottom) displays.bottomId else displays.topId
-        if (from < 0 || dest < 0) return
+        val destination = if (toBottom) displays.bottomId else displays.topId
+        if (from < 0 || destination < 0) return
         val task = try {
             system.topAppTask(from)
-        } catch (e: Throwable) {
-            Timber.w(e, "topAppTask failed")
+        } catch (error: Throwable) {
+            Timber.w(error, "topAppTask failed")
             null
         }
         if (task == null) {
@@ -98,13 +98,13 @@ class DaemonActions(
         }
         if (toBottom && displays.bottomForcedOff) setBottomPower(true)
         try {
-            system.moveTaskToDisplay(task.taskId, dest)
+            system.moveTaskToDisplay(task.taskId, destination)
             // With "follow focus" routing, input should follow the app to its new screen.
-            if (router.target == ControllerTarget.FREE) system.focusTopTask(dest)
-            Timber.i("moved task ${task.taskId} (${task.packageName}) to display $dest")
-            notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), dest)
-        } catch (e: Throwable) {
-            Timber.w(e, "move task failed")
+            if (router.target == ControllerTarget.FREE) system.focusTopTask(destination)
+            Timber.i("moved task ${task.taskId} (${task.packageName}) to display $destination")
+            notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), destination)
+        } catch (error: Throwable) {
+            Timber.w(error, "move task failed")
         }
     }
 
@@ -114,7 +114,7 @@ class DaemonActions(
         synchronized(lock) { displays.setBrightness(screen, BrightnessCurve.toLinear(next)) }
         notifier.stateChanged()
         // The pill shows on the screen that changed (on the top one if the bottom one is off).
-        val d = if (screen == Screen.BOTTOM && displays.bottomOn && displays.bottomId >= 0) displays.bottomId else displays.topId
-        notifier.hud(HudEvent.Brightness(screen, (next * 100f).roundToInt()), d)
+        val displayId = if (screen == Screen.BOTTOM && displays.bottomOn && displays.bottomId >= 0) displays.bottomId else displays.topId
+        notifier.hud(HudEvent.Brightness(screen, (next * 100f).roundToInt()), displayId)
     }
 }

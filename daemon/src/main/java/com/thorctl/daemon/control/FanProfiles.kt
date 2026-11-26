@@ -10,11 +10,11 @@ object FanProfiles {
     const val MAX_NAME = 24
 
     /** A curve the fan can safely run: 2–8 points within 20–100 °C and 0–100 %, sorted; null if unusable. */
-    fun sanitize(p: FanProfile): FanProfile? {
-        if (p.id.isBlank() || p.points.size < MIN_POINTS || p.points.size > MAX_POINTS) return null
-        val pts = p.points
+    fun sanitize(profile: FanProfile): FanProfile? {
+        if (profile.id.isBlank() || profile.points.size < MIN_POINTS || profile.points.size > MAX_POINTS) return null
+        val points = profile.points
             .map { FanPoint(it.temp.coerceIn(20f, 100f), it.percent.coerceIn(0f, 100f)) }
             .sortedBy { it.temp }
-        return p.copy(name = p.name.take(MAX_NAME).ifBlank { "Custom" }, points = pts)
+        return profile.copy(name = profile.name.take(MAX_NAME).ifBlank { "Custom" }, points = points)
     }
 }

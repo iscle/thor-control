@@ -36,21 +36,21 @@ class ConfigStore(@ConfigFile private val file: File) {
     fun load() {
         try {
             if (!file.exists()) return
-            val c = FORMAT.decodeFromString(StoredConfig.serializer(), file.readText())
-            fanProfile = c.fanProfile
+            val stored = FORMAT.decodeFromString(StoredConfig.serializer(), file.readText())
+            fanProfile = stored.fanProfile
             customProfiles.clear()
             // A curve the fan can't run (too few points) would hold the fan at 0 %: drop it.
-            customProfiles += c.customProfiles.mapNotNull { FanProfiles.sanitize(it.toModel())?.takeIf { p -> !p.isBuiltin } }
-            controller = ControllerTarget.fromWire(c.controller) ?: ControllerTarget.FREE
-            leds = c.leds.toModel()
-            keepAccessibility = c.keepAccessibility
-            gameOptions = c.gameOptions.toModel()
-            gamepadTransport = GamepadTransport.fromWire(c.gamepad.transport) ?: GamepadTransport.USB
-            gamepadScreensOff = c.gamepad.screensOff
+            customProfiles += stored.customProfiles.mapNotNull { FanProfiles.sanitize(it.toModel())?.takeIf { profile -> !profile.isBuiltin } }
+            controller = ControllerTarget.fromWire(stored.controller) ?: ControllerTarget.FREE
+            leds = stored.leds.toModel()
+            keepAccessibility = stored.keepAccessibility
+            gameOptions = stored.gameOptions.toModel()
+            gamepadTransport = GamepadTransport.fromWire(stored.gamepad.transport) ?: GamepadTransport.USB
+            gamepadScreensOff = stored.gamepad.screensOff
             if (profile(fanProfile) == null) fanProfile = FanProfile.SMART_ID
             Timber.i("config loaded: fan=$fanProfile controller=${controller.wire} custom=${customProfiles.size}")
-        } catch (e: Exception) {
-            Timber.w(e, "config load failed, using defaults")
+        } catch (error: Exception) {
+            Timber.w(error, "config load failed, using defaults")
         }
     }
 
@@ -58,7 +58,7 @@ class ConfigStore(@ConfigFile private val file: File) {
     fun save() {
         try {
             file.parentFile?.mkdirs()
-            val c = StoredConfig(
+            val stored = StoredConfig(
                 fanProfile = fanProfile,
                 customProfiles = customProfiles.map(StoredFanProfile::of),
                 controller = controller.wire,
@@ -68,11 +68,11 @@ class ConfigStore(@ConfigFile private val file: File) {
                 gamepad = StoredGamepad(gamepadTransport.wire, gamepadScreensOff),
             )
             // Written next to it and renamed over it: a crash mid-write never leaves half a file.
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(FORMAT.encodeToString(StoredConfig.serializer(), c))
-            if (!tmp.renameTo(file)) Timber.w("config save: rename failed")
-        } catch (e: Exception) {
-            Timber.w(e, "config save failed")
+            val tempFile = File(file.path + ".tmp")
+            tempFile.writeText(FORMAT.encodeToString(StoredConfig.serializer(), stored))
+            if (!tempFile.renameTo(file)) Timber.w("config save: rename failed")
+        } catch (error: Exception) {
+            Timber.w(error, "config save failed")
         }
     }
 

@@ -54,15 +54,15 @@ class Recents(
     /** Told when something else came to front, so it reacts straight away. */
     private val game: Lazy<GameMode>,
 ) {
-    private fun send(e: DaemonEvent) = link.broadcast(e)
+    private fun send(event: DaemonEvent) = link.broadcast(event)
 
     private fun hasClient() = link.appConnected
 
     /** Home was brought to front (game mode wants to know straight away). */
     private fun onHomeShown() = game.value.nudge()
 
-    private val exec = Executors.newSingleThreadScheduledExecutor { Thread(it, "recents") }
-    private val capExec = Executors.newSingleThreadExecutor { Thread(it, "capture") }
+    private val executor = Executors.newSingleThreadScheduledExecutor { Thread(it, "recents") }
+    private val captureExecutor = Executors.newSingleThreadExecutor { Thread(it, "capture") }
 
     /** Display the recents screen is open on, or -1. */
     @Volatile
@@ -87,7 +87,7 @@ class Recents(
 
     @Volatile
     private var press: Press? = null
-    private var seq = 0
+    private var homeSequence = 0
     private var pendingHome: Pair<Int, Int>? = null // seq to display
 
     /** Home went down: capture the screen now, in case this becomes the zoom-out of a press or hold. */
@@ -100,8 +100,8 @@ class Recents(
             null
         }
         // On the home screen the capture doubles as a fresh picture of it.
-        val file = if (origin == null) homeFile(display) else File(DIR, "screen.jpg")
-        press = Press(display, origin, file, capExec.submit<Boolean> { capture(display, file) })
+        val file = if (origin == null) homeFile(display) else File(DATA_DIRECTORY, "screen.jpg")
+        press = Press(display, origin, file, captureExecutor.submit<Boolean> { capture(display, file) })
     }
 
     /**
@@ -109,30 +109,30 @@ class Recents(
      * connected, or no picture of the home screen yet (it is taken the next time home shows).
      */
     fun homeShort(display: Int): Boolean {
-        val p = press ?: return false
+        val homePress = press ?: return false
         press = null
-        if (p.display != display || p.origin == null || !hasClient()) return false
+        if (homePress.display != display || homePress.origin == null || !hasClient()) return false
         val home = homeFile(display)
         if (!home.exists()) {
             captureHomeLater(display)
             return false
         }
         run {
-            val ok = try {
-                p.shot.get(800, TimeUnit.MILLISECONDS)
+            val captured = try {
+                homePress.shot.get(800, TimeUnit.MILLISECONDS)
             } catch (_: Exception) {
                 false
             }
-            val s = ++seq
-            pendingHome = s to display
-            if (!ok) {
-                goHome(s)
+            val sequence = ++homeSequence
+            pendingHome = sequence to display
+            if (!captured) {
+                goHome(sequence)
                 return@run
             }
             busy(4000)
-            send(DaemonEvent.HomeAnimation(s, display, jpeg(p.file), jpeg(home)))
+            send(DaemonEvent.HomeAnimation(sequence, display, jpeg(homePress.file), jpeg(home)))
             // The app starts the switch once its overlay covers the screen; never wait long for it.
-            exec.schedule({ goHome(s) }, 800, TimeUnit.MILLISECONDS)
+            executor.schedule({ goHome(sequence) }, 800, TimeUnit.MILLISECONDS)
         }
         return true
     }
@@ -143,29 +143,29 @@ class Recents(
             close(notifyApp = true)
             return@run
         }
-        val p = press?.takeIf { it.display == display }
+        val homePress = press?.takeIf { it.display == display }
         press = null
-        val origin = p?.origin ?: try {
+        val origin = homePress?.origin ?: try {
             system.topAppTask(display)
         } catch (_: Throwable) {
             null
         }
-        val file = p?.file ?: (if (origin == null) homeFile(display) else File(DIR, "screen.jpg"))
-        val ok = try {
-            p?.shot?.get(800, TimeUnit.MILLISECONDS) ?: capture(display, file)
+        val file = homePress?.file ?: (if (origin == null) homeFile(display) else File(DATA_DIRECTORY, "screen.jpg"))
+        val captured = try {
+            homePress?.shot?.get(800, TimeUnit.MILLISECONDS) ?: capture(display, file)
         } catch (_: Exception) {
             false
         }
-        open(display, origin, if (ok) file else null)
+        open(display, origin, if (captured) file else null)
     }
 
-    private fun goHome(s: Int) {
-        val (ps, d) = pendingHome ?: return
-        if (ps != s) return
+    private fun goHome(sequence: Int) {
+        val (pendingSequence, display) = pendingHome ?: return
+        if (pendingSequence != sequence) return
         pendingHome = null
-        system.injectKey(KeyEvent.KEYCODE_HOME, d)
+        system.injectKey(KeyEvent.KEYCODE_HOME, display)
         onHomeShown()
-        captureHomeLater(d)
+        captureHomeLater(display)
     }
 
     // ---- Home screen pictures ---------------------------------------------------------------
@@ -176,56 +176,56 @@ class Recents(
 
     private fun busy(): Boolean = isOpen || SystemClock.elapsedRealtime() < busyUntil
 
-    private fun busy(ms: Long) {
-        busyUntil = SystemClock.elapsedRealtime() + ms
+    private fun busy(durationMs: Long) {
+        busyUntil = SystemClock.elapsedRealtime() + durationMs
     }
 
-    private fun homeFile(display: Int) = File(DIR, "home-${physicalId(display)}.jpg")
+    private fun homeFile(display: Int) = File(DATA_DIRECTORY, "home-${physicalId(display)}.jpg")
 
     private fun physicalId(display: Int): String =
         (if (display == displays.bottomId) displays.bottomUniqueId else displays.topUniqueId).substringAfter("local:")
 
     /** Called every couple of seconds: keeps the top screen's home picture fresh while it shows. */
     fun maybeCaptureHome(interactive: Boolean) {
-        val d = displays.topId
-        if (!interactive || d < 0) return
-        val f = homeFile(d)
-        if (f.exists() && System.currentTimeMillis() - f.lastModified() < HOME_MAX_AGE_MS) return
-        captureHomeIfShowing(d)
+        val topDisplay = displays.topId
+        if (!interactive || topDisplay < 0) return
+        val homeImage = homeFile(topDisplay)
+        if (homeImage.exists() && System.currentTimeMillis() - homeImage.lastModified() < HOME_MAX_AGE_MS) return
+        captureHomeIfShowing(topDisplay)
     }
 
     private fun captureHomeLater(display: Int) {
-        exec.schedule({ captureHomeIfShowing(display) }, 1500, TimeUnit.MILLISECONDS)
+        executor.schedule({ captureHomeIfShowing(display) }, 1500, TimeUnit.MILLISECONDS)
     }
 
     private fun captureHomeIfShowing(display: Int) {
-        capExec.execute {
+        captureExecutor.execute {
             try {
                 if (busy() || SystemClock.elapsedRealtime() - lastHud < 3000) return@execute
                 if (system.topAppTask(display) != null) return@execute
                 if (capture(display, homeFile(display))) Timber.i("recents: home screen of display $display captured")
-            } catch (e: Throwable) {
-                Timber.w(e, "home capture failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "home capture failed")
             }
         }
     }
 
     private fun capture(display: Int, file: File): Boolean {
-        val phys = physicalId(display)
-        if (phys.isEmpty()) return false
+        val physicalDisplayId = physicalId(display)
+        if (physicalDisplayId.isEmpty()) return false
         file.parentFile?.mkdirs()
-        val tmp = File(file.path + ".tmp")
-        tmp.delete()
-        sys.sh("screencap -d $phys -j ${tmp.path}", 3000)
-        if (!tmp.exists() || tmp.length() < 1000) {
-            tmp.delete()
+        val tempFile = File(file.path + ".tmp")
+        tempFile.delete()
+        sys.sh("screencap -d $physicalDisplayId -j ${tempFile.path}", 3000)
+        if (!tempFile.exists() || tempFile.length() < 1000) {
+            tempFile.delete()
             return false
         }
-        return tmp.renameTo(file)
+        return tempFile.renameTo(file)
     }
 
-    private fun jpeg(f: File?): Jpeg? = try {
-        if (f == null || !f.isFile || f.length() == 0L || f.length() > MAX_IMAGE_BYTES) null else BytesJpeg(f.readBytes())
+    private fun jpeg(file: File?): Jpeg? = try {
+        if (file == null || !file.isFile || file.length() == 0L || file.length() > MAX_IMAGE_BYTES) null else BytesJpeg(file.readBytes())
     } catch (_: Exception) {
         null
     }
@@ -237,10 +237,10 @@ class Recents(
     /** AYN while open: same as B (back to where recents was opened from). */
     fun back() = run { if (isOpen) key("b") }
 
-    fun handle(cmd: DaemonCommand) = run {
-        when (cmd) {
+    fun handle(command: DaemonCommand) = run {
+        when (command) {
             is DaemonCommand.HomeGo -> {
-                goHome(cmd.seq)
+                goHome(command.seq)
                 return@run
             }
             DaemonCommand.OverlayDone -> {
@@ -250,30 +250,30 @@ class Recents(
             else -> {}
         }
         if (!isOpen) return@run
-        val d = openOn
-        when (cmd) {
+        val display = openOn
+        when (command) {
             is DaemonCommand.RecentsOpen -> {
-                val id = cmd.taskId
-                val t = tasks.firstOrNull { it.taskId == id }
+                val id = command.taskId
+                val task = tasks.firstOrNull { it.taskId == id }
                 close(notifyApp = false)
-                openTask(id, t, d)
+                openTask(id, task, display)
                 onHomeShown() // something else is in front now: let game mode look
             }
             DaemonCommand.RecentsHome -> {
                 close(notifyApp = false)
-                system.injectKey(KeyEvent.KEYCODE_HOME, d)
+                system.injectKey(KeyEvent.KEYCODE_HOME, display)
                 onHomeShown()
-                captureHomeLater(d)
+                captureHomeLater(display)
             }
             is DaemonCommand.RecentsRemove -> {
-                val id = cmd.taskId
+                val id = command.taskId
                 system.removeTask(id)
                 tasks = tasks.filter { it.taskId != id }
                 Timber.i("recents: closed task $id")
             }
             is DaemonCommand.RecentsClear -> {
                 // No ids (the debug CLI): everything in the list.
-                val ids = cmd.taskIds.ifEmpty { tasks.map { it.taskId } }
+                val ids = command.taskIds.ifEmpty { tasks.map { it.taskId } }
                 ids.forEach { system.removeTask(it) }
                 tasks = emptyList()
                 Timber.i("recents: closed all (${ids.size})")
@@ -284,11 +284,11 @@ class Recents(
     }
 
     private fun run(block: () -> Unit) {
-        exec.execute {
+        executor.execute {
             try {
                 block()
-            } catch (e: Throwable) {
-                Timber.w(e, "recents failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "recents failed")
             }
         }
     }
@@ -297,8 +297,8 @@ class Recents(
         val list = system.recentTasks(MAX_TASKS).toMutableList()
         // The app you came from is "the most recent" one, right next to the home screen.
         if (origin != null) {
-            val i = list.indexOfFirst { it.taskId == origin.taskId }
-            if (i > 0) list.add(0, list.removeAt(i))
+            val index = list.indexOfFirst { it.taskId == origin.taskId }
+            if (index > 0) list.add(0, list.removeAt(index))
         }
         // Apps visible elsewhere (the other screen) get a fresh preview; written within ~150 ms.
         val requested = System.currentTimeMillis()
@@ -306,31 +306,31 @@ class Recents(
         others.forEach {
             try {
                 system.takeSnapshot(it.taskId)
-            } catch (e: Throwable) {
-                Timber.w(e, "snapshot of task ${it.taskId} failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "snapshot of task ${it.taskId} failed")
             }
         }
         tasks = list
         openOn = displayId
-        val cards = list.map { t ->
-            val thumb = if (t.taskId == origin?.taskId && hero != null) null else thumb(t.taskId)
-            RecentTask(t.taskId, t.packageName, t.displayId, t.visible, t.running, thumb)
+        val cards = list.map { task ->
+            val thumb = if (task.taskId == origin?.taskId && hero != null) null else thumb(task.taskId)
+            RecentTask(task.taskId, task.packageName, task.displayId, task.visible, task.running, thumb)
         }
-        val homeImg = homeFile(displayId)
+        val homeImage = homeFile(displayId)
         send(
             DaemonEvent.RecentsOpened(
                 displayId = displayId,
                 fromHome = origin == null,
                 originTask = origin?.taskId ?: -1,
                 hero = if (origin != null) jpeg(hero) else null,
-                home = jpeg(homeImg.takeIf { it.exists() }),
+                home = jpeg(homeImage.takeIf { it.exists() }),
                 tasks = cards,
             ),
         )
 
         ignoreHomeUp = input.isDown(InputWatcher.KEY_HOME)
         homeDown = false
-        dirs.clear()
+        directions.clear()
         held = null
         val grabbed = input.grabController(::onPad)
         Timber.i("recents: open on display $displayId from ${origin?.packageName ?: "home"}, ${list.size} apps (controller ${if (grabbed) "grabbed" else "not grabbed"})")
@@ -340,11 +340,11 @@ class Recents(
 
     /** Sends the fresh previews of apps on the other screen once the system has written them. */
     private fun refreshThumbs(ids: List<Int>, since: Long, attempt: Int) {
-        exec.schedule({
+        executor.schedule({
             if (!isOpen) return@schedule
             val pending = ids.filter { id ->
-                val f = system.snapshotFile(id)
-                if (f != null && f.lastModified() >= since - 50) {
+                val snapshot = system.snapshotFile(id)
+                if (snapshot != null && snapshot.lastModified() >= since - 50) {
                     thumb(id)?.let { send(DaemonEvent.RecentsThumb(id, it)) }
                     false
                 } else {
@@ -357,17 +357,17 @@ class Recents(
 
     private fun thumb(taskId: Int): Jpeg? = jpeg(system.snapshotFile(taskId))
 
-    private fun openTask(id: Int, t: SystemServices.RecentTask?, display: Int) {
+    private fun openTask(id: Int, task: SystemServices.RecentTask?, display: Int) {
         try {
-            if (t != null && t.displayId >= 0 && t.displayId != display) {
+            if (task != null && task.displayId >= 0 && task.displayId != display) {
                 // Running on the other screen: bring it over to where the user is looking.
                 system.moveTaskToDisplay(id, display)
             } else {
                 system.startFromRecents(id, display)
             }
-            Timber.i("recents: opened task $id (${t?.packageName}) on display $display")
-        } catch (e: Throwable) {
-            Timber.w(e, "recents: open task $id failed")
+            Timber.i("recents: opened task $id (${task?.packageName}) on display $display")
+        } catch (error: Throwable) {
+            Timber.w(error, "recents: open task $id failed")
         }
     }
 
@@ -389,7 +389,7 @@ class Recents(
     /** A crashed or stuck app must not keep the controller forever. */
     private fun bumpIdle() {
         idle?.cancel(false)
-        idle = exec.schedule({
+        idle = executor.schedule({
             Timber.w("recents: idle for ${IDLE_CLOSE_MS / 1000}s, closing")
             close(notifyApp = true)
         }, IDLE_CLOSE_MS, TimeUnit.MILLISECONDS)
@@ -401,7 +401,7 @@ class Recents(
     private var homeDown = false
 
     /** Which inputs hold left (-1) or right (+1): d-pad hat, stick, d-pad keys, bumpers. */
-    private val dirs = HashMap<String, Int>()
+    private val directions = HashMap<String, Int>()
     @Volatile
     private var held: Int? = null
     private var repeat: ScheduledFuture<*>? = null
@@ -458,26 +458,26 @@ class Recents(
     }
 
     /** Held left/right moves one card, then keeps moving after a short pause (like a key repeat). */
-    private fun setDir(source: String, d: Int) {
-        if (d == 0) dirs.remove(source) else dirs[source] = d
-        val now = dirs.values.firstOrNull()
+    private fun setDir(source: String, direction: Int) {
+        if (direction == 0) directions.remove(source) else directions[source] = direction
+        val now = directions.values.firstOrNull()
         if (now == held) return
         held = now
         repeat?.cancel(false)
         repeat = null
         if (now == null) return
-        val k = if (now < 0) "left" else "right"
-        key(k)
-        repeat = exec.scheduleWithFixedDelay({ if (held == now) key(k) }, REPEAT_DELAY_MS, REPEAT_EVERY_MS, TimeUnit.MILLISECONDS)
+        val keyName = if (now < 0) "left" else "right"
+        key(keyName)
+        repeat = executor.scheduleWithFixedDelay({ if (held == now) key(keyName) }, REPEAT_DELAY_MS, REPEAT_EVERY_MS, TimeUnit.MILLISECONDS)
     }
 
-    private fun key(k: String) {
+    private fun key(name: String) {
         bumpIdle()
-        send(DaemonEvent.RecentsKey(k))
+        send(DaemonEvent.RecentsKey(name))
     }
 
     companion object {
-        val DIR = File("/data/adb/thorctl")
+        val DATA_DIRECTORY = File("/data/adb/thorctl")
         const val MAX_TASKS = 16
         const val MAX_IMAGE_BYTES = 1_200_000L
         const val HOME_MAX_AGE_MS = 60_000L

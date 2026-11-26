@@ -28,6 +28,6 @@ class StoredLeds(
     )
 
     companion object {
-        fun of(s: LedState) = StoredLeds(s.enabled, s.mode.wire, s.left, s.right, s.sync, s.brightness, s.speed, s.offWhenAsleep)
+        fun of(state: LedState) = StoredLeds(state.enabled, state.mode.wire, state.left, state.right, state.sync, state.brightness, state.speed, state.offWhenAsleep)
     }
 }

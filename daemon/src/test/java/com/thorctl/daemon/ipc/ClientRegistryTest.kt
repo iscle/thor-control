@@ -19,38 +19,38 @@ class ClientRegistryTest {
     fun onlyTheAppCountsAsConnected() {
         registry.add(ClientBinder({}), 2000) // the debug CLI
         assertFalse(registry.appConnected)
-        val app = ClientBinder({})
-        registry.add(app, appUid)
+        val appClient = ClientBinder({})
+        registry.add(appClient, appUid)
         assertTrue(registry.appConnected)
-        registry.remove(app)
+        registry.remove(appClient)
         assertFalse(registry.appConnected)
     }
 
     @Test
     fun broadcastsReachEveryClientOnce() {
-        val a = mutableListOf<DaemonEvent>()
-        val b = mutableListOf<DaemonEvent>()
-        val app = ClientBinder(a::add)
-        registry.add(app, appUid)
-        registry.add(app, appUid) // registering again changes nothing
-        registry.add(ClientBinder(b::add), 0)
+        val appEvents = mutableListOf<DaemonEvent>()
+        val rootEvents = mutableListOf<DaemonEvent>()
+        val appClient = ClientBinder(appEvents::add)
+        registry.add(appClient, appUid)
+        registry.add(appClient, appUid) // registering again changes nothing
+        registry.add(ClientBinder(rootEvents::add), 0)
         registry.broadcast(DaemonEvent.MenuButton)
-        assertEquals(listOf<DaemonEvent>(DaemonEvent.MenuButton), a)
-        assertEquals(listOf<DaemonEvent>(DaemonEvent.MenuButton), b)
+        assertEquals(listOf<DaemonEvent>(DaemonEvent.MenuButton), appEvents)
+        assertEquals(listOf<DaemonEvent>(DaemonEvent.MenuButton), rootEvents)
     }
 
     @Test
     fun statsGoOnlyToSubscribers() {
-        val a = mutableListOf<DaemonEvent>()
-        val b = mutableListOf<DaemonEvent>()
-        val subscriber = ClientBinder(a::add)
+        val subscriberEvents = mutableListOf<DaemonEvent>()
+        val otherEvents = mutableListOf<DaemonEvent>()
+        val subscriber = ClientBinder(subscriberEvents::add)
         registry.add(subscriber, appUid)
-        registry.add(ClientBinder(b::add), 0)
+        registry.add(ClientBinder(otherEvents::add), 0)
         assertFalse(registry.hasStatsSubscribers)
         registry.setStats(subscriber, true)
         assertTrue(registry.hasStatsSubscribers)
         registry.broadcastStats(stats)
-        assertEquals(listOf<DaemonEvent>(DaemonEvent.StatsUpdated(stats)), a)
-        assertTrue(b.isEmpty())
+        assertEquals(listOf<DaemonEvent>(DaemonEvent.StatsUpdated(stats)), subscriberEvents)
+        assertTrue(otherEvents.isEmpty())
     }
 }

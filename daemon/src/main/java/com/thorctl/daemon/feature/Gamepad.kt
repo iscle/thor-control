@@ -36,7 +36,7 @@ import kotlin.concurrent.thread
  *    one waits for the host's next poll, so nothing queues up. A reader drains what the host
  *    sends (rumble), so the host never stalls on a full queue.
  *  - Bluetooth: the app owns the Bluetooth HID device registration (it needs a Context). Reports
- *    go to it over Binder, newest-wins and at most one per [BT_INTERVAL_MS], so the radio
+ *    go to it over Binder, newest-wins and at most one per [BLUETOOTH_INTERVAL_MS], so the radio
  *    never builds a backlog.
  *
  * While gamepad mode is on, Android must stay awake: the controller's driver cuts the
@@ -67,8 +67,8 @@ class Gamepad(
             if (id < 0) continue
             try {
                 system.userActivity(id)
-            } catch (e: Throwable) {
-                Timber.w(e, "gamepad: user activity on display $id failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "gamepad: user activity on display $id failed")
             }
         }
     }
@@ -100,11 +100,11 @@ class Gamepad(
     }
 
     @Synchronized
-    fun setTransport(t: GamepadTransport) {
-        if (t == state.transport) return
+    fun setTransport(transport: GamepadTransport) {
+        if (transport == state.transport) return
         val wasOn = state.on
         if (wasOn) stop()
-        state = state.copy(transport = t)
+        state = state.copy(transport = transport)
         if (wasOn) start()
         onChanged()
     }
@@ -130,11 +130,11 @@ class Gamepad(
         input.setPowerKeyHandler(::onPowerKey)
         if (state.transport == GamepadTransport.USB) {
             thread(name = "gamepad-usb-setup", isDaemon = true) {
-                val err = usbSetup()
+                val setupError = usbSetup()
                 synchronized(this) {
                     if (state.on && state.transport == GamepadTransport.USB) {
-                        if (err != null) state = state.copy(error = err)
-                        if (err == null) startUsbWriter()
+                        if (setupError != null) state = state.copy(error = setupError)
+                        if (setupError == null) startUsbWriter()
                         onChanged()
                     }
                 }
@@ -150,11 +150,11 @@ class Gamepad(
     }
 
     private fun stop() {
-        val t = state.transport
+        val transport = state.transport
         input.releaseGamepad()
         // Let the host see everything released before it goes away.
         submit(GamepadHid.neutral())
-        if (t == GamepadTransport.USB) {
+        if (transport == GamepadTransport.USB) {
             usbWriterOn = false
             synchronized(usbLock) { (usbLock as Object).notifyAll() }
             thread(name = "gamepad-usb-teardown", isDaemon = true) { usbTeardown() }
@@ -170,8 +170,8 @@ class Gamepad(
         if (!input.grabForGamepad(::onEvent)) Timber.w("gamepad: could not grab the controller")
         grabbedAt = SystemClock.elapsedRealtime()
         // Start from what is held right now.
-        val (keys, abs) = input.controllerSnapshot()
-        frame.load(keys, abs)
+        val (keys, axisValues) = input.controllerSnapshot()
+        frame.load(keys, axisValues)
         submit(frame.build())
     }
 
@@ -281,8 +281,8 @@ class Gamepad(
             InputWatcher.EV_KEY -> frame.key(code, value != 0)
             InputWatcher.EV_ABS -> frame.abs(code, value)
             InputWatcher.EV_SYN -> if (code == SYN_REPORT) {
-                val r = frame.build()
-                if (!r.contentEquals(lastSubmitted)) submit(r)
+                val report = frame.build()
+                if (!report.contentEquals(lastSubmitted)) submit(report)
             }
         }
     }
@@ -290,115 +290,115 @@ class Gamepad(
     @Volatile
     private var lastSubmitted = ByteArray(0)
 
-    private fun submit(r: ByteArray) {
-        lastSubmitted = r
+    private fun submit(report: ByteArray) {
+        lastSubmitted = report
         when (state.transport) {
             GamepadTransport.USB -> synchronized(usbLock) {
-                usbPending = r
+                usbPending = report
                 (usbLock as Object).notifyAll()
             }
-            else -> btSubmit(r)
+            else -> btSubmit(report)
         }
     }
 
     /** Controller state, folded from evdev events into the report layout of [GamepadHid]. */
     private class Frame {
         private val held = HashSet<Int>()
-        private var lx = 0
-        private var ly = 0
-        private var rx = 0
-        private var ry = 0
-        private var lt = 0
-        private var rt = 0
-        private var hx = 0
-        private var hy = 0
+        private var leftX = 0
+        private var leftY = 0
+        private var rightX = 0
+        private var rightY = 0
+        private var leftTrigger = 0
+        private var rightTrigger = 0
+        private var hatX = 0
+        private var hatY = 0
 
         fun reset() {
             held.clear()
-            lx = 0; ly = 0; rx = 0; ry = 0; lt = 0; rt = 0; hx = 0; hy = 0
+            leftX = 0; leftY = 0; rightX = 0; rightY = 0; leftTrigger = 0; rightTrigger = 0; hatX = 0; hatY = 0
         }
 
-        fun load(keys: Set<Int>, abs: IntArray) {
+        fun load(keys: Set<Int>, axisValues: IntArray) {
             reset()
             held += keys
-            lx = abs[ABS_X]; ly = abs[ABS_Y]; rx = abs[ABS_RX]; ry = abs[ABS_RY]
-            lt = abs[InputWatcher.ABS_Z]; rt = abs[InputWatcher.ABS_RZ]
-            hx = abs[InputWatcher.ABS_HAT0X]; hy = abs[InputWatcher.ABS_HAT0Y]
+            leftX = axisValues[ABS_X]; leftY = axisValues[ABS_Y]; rightX = axisValues[ABS_RX]; rightY = axisValues[ABS_RY]
+            leftTrigger = axisValues[InputWatcher.ABS_Z]; rightTrigger = axisValues[InputWatcher.ABS_RZ]
+            hatX = axisValues[InputWatcher.ABS_HAT0X]; hatY = axisValues[InputWatcher.ABS_HAT0Y]
         }
 
         fun key(code: Int, down: Boolean) {
             if (down) held += code else held -= code
         }
 
-        fun abs(code: Int, v: Int) {
+        fun abs(code: Int, value: Int) {
             when (code) {
-                ABS_X -> lx = v
-                ABS_Y -> ly = v
-                ABS_RX -> rx = v
-                ABS_RY -> ry = v
-                InputWatcher.ABS_Z -> lt = v
-                InputWatcher.ABS_RZ -> rt = v
-                InputWatcher.ABS_HAT0X -> hx = v
-                InputWatcher.ABS_HAT0Y -> hy = v
+                ABS_X -> leftX = value
+                ABS_Y -> leftY = value
+                ABS_RX -> rightX = value
+                ABS_RY -> rightY = value
+                InputWatcher.ABS_Z -> leftTrigger = value
+                InputWatcher.ABS_RZ -> rightTrigger = value
+                InputWatcher.ABS_HAT0X -> hatX = value
+                InputWatcher.ABS_HAT0Y -> hatY = value
             }
         }
 
         fun build(): ByteArray {
-            val l2 = trigger(lt)
-            val r2 = trigger(rt)
-            var b1 = 0
-            var b2 = 0
-            for (c in held) {
-                when (c) {
-                    InputWatcher.BTN_SOUTH -> b2 = b2 or GamepadHid.B2_A
-                    InputWatcher.BTN_EAST -> b2 = b2 or GamepadHid.B2_B
-                    InputWatcher.BTN_NORTH -> b2 = b2 or GamepadHid.B2_X
-                    InputWatcher.BTN_WEST -> b2 = b2 or GamepadHid.B2_Y
-                    InputWatcher.BTN_TL -> b2 = b2 or GamepadHid.B2_L1
-                    InputWatcher.BTN_TR -> b2 = b2 or GamepadHid.B2_R1
-                    BTN_THUMBL -> b2 = b2 or GamepadHid.B2_L3
-                    InputWatcher.BTN_THUMBR -> b1 = b1 or GamepadHid.B1_R3
-                    InputWatcher.BTN_TL2 -> b1 = b1 or GamepadHid.B1_L2
-                    InputWatcher.BTN_TR2 -> b1 = b1 or GamepadHid.B1_R2
-                    BTN_SELECT -> b1 = b1 or GamepadHid.B1_SELECT
-                    BTN_START -> b1 = b1 or GamepadHid.B1_START
-                    BTN_MODE, InputWatcher.KEY_HOME -> b1 = b1 or GamepadHid.B1_HOME
-                    InputWatcher.KEY_BACK -> b1 = b1 or GamepadHid.B1_CAPTURE
+            val leftTriggerLevel = trigger(leftTrigger)
+            val rightTriggerLevel = trigger(rightTrigger)
+            var buttonByte1 = 0
+            var buttonByte2 = 0
+            for (code in held) {
+                when (code) {
+                    InputWatcher.BTN_SOUTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_A
+                    InputWatcher.BTN_EAST -> buttonByte2 = buttonByte2 or GamepadHid.B2_B
+                    InputWatcher.BTN_NORTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_X
+                    InputWatcher.BTN_WEST -> buttonByte2 = buttonByte2 or GamepadHid.B2_Y
+                    InputWatcher.BTN_TL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L1
+                    InputWatcher.BTN_TR -> buttonByte2 = buttonByte2 or GamepadHid.B2_R1
+                    BTN_THUMBL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L3
+                    InputWatcher.BTN_THUMBR -> buttonByte1 = buttonByte1 or GamepadHid.B1_R3
+                    InputWatcher.BTN_TL2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_L2
+                    InputWatcher.BTN_TR2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_R2
+                    BTN_SELECT -> buttonByte1 = buttonByte1 or GamepadHid.B1_SELECT
+                    BTN_START -> buttonByte1 = buttonByte1 or GamepadHid.B1_START
+                    BTN_MODE, InputWatcher.KEY_HOME -> buttonByte1 = buttonByte1 or GamepadHid.B1_HOME
+                    InputWatcher.KEY_BACK -> buttonByte1 = buttonByte1 or GamepadHid.B1_CAPTURE
                 }
             }
             // The triggers' digital bits, as on the Stadia: pressed past half way.
-            if (l2 >= 128) b1 = b1 or GamepadHid.B1_L2
-            if (r2 >= 128) b1 = b1 or GamepadHid.B1_R2
+            if (leftTriggerLevel >= 128) buttonByte1 = buttonByte1 or GamepadHid.B1_L2
+            if (rightTriggerLevel >= 128) buttonByte1 = buttonByte1 or GamepadHid.B1_R2
             val hat = when {
-                hy < 0 && hx == 0 -> 0
-                hy < 0 && hx > 0 -> 1
-                hy == 0 && hx > 0 -> 2
-                hy > 0 && hx > 0 -> 3
-                hy > 0 && hx == 0 -> 4
-                hy > 0 && hx < 0 -> 5
-                hy == 0 && hx < 0 -> 6
-                hy < 0 && hx < 0 -> 7
+                hatY < 0 && hatX == 0 -> 0
+                hatY < 0 && hatX > 0 -> 1
+                hatY == 0 && hatX > 0 -> 2
+                hatY > 0 && hatX > 0 -> 3
+                hatY > 0 && hatX == 0 -> 4
+                hatY > 0 && hatX < 0 -> 5
+                hatY == 0 && hatX < 0 -> 6
+                hatY < 0 && hatX < 0 -> 7
                 else -> 8
             }
-            val b = ByteArray(GamepadHid.PAYLOAD)
-            b[0] = hat.toByte()
-            b[1] = b1.toByte()
-            b[2] = b2.toByte()
-            b[3] = stick(lx).toByte()
-            b[4] = stick(ly).toByte()
-            b[5] = stick(rx).toByte()
-            b[6] = stick(ry).toByte()
-            b[7] = l2.toByte()
-            b[8] = r2.toByte()
-            return b
+            val report = ByteArray(GamepadHid.PAYLOAD)
+            report[0] = hat.toByte()
+            report[1] = buttonByte1.toByte()
+            report[2] = buttonByte2.toByte()
+            report[3] = stick(leftX).toByte()
+            report[4] = stick(leftY).toByte()
+            report[5] = stick(rightX).toByte()
+            report[6] = stick(rightY).toByte()
+            report[7] = leftTriggerLevel.toByte()
+            report[8] = rightTriggerLevel.toByte()
+            return report
         }
 
         /** -32767..32767 (evdev) to 1..255 with 128 in the middle. */
-        private fun stick(v: Int): Int = ((v.coerceIn(-32767, 32767) + 32768) shr 8).coerceIn(1, 255)
+        private fun stick(value: Int): Int = ((value.coerceIn(-32767, 32767) + 32768) shr 8).coerceIn(1, 255)
 
         /** The analog triggers rest a few counts above 0; a small dead zone keeps them at 0. */
-        private fun trigger(v: Int): Int =
-            ((v - TRIGGER_DEAD) * 255 / (255 - TRIGGER_DEAD)).coerceIn(0, 255)
+        private fun trigger(value: Int): Int =
+            ((value - TRIGGER_DEAD) * 255 / (255 - TRIGGER_DEAD)).coerceIn(0, 255)
     }
 
     // ---- USB ----------------------------------------------------------------------------------
@@ -422,8 +422,8 @@ class Gamepad(
 
     /** Before the function goes away: the I/O threads have closed /dev/hidg0. */
     private fun joinUsbIo() {
-        val ts = synchronized(usbIo) { usbIo.toList().also { usbIo.clear() } }
-        ts.forEach { it.join(1000) }
+        val threads = synchronized(usbIo) { usbIo.toList().also { usbIo.clear() } }
+        threads.forEach { it.join(1000) }
     }
 
     /**
@@ -431,31 +431,31 @@ class Gamepad(
      * only once the previous one is read, so unread reports would leave the host waiting.
      */
     private fun usbReadLoop() {
-        val buf = ByteArray(64)
+        val buffer = ByteArray(64)
         while (usbWriterOn) {
-            val fd = try {
+            val fileDescriptor = try {
                 Os.open(HIDG, OsConstants.O_RDONLY or OsConstants.O_NONBLOCK, 0)
             } catch (_: Exception) {
                 Thread.sleep(300) // node not there yet
                 continue
             }
             try {
-                val p = StructPollfd().apply {
-                    this.fd = fd
+                val pollRequest = StructPollfd().apply {
+                    this.fd = fileDescriptor
                     events = OsConstants.POLLIN.toShort()
                 }
                 while (usbWriterOn) {
-                    p.revents = 0
-                    if (Os.poll(arrayOf(p), 250) <= 0) continue
-                    val ev = p.revents.toInt()
-                    if (ev and (OsConstants.POLLERR or OsConstants.POLLHUP) != 0) break
-                    if (ev and OsConstants.POLLIN != 0) Os.read(fd, buf, 0, buf.size)
+                    pollRequest.revents = 0
+                    if (Os.poll(arrayOf(pollRequest), 250) <= 0) continue
+                    val returnedEvents = pollRequest.revents.toInt()
+                    if (returnedEvents and (OsConstants.POLLERR or OsConstants.POLLHUP) != 0) break
+                    if (returnedEvents and OsConstants.POLLIN != 0) Os.read(fileDescriptor, buffer, 0, buffer.size)
                 }
             } catch (_: Exception) {
                 // Host gone or nothing to read after all: open again shortly.
             } finally {
                 try {
-                    Os.close(fd)
+                    Os.close(fileDescriptor)
                 } catch (_: Exception) {
                 }
             }
@@ -464,32 +464,32 @@ class Gamepad(
     }
 
     private fun usbWriteLoop() {
-        val frameBuf = ByteArray(1 + GamepadHid.PAYLOAD)
-        frameBuf[0] = GamepadHid.REPORT_ID.toByte()
+        val frameBytes = ByteArray(1 + GamepadHid.PAYLOAD)
+        frameBytes[0] = GamepadHid.REPORT_ID.toByte()
         while (usbWriterOn) {
-            val out = try {
+            val hidOutput = try {
                 FileOutputStream(HIDG)
             } catch (_: Exception) {
                 Thread.sleep(300) // node not there yet (the gadget is still binding)
                 continue
             }
-            out.use { o ->
+            hidOutput.use { output ->
                 // A fresh host: send the current state first.
                 var next: ByteArray? = lastSubmitted.takeIf { it.size == GamepadHid.PAYLOAD }
                 while (usbWriterOn) {
-                    val r = next ?: synchronized(usbLock) {
+                    val report = next ?: synchronized(usbLock) {
                         while (usbPending == null && usbWriterOn) (usbLock as Object).wait(1000)
                         usbPending.also { usbPending = null }
                     } ?: continue
                     next = null
-                    System.arraycopy(r, 0, frameBuf, 1, GamepadHid.PAYLOAD)
+                    System.arraycopy(report, 0, frameBytes, 1, GamepadHid.PAYLOAD)
                     try {
                         // Returns as soon as the report is queued; only blocks while the previous
                         // one is still waiting for the host's poll (newer reports replace usbPending).
-                        o.write(frameBuf)
+                        output.write(frameBytes)
                     } catch (_: Exception) {
                         // Not configured (no host) or the host went away: retry shortly.
-                        synchronized(usbLock) { if (usbPending == null) usbPending = r }
+                        synchronized(usbLock) { if (usbPending == null) usbPending = report }
                         Thread.sleep(250)
                         break
                     }
@@ -506,9 +506,9 @@ class Gamepad(
     private fun configDir(): File? = File("$GADGET/configs").listFiles()?.firstOrNull { it.isDirectory }
 
     private fun usbLinked(): Boolean {
-        val c = configDir() ?: return false
+        val configDirectory = configDir() ?: return false
         return try {
-            Os.readlink(File(c, LINK_NAME).path).isNotEmpty()
+            Os.readlink(File(configDirectory, LINK_NAME).path).isNotEmpty()
         } catch (_: Exception) {
             false
         }
@@ -517,17 +517,17 @@ class Gamepad(
     /** Adds the HID function to the gadget and rebinds it. Returns an error message or null. */
     private fun usbSetup(): String? {
         if (!File(GADGET).isDirectory) return "USB gadget not available"
-        val cfg = configDir() ?: return "USB gadget has no configuration"
+        val configDirectory = configDir() ?: return "USB gadget has no configuration"
         if (usbLinked()) return null
-        val fn = File(FUNCTION)
+        val functionDirectory = File(FUNCTION)
         try {
-            if (!fn.isDirectory && !fn.mkdir()) return "This kernel has no USB HID gadget support"
-            File(fn, "protocol").writeText("0")
-            File(fn, "subclass").writeText("0")
-            File(fn, "report_length").writeText((1 + GamepadHid.PAYLOAD).toString())
-            FileOutputStream(File(fn, "report_desc")).use { it.write(GamepadHid.DESCRIPTOR) }
-        } catch (e: Exception) {
-            Timber.w(e, "gamepad: HID function set-up failed")
+            if (!functionDirectory.isDirectory && !functionDirectory.mkdir()) return "This kernel has no USB HID gadget support"
+            File(functionDirectory, "protocol").writeText("0")
+            File(functionDirectory, "subclass").writeText("0")
+            File(functionDirectory, "report_length").writeText((1 + GamepadHid.PAYLOAD).toString())
+            FileOutputStream(File(functionDirectory, "report_desc")).use { it.write(GamepadHid.DESCRIPTOR) }
+        } catch (error: Exception) {
+            Timber.w(error, "gamepad: HID function set-up failed")
             return "USB HID set-up failed"
         }
         val udc = udcName()
@@ -537,30 +537,30 @@ class Gamepad(
         unbind()
         setGamepadIds()
         try {
-            Os.symlink(fn.path, File(cfg, LINK_NAME).path)
-        } catch (e: Exception) {
-            Timber.w(e, "gamepad: linking the HID function failed")
+            Os.symlink(functionDirectory.path, File(configDirectory, LINK_NAME).path)
+        } catch (error: Exception) {
+            Timber.w(error, "gamepad: linking the HID function failed")
             restoreIds()
             bind(udc)
             return "USB HID set-up failed"
         }
         bind(udc)
-        Timber.i("gamepad: USB HID function added (${cfg.name}, $udc)")
+        Timber.i("gamepad: USB HID function added (${configDirectory.name}, $udc)")
         return null
     }
 
     private fun usbTeardown() {
         joinUsbIo()
-        val cfg = configDir() ?: return
-        val link = File(cfg, LINK_NAME)
+        val configDirectory = configDir() ?: return
+        val link = File(configDirectory, LINK_NAME)
         val udc = udcName()
         if (usbLinked() || File(USB_IDS).exists()) {
             unbind()
             if (usbLinked()) {
                 try {
                     Os.remove(link.path)
-                } catch (e: Exception) {
-                    Timber.w(e, "gamepad: unlinking the HID function failed")
+                } catch (error: Exception) {
+                    Timber.w(error, "gamepad: unlinking the HID function failed")
                 }
             }
             restoreIds()
@@ -575,10 +575,10 @@ class Gamepad(
      * knows by ID. Android's own IDs are kept in [USB_IDS] (also across a daemon crash).
      */
     private fun setGamepadIds() {
-        val f = File(USB_IDS)
-        val cur = USB_ID_ATTRS.map { sys.read("$GADGET/$it") ?: "" }
-        val pid = cur[1].removePrefix("0x").toIntOrNull(16)
-        if (!f.exists() && pid != null && pid != GamepadHid.PRODUCT_ID) f.writeText(cur.joinToString("\n"))
+        val savedIdsFile = File(USB_IDS)
+        val currentIds = USB_ID_ATTRIBUTES.map { sys.read("$GADGET/$it") ?: "" }
+        val productId = currentIds[1].removePrefix("0x").toIntOrNull(16)
+        if (!savedIdsFile.exists() && productId != null && productId != GamepadHid.PRODUCT_ID) savedIdsFile.writeText(currentIds.joinToString("\n"))
         sys.write("$GADGET/idVendor", hex(GamepadHid.VENDOR_ID))
         sys.write("$GADGET/idProduct", hex(GamepadHid.PRODUCT_ID))
         sys.write("$GADGET/bcdDevice", hex(GamepadHid.VERSION))
@@ -586,19 +586,19 @@ class Gamepad(
 
     /** Android's IDs back (while unbound). */
     private fun restoreIds() {
-        val f = File(USB_IDS)
+        val savedIdsFile = File(USB_IDS)
         val saved = try {
-            f.readLines()
+            savedIdsFile.readLines()
         } catch (_: Exception) {
             return
         }
-        if (saved.size == USB_ID_ATTRS.size && saved.all { it.startsWith("0x") }) {
-            USB_ID_ATTRS.forEachIndexed { i, a -> sys.write("$GADGET/$a", saved[i]) }
+        if (saved.size == USB_ID_ATTRIBUTES.size && saved.all { it.startsWith("0x") }) {
+            USB_ID_ATTRIBUTES.forEachIndexed { index, attribute -> sys.write("$GADGET/$attribute", saved[index]) }
         }
-        f.delete()
+        savedIdsFile.delete()
     }
 
-    private fun hex(v: Int) = "0x%04x".format(v)
+    private fun hex(value: Int) = "0x%04x".format(value)
 
     private fun unbind() {
         sys.write("$GADGET/UDC", "\n")
@@ -617,23 +617,23 @@ class Gamepad(
 
     // ---- Bluetooth (sent through the app) -----------------------------------------------------
 
-    private val btLock = Any()
-    private var btPending: ByteArray? = null
-    private var btLast = 0L
-    private var btScheduled = false
+    private val bluetoothLock = Any()
+    private var bluetoothPending: ByteArray? = null
+    private var bluetoothLastSent = 0L
+    private var bluetoothScheduled = false
 
-    private fun btSubmit(r: ByteArray) {
-        synchronized(btLock) {
-            btPending = r
-            val wait = btLast + BT_INTERVAL_MS - SystemClock.uptimeMillis()
+    private fun btSubmit(report: ByteArray) {
+        synchronized(bluetoothLock) {
+            bluetoothPending = report
+            val wait = bluetoothLastSent + BLUETOOTH_INTERVAL_MS - SystemClock.uptimeMillis()
             if (wait <= 0) {
                 btFlushLocked()
-            } else if (!btScheduled) {
-                btScheduled = true
+            } else if (!bluetoothScheduled) {
+                bluetoothScheduled = true
                 thread(name = "gamepad-bt-tx", isDaemon = true) {
                     Thread.sleep(wait)
-                    synchronized(btLock) {
-                        btScheduled = false
+                    synchronized(bluetoothLock) {
+                        bluetoothScheduled = false
                         btFlushLocked()
                     }
                 }
@@ -642,10 +642,10 @@ class Gamepad(
     }
 
     private fun btFlushLocked() {
-        val r = btPending ?: return
-        btPending = null
-        btLast = SystemClock.uptimeMillis()
-        link.broadcast(DaemonEvent.GamepadReport(r))
+        val report = bluetoothPending ?: return
+        bluetoothPending = null
+        bluetoothLastSent = SystemClock.uptimeMillis()
+        link.broadcast(DaemonEvent.GamepadReport(report))
     }
 
     // ---- Wakelock -----------------------------------------------------------------------------
@@ -666,7 +666,7 @@ class Gamepad(
 
         /** Android's USB IDs while the gadget has the gamepad's. */
         const val USB_IDS = "/data/adb/thorctl/usb-ids"
-        val USB_ID_ATTRS = listOf("idVendor", "idProduct", "bcdDevice")
+        val USB_ID_ATTRIBUTES = listOf("idVendor", "idProduct", "bcdDevice")
 
         const val SYN_REPORT = 0
         const val ABS_X = 0x00
@@ -680,7 +680,7 @@ class Gamepad(
         const val TRIGGER_DEAD = 10
 
         /** 125 reports a second at most over Bluetooth, the newest always wins. */
-        const val BT_INTERVAL_MS = 8L
+        const val BLUETOOTH_INTERVAL_MS = 8L
 
         const val WAKELOCK = "thorctl_gamepad"
 

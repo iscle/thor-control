@@ -18,9 +18,9 @@ class LedColorsTest {
     @Test
     fun findsBothSticksLeds() {
         val sys = FakeSys().apply {
-            for (i in 0..3) {
-                this["/sys/class/leds/left:stick:$i/brightness"] = 0
-                this["/sys/class/leds/right:stick:$i/brightness"] = 0
+            for (ledIndex in 0..3) {
+                this["/sys/class/leds/left:stick:$ledIndex/brightness"] = 0
+                this["/sys/class/leds/right:stick:$ledIndex/brightness"] = 0
             }
             this["/sys/class/leds/lcd-backlight/brightness"] = 0
         }

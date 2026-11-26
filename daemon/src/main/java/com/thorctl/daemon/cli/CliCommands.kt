@@ -33,31 +33,31 @@ object CliCommands {
     /** Null if the words don't make a command. [state] is the daemon's, for commands that change part of it. */
     fun parse(words: List<String>, state: DaemonState?): CliRequest? {
         val name = words.firstOrNull() ?: return null
-        val arg = words.getOrNull(1)
-        fun onOff(): Boolean? = when (arg) {
+        val argument = words.getOrNull(1)
+        fun onOff(): Boolean? = when (argument) {
             "on" -> true
             "off" -> false
             else -> null
         }
-        fun send(c: DaemonCommand?) = c?.let { CliRequest.Send(it) }
+        fun send(command: DaemonCommand?) = command?.let { CliRequest.Send(it) }
         return when (name) {
             "state" -> CliRequest.State
             "stats" -> CliRequest.Stats
-            "fan" -> send(arg?.let { DaemonCommand.SetFanProfile(it) })
-            "fan-delete" -> send(arg?.let { DaemonCommand.DeleteFanProfile(it) })
+            "fan" -> send(argument?.let { DaemonCommand.SetFanProfile(it) })
+            "fan-delete" -> send(argument?.let { DaemonCommand.DeleteFanProfile(it) })
             "brightness" -> {
-                val screen = Screen.fromWire(arg)
+                val screen = Screen.fromWire(argument)
                 val value = words.getOrNull(2)?.toFloatOrNull()?.takeIf { it in 0f..1f }
                 send(if (screen != null && value != null) DaemonCommand.SetBrightness(screen, value, final = true) else null)
             }
-            "controller" -> send(ControllerTarget.fromWire(arg)?.let { DaemonCommand.SetController(it) })
-            "move" -> send(Screen.fromWire(arg)?.let { DaemonCommand.MoveApp(it) })
+            "controller" -> send(ControllerTarget.fromWire(argument)?.let { DaemonCommand.SetController(it) })
+            "move" -> send(Screen.fromWire(argument)?.let { DaemonCommand.MoveApp(it) })
             "bottom-power" -> send(onOff()?.let { DaemonCommand.SetBottomPower(it) })
             "game" -> send(onOff()?.let { DaemonCommand.SetGameMode(it) })
             "keep-accessibility" -> send(onOff()?.let { DaemonCommand.SetKeepAccessibility(it) })
             "leds" -> {
                 val leds = state?.leds ?: return null
-                val mode = LedMode.fromWire(arg)
+                val mode = LedMode.fromWire(argument)
                 send(
                     when {
                         mode != null -> DaemonCommand.SetLeds(leds.copy(mode = mode, enabled = true))
@@ -67,7 +67,7 @@ object CliCommands {
                 )
             }
             "gamepad" -> send(onOff()?.let { DaemonCommand.SetGamepad(it) })
-            "gamepad-transport" -> send(GamepadTransport.fromWire(arg)?.let { DaemonCommand.SetGamepadTransport(it) })
+            "gamepad-transport" -> send(GamepadTransport.fromWire(argument)?.let { DaemonCommand.SetGamepadTransport(it) })
             "gamepad-screens-off" -> send(onOff()?.let { DaemonCommand.SetGamepadScreensOff(it) })
             "recents-close" -> send(DaemonCommand.RecentsClose)
             else -> null

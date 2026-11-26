@@ -15,6 +15,6 @@ class StoredFanProfile(
     fun toModel() = FanProfile(id, name, points.filter { it.size >= 2 }.map { FanPoint(it[0], it[1]) })
 
     companion object {
-        fun of(p: FanProfile) = StoredFanProfile(p.id, p.name, p.points.map { listOf(it.temp, it.percent) })
+        fun of(profile: FanProfile) = StoredFanProfile(profile.id, profile.name, profile.points.map { listOf(it.temp, it.percent) })
     }
 }
