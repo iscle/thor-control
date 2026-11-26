@@ -3,6 +3,7 @@ package com.thorctl.daemon.hardware
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
+import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
@@ -21,7 +22,7 @@ class InputRouterTest {
         ),
     )
     private val inputService = FakeInputService()
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
     private val router = InputRouter(displays, inputService)
 
     @Test

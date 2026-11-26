@@ -3,9 +3,9 @@ package com.thorctl.daemon.hardware
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
+import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
-import com.thorctl.daemon.system.FakeInputService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -114,7 +114,7 @@ class BottomPanelHealerTest {
 
     @Test
     fun healsThroughTheDisplayController() {
-        val displays = DisplayController(displayService, FakeInputService(), healer).apply { refresh() }
+        val displays = DisplayController(displayService, FakeTouchscreens(), healer).apply { refresh() }
         repeat(2) { displays.healBottomPanel() }
         assertEquals(1, powerCycles)
     }

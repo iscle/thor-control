@@ -67,7 +67,6 @@ class Daemon(
         displays.refresh()
         game.init(config.gameOptions)
         gamepad.init(config.gamepadTransport, config.gamepadScreensOff)
-        displays.setBottomTouch(true) // never leave touch disabled from a previous crash
         leds.apply(config.leds)
         leds.start()
         router.apply(config.controller)

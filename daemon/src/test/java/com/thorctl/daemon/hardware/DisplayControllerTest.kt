@@ -3,11 +3,10 @@ package com.thorctl.daemon.hardware
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
+import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
-import com.thorctl.daemon.system.FakeInputService
-import com.thorctl.daemon.system.InputDeviceInfo
 import com.thorctl.protocol.model.Screen
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,13 +16,8 @@ import kotlin.test.assertTrue
 class DisplayControllerTest {
     private val external = DisplayInfo(5, "virtual:cast", type = 3, width = 3840, height = 2160, state = DisplayController.STATE_ON)
     private val displayService = FakeDisplayService(listOf(external, ThorDisplays.BOTTOM, ThorDisplays.TOP))
-    private val inputService = FakeInputService(
-        listOf(
-            InputDeviceInfo(TOP_TOUCH, DisplayController.TOP_TOUCH_NAME, "top", isExternal = false, isGamepad = false),
-            InputDeviceInfo(BOTTOM_TOUCH, DisplayController.BOTTOM_TOUCH_NAME, "bottom", isExternal = false, isGamepad = false),
-        ),
-    )
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+    private val touchscreens = FakeTouchscreens()
+    private val displays = DisplayController(displayService, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
 
     @Test
     fun aDeadDisplayManagerChangesNothing() {
@@ -36,7 +30,7 @@ class DisplayControllerTest {
             override fun requestDisplayPower(displayId: Int, state: Int): Boolean =
                 if (dead) throw ReflectiveOperationException("gone") else displayService.requestDisplayPower(displayId, state)
         }
-        val displays = DisplayController(flaky, inputService, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())))
+        val displays = DisplayController(flaky, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())))
         displays.refresh()
         dead = true
 
@@ -46,7 +40,7 @@ class DisplayControllerTest {
         assertEquals(0f, displays.getBrightness(Screen.TOP))
         assertFalse(displays.setBottomPower(false))
         assertFalse(displays.bottomForcedOff)
-        assertTrue(inputService.disabledDevices.isEmpty())
+        assertTrue(touchscreens.disabled.isEmpty())
     }
 
     @Test
@@ -113,11 +107,11 @@ class DisplayControllerTest {
         assertTrue(displays.setBottomPower(false))
         assertTrue(displays.bottomForcedOff)
         assertFalse(displays.bottomOn)
-        assertEquals(setOf(BOTTOM_TOUCH), inputService.disabledDevices)
+        assertEquals(setOf(BOTTOM_TOUCH), touchscreens.disabled)
 
         assertTrue(displays.setBottomPower(true))
         assertTrue(displays.bottomOn)
-        assertTrue(inputService.disabledDevices.isEmpty())
+        assertTrue(touchscreens.disabled.isEmpty())
         assertEquals(
             listOf(ThorDisplays.BOTTOM.id to DisplayController.STATE_OFF, ThorDisplays.BOTTOM.id to DisplayController.STATE_UNKNOWN),
             displayService.powerRequests,
@@ -150,7 +144,7 @@ class DisplayControllerTest {
         displays.setGamepadDark(true)
         assertTrue(displays.gamepadDark)
         assertEquals(listOf(ThorDisplays.TOP.id to DisplayController.STATE_OFF), displayService.powerRequests)
-        assertEquals(setOf(TOP_TOUCH, BOTTOM_TOUCH), inputService.disabledDevices)
+        assertEquals(setOf(TOP_TOUCH, BOTTOM_TOUCH), touchscreens.disabled)
 
         displayService.powerRequests.clear()
         displays.reassertOverrides()
@@ -159,7 +153,7 @@ class DisplayControllerTest {
         displayService.powerRequests.clear()
         displays.setGamepadDark(false)
         assertEquals(listOf(ThorDisplays.TOP.id to DisplayController.STATE_UNKNOWN), displayService.powerRequests)
-        assertTrue(inputService.disabledDevices.isEmpty())
+        assertTrue(touchscreens.disabled.isEmpty())
     }
 
     @Test
@@ -184,11 +178,11 @@ class DisplayControllerTest {
             listOf(ThorDisplays.TOP.id to DisplayController.STATE_UNKNOWN, ThorDisplays.BOTTOM.id to DisplayController.STATE_OFF),
             displayService.powerRequests,
         )
-        assertEquals(setOf(BOTTOM_TOUCH), inputService.disabledDevices)
+        assertEquals(setOf(BOTTOM_TOUCH), touchscreens.disabled)
     }
 
     private companion object {
-        const val TOP_TOUCH = 3
-        const val BOTTOM_TOUCH = 4
+        const val TOP_TOUCH = DisplayController.TOP_TOUCH_NAME
+        const val BOTTOM_TOUCH = DisplayController.BOTTOM_TOUCH_NAME
     }
 }

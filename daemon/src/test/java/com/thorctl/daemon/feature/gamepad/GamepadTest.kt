@@ -9,6 +9,7 @@ import com.thorctl.daemon.hardware.BottomPanelHealer
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.daemon.hardware.input.FakeEvdev
+import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.hardware.input.TestInputDevices
 import com.thorctl.daemon.hardware.input.TestInputWatcher
 import com.thorctl.daemon.ipc.FakeClientLink
@@ -19,13 +20,13 @@ import com.thorctl.daemon.system.FakePowerService
 import com.thorctl.protocol.GamepadHid
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.GamepadTransport
-import org.junit.After
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.After
 
 /** The coordinator over fakes: Bluetooth to the app, USB through a fake gadget and /dev/hidg0. */
 class GamepadTest {
@@ -37,7 +38,7 @@ class GamepadTest {
     private val inputService = FakeInputService()
     private val powerService = FakePowerService()
     private val displayService = FakeDisplayService()
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(sys, clock, displayService, FakeScheduledExecutor(clock)))
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, clock, displayService, FakeScheduledExecutor(clock)))
     private val gadget = FakeUsbGadget()
     private val hidg = FakeHidgNode()
     private val usb = UsbHidEndpoint(hidg)

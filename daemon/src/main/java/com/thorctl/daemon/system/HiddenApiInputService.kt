@@ -38,10 +38,6 @@ class HiddenApiInputService : InputService {
         service.removeUniqueIdAssociationByDescriptor(descriptor)
     }
 
-    override fun setDeviceEnabled(deviceId: Int, enabled: Boolean) {
-        service.setInputDeviceEnabled(deviceId, enabled)
-    }
-
     override fun injectKey(keyCode: Int, displayId: Int) {
         val now = SystemClock.uptimeMillis()
         for (action in intArrayOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {

@@ -23,7 +23,7 @@ class HomeButtonTest {
     private val recentsExecutor = FakeScheduledExecutor(clock)
     private val captureExecutor = FakeScheduledExecutor(clock)
     private val inputService = FakeInputService()
-    private val displays = ScreenshotTestDisplays.create(inputService)
+    private val displays = ScreenshotTestDisplays.create()
     private val link = FakeClientLink()
     private val taskService = FakeTaskService()
     private val capturer = FakeScreenCapturer()

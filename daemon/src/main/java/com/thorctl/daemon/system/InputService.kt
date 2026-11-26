@@ -10,8 +10,6 @@ interface InputService {
     /** Lets the device with [descriptor] follow the focused display again. */
     fun removeAssociation(descriptor: String)
 
-    fun setDeviceEnabled(deviceId: Int, enabled: Boolean)
-
     /** Injects a key press (down + up) as the system would; at one display if [displayId] >= 0. */
     fun injectKey(keyCode: Int, displayId: Int = -1)
 }

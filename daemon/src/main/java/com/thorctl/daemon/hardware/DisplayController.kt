@@ -1,8 +1,8 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.di.DaemonScope
+import com.thorctl.daemon.hardware.input.Touchscreens
 import com.thorctl.daemon.system.DisplayService
-import com.thorctl.daemon.system.InputService
 import com.thorctl.protocol.model.Screen
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -20,7 +20,7 @@ import timber.log.Timber
 @SingleIn(DaemonScope::class)
 class DisplayController(
     private val displayService: DisplayService,
-    private val inputService: InputService,
+    private val touchscreens: Touchscreens,
     private val panelHealer: BottomPanelHealer,
 ) {
     @Volatile
@@ -154,7 +154,7 @@ class DisplayController(
         } catch (e: ReflectiveOperationException) {
             Timber.w(e, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
         }
-        setTouch(TOP_TOUCH_NAME, !dark)
+        touchscreens.setEnabled(TOP_TOUCH_NAME, !dark)
         setBottomTouch(!dark && !bottomForcedOff)
         Timber.i("gamepad screens ${if (dark) "dark (top off, bottom black)" else "back on"}")
     }
@@ -166,17 +166,7 @@ class DisplayController(
     fun healBottomPanel() = panelHealer.heal(bottomId, bottomForcedOff)
 
     /** Ignore touches on the dark panel so nothing invisible gets tapped. */
-    fun setBottomTouch(enabled: Boolean) = setTouch(BOTTOM_TOUCH_NAME, enabled)
-
-    private fun setTouch(name: String, enabled: Boolean) {
-        try {
-            inputService.devices()
-                .filter { it.name == name }
-                .forEach { inputService.setDeviceEnabled(it.id, enabled) }
-        } catch (e: ReflectiveOperationException) {
-            Timber.w(e, "toggle touch ($name) failed")
-        }
-    }
+    private fun setBottomTouch(enabled: Boolean) = touchscreens.setEnabled(BOTTOM_TOUCH_NAME, enabled)
 
     companion object {
         const val TYPE_INTERNAL = 1

@@ -2,7 +2,6 @@ package com.thorctl.daemon.system
 
 class FakeInputService(var devices: List<InputDeviceInfo> = emptyList()) : InputService {
     val associations = HashMap<String, String>()
-    val disabledDevices = HashSet<Int>()
 
     /** (keyCode, displayId) of every injected key press, in order. */
     val injectedKeys = mutableListOf<Pair<Int, Int>>()
@@ -15,10 +14,6 @@ class FakeInputService(var devices: List<InputDeviceInfo> = emptyList()) : Input
 
     override fun removeAssociation(descriptor: String) {
         associations -= descriptor
-    }
-
-    override fun setDeviceEnabled(deviceId: Int, enabled: Boolean) {
-        if (enabled) disabledDevices -= deviceId else disabledDevices += deviceId
     }
 
     override fun injectKey(keyCode: Int, displayId: Int) {

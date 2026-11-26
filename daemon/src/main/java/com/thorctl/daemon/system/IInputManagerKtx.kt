@@ -10,8 +10,6 @@ private val getInputDeviceIdsMethod: Method by lazy { inputManager.method("getIn
 private val getInputDeviceMethod: Method by lazy { inputManager.method("getInputDevice", 1) }
 private val addAssociationMethod: Method by lazy { inputManager.method("addUniqueIdAssociationByDescriptor", 2) }
 private val removeAssociationMethod: Method by lazy { inputManager.method("removeUniqueIdAssociationByDescriptor", 1) }
-private val enableInputDeviceMethod: Method by lazy { inputManager.method("enableInputDevice", 1) }
-private val disableInputDeviceMethod: Method by lazy { inputManager.method("disableInputDevice", 1) }
 private val injectInputEventMethod: Method by lazy { inputManager.method("injectInputEvent", 2) }
 
 internal fun SystemServiceProxy.getInputDeviceIds(): IntArray = call(getInputDeviceIdsMethod) as IntArray
@@ -24,10 +22,6 @@ internal fun SystemServiceProxy.addUniqueIdAssociationByDescriptor(descriptor: S
 
 internal fun SystemServiceProxy.removeUniqueIdAssociationByDescriptor(descriptor: String) {
     call(removeAssociationMethod, descriptor)
-}
-
-internal fun SystemServiceProxy.setInputDeviceEnabled(deviceId: Int, enabled: Boolean) {
-    call(if (enabled) enableInputDeviceMethod else disableInputDeviceMethod, deviceId)
 }
 
 /** [mode]: an InputManager.INJECT_INPUT_EVENT_MODE_* value. */

@@ -6,6 +6,7 @@ import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.hardware.BottomPanelHealer
 import com.thorctl.daemon.hardware.DisplayController
+import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
@@ -23,7 +24,7 @@ class AwakeKeeperTest {
     private val displayService = FakeDisplayService()
     private val inputService = FakeInputService()
     private val powerService = FakePowerService()
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(sys, FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
+    private val displays = DisplayController(displayService, FakeTouchscreens(), BottomPanelHealer(sys, FakeClock(), displayService, FakeScheduledExecutor(FakeClock())))
     private val awake = AwakeKeeper(displays, powerService, inputService, sys)
 
     @Test
