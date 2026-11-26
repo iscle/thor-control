@@ -7,11 +7,7 @@ import java.lang.reflect.Field
 private val displayIdField: Field? by lazy { TaskInfo::class.java.declaredFieldOrNull("displayId") }
 private val topActivityTypeField: Field? by lazy { TaskInfo::class.java.declaredFieldOrNull("topActivityType") }
 private val rootTaskVisibleField: Field? by lazy {
-    try {
-        Class.forName("android.app.ActivityTaskManager\$RootTaskInfo").declaredFieldOrNull("visible")
-    } catch (_: ClassNotFoundException) {
-        null
-    }
+    classOrNull("android.app.ActivityTaskManager\$RootTaskInfo")?.declaredFieldOrNull("visible")
 }
 
 /** The display the task is on; -1 if unknown (or, for a recent task, not running). */

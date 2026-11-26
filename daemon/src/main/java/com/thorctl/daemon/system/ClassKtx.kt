@@ -16,3 +16,10 @@ internal fun Class<*>.declaredFieldOrNull(name: String): Field? = try {
 } catch (_: NoSuchFieldException) {
     null
 }
+
+/** The class named [name], or null if this release has none. */
+internal fun classOrNull(name: String): Class<*>? = try {
+    Class.forName(name)
+} catch (_: ClassNotFoundException) {
+    null
+}
