@@ -8,6 +8,6 @@ interface InputWorker {
     /** Runs [block] on the worker; a failure is logged, never thrown. */
     fun post(block: () -> Unit)
 
-    /** Runs [block] on the worker after [delayMs] unless cancelled first. A failure there is swallowed, not logged. */
+    /** Runs [block] on the worker after [delayMs] unless cancelled first; a failure is logged, never thrown. */
     fun schedule(delayMs: Long, block: () -> Unit): Cancellable
 }

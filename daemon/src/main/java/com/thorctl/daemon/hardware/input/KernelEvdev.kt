@@ -1,14 +1,19 @@
 package com.thorctl.daemon.hardware.input
 
+import android.system.ErrnoException
 import com.thorctl.daemon.di.DaemonScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/** [Evdev] on the real /dev/input nodes: struct input_event over plain file streams, ioctls for grab and switches. */
+/**
+ * [Evdev] on the real /dev/input nodes: struct input_event over plain file streams, ioctls for
+ * grab and switches. Ioctl failures are reported as [IOException] like the stream ones.
+ */
 @Inject
 @ContributesBinding(DaemonScope::class)
 class KernelEvdev : Evdev {
@@ -38,12 +43,20 @@ class KernelEvdev : Evdev {
         }
 
         override fun grab() {
-            ioctlInt(stream.fd, EVIOCGRAB)
+            ioctl(EVIOCGRAB)
         }
 
-        override fun switches(): Int = ioctlInt(stream.fd, EVIOCGSW_4)
+        override fun switches(): Int = ioctl(EVIOCGSW_4)
 
         override fun close() = stream.close()
+
+        private fun ioctl(request: Int): Int = try {
+            ioctlInt(stream.fd, request)
+        } catch (e: ErrnoException) {
+            throw IOException("ioctl 0x${request.toUInt().toString(16)} failed", e)
+        } catch (e: ReflectiveOperationException) {
+            throw IOException("Os.ioctlInt unavailable", e)
+        }
     }
 
     private companion object {

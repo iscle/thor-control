@@ -25,6 +25,7 @@ class HomeButton(
                     down = true
                     longFired = false
                     if (homeRemapped) worker.post { listener.onHomeDown() }
+                    // Runs on the worker, which logs a listener failure like for posted calls.
                     longPress = worker.schedule(LONG_HOME_MS) {
                         val fire = synchronized(lock) {
                             if (down) longFired = true

@@ -20,6 +20,11 @@ class FakeEvdevDevice(val path: String, private val failGrab: Boolean = false, p
     var closed = false
         private set
 
+    /** A [readEvents] call has returned or thrown. */
+    @Volatile
+    var readerDone = false
+        private set
+
     fun send(type: Int, code: Int, value: Int) {
         val handled = CountDownLatch(1)
         queue.put(Item(type, code, value, handled))
@@ -30,15 +35,19 @@ class FakeEvdevDevice(val path: String, private val failGrab: Boolean = false, p
     fun disconnect() = queue.put(END)
 
     override fun readEvents(onEvent: EventHandler) {
-        while (true) {
-            val item = queue.take()
-            if (item === END) return
-            if (item === CLOSED) throw IOException("closed")
-            try {
-                onEvent(item.type, item.code, item.value)
-            } finally {
-                item.handled?.countDown()
+        try {
+            while (true) {
+                val item = queue.take()
+                if (item === END) return
+                if (item === CLOSED) throw IOException("closed")
+                try {
+                    onEvent(item.type, item.code, item.value)
+                } finally {
+                    item.handled?.countDown()
+                }
             }
+        } finally {
+            readerDone = true
         }
     }
 

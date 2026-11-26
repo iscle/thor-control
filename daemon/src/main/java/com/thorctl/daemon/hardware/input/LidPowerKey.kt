@@ -7,6 +7,7 @@ import com.thorctl.daemon.hardware.input.EvdevCodes.SW_LID
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
+import java.io.IOException
 import kotlin.concurrent.thread
 
 /**
@@ -69,7 +70,7 @@ class LidPowerKey(
     /** Current lid switch state through EVIOCGSW, or null if it can't be read. */
     private fun lidClosedNow(device: EvdevDevice): Boolean? = try {
         (device.switches() and (1 shl SW_LID)) != 0
-    } catch (e: Throwable) {
+    } catch (e: IOException) {
         Timber.w(e, "reading the lid switch failed")
         null
     }
@@ -78,10 +79,7 @@ class LidPowerKey(
         val want = lidClosed || powerHandler != null
         if (want == (powerGrab != null)) return
         if (!want) {
-            try {
-                powerGrab?.close()
-            } catch (_: Exception) {
-            }
+            powerGrab?.closeQuietly()
             powerGrab = null
             Timber.i("power button back to normal")
             return
@@ -91,21 +89,38 @@ class LidPowerKey(
             Timber.w("power button input node not found")
             return
         }
-        val device = try {
-            // Note: a node opened here whose grab fails is not closed.
-            evdev.open(node).also { it.grab() }
-        } catch (e: Throwable) {
-            Timber.w(e, "grabbing the power button failed")
-            return
-        }
+        val device = grab(node) ?: return
         powerGrab = device
         Timber.i("power button grabbed ($node)")
-        thread(name = "pwrkey", isDaemon = true) {
-            try {
-                device.readEvents(::onPowerEvent)
-            } catch (_: Exception) {
-                // closed when neither needs it any more
-            }
+        thread(name = "pwrkey", isDaemon = true) { read(device) }
+    }
+
+    /** The power button node, opened and grabbed; null (and nothing left open) if that fails. */
+    private fun grab(node: String): EvdevDevice? {
+        val device = try {
+            evdev.open(node)
+        } catch (e: IOException) {
+            Timber.w(e, "grabbing the power button failed")
+            return null
+        }
+        try {
+            device.grab()
+        } catch (e: IOException) {
+            Timber.w(e, "grabbing the power button failed")
+            device.closeQuietly()
+            return null
+        }
+        return device
+    }
+
+    private fun read(device: EvdevDevice) {
+        try {
+            device.readEvents(::onPowerEvent)
+        } catch (_: IOException) {
+            // closed when neither needs it any more
+        } catch (e: RuntimeException) {
+            // Thread boundary: an exception escaping the reader would make app_process kill the daemon.
+            Timber.e(e, "power button reader failed")
         }
     }
 }

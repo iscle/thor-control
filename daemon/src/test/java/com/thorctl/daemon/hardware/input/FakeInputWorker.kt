@@ -10,11 +10,15 @@ class FakeInputWorker : InputWorker {
     private var now = 0L
     private val pending = ArrayList<Task>()
 
+    /** Cancelling comes too late from now on, as when the task had already started running. */
+    @Volatile
+    var cancelTooLate = false
+
     override fun post(block: () -> Unit) = block()
 
     override fun schedule(delayMs: Long, block: () -> Unit): Cancellable {
         val task = synchronized(this) { Task(now + delayMs, block).also { pending += it } }
-        return Cancellable { task.cancelled = true }
+        return Cancellable { if (!cancelTooLate) task.cancelled = true }
     }
 
     /** Moves time on by [ms], running the delayed work that comes due and wasn't cancelled. */
