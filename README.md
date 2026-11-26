@@ -4,7 +4,7 @@
   <b>Make the AYN Thor feel like it was built for LineageOS.</b><br>
   One Magisk module for the Thor on LineageOS 24 (Android 17): a quick menu on the bottom screen,
   fan curves, brightness per screen, controller routing, game mode, a new recent apps screen and
-  a dual-screen keyboard. And about 400 MB more free memory.
+  a dual-screen keyboard.
 </p>
 
 <p align="center">
@@ -25,9 +25,8 @@
 
 LineageOS on the Thor is great, but it treats the second screen and the built-in controller as an
 afterthought: no fan control, both screens share one brightness, the controller goes wherever it
-likes, the bottom screen has a status bar you can't use, and the system keeps hundreds of
-megabytes of memory locked away from your games. Thor Control fixes all of that, and puts the
-controls one button press away.
+likes, and the bottom screen has a status bar you can't use. Thor Control fixes all of that, and
+puts the controls one button press away.
 
 ## What you get
 
@@ -107,22 +106,14 @@ the bottom of the top screen instead, since the bottom screen is off to the side
 </p>
 <p align="center"><img src="docs/images/keyboard-accents.png" width="620" alt="Holding e shows its accents"></p>
 
-### A leaner system
-
-About 400 MB of extra free memory, without losing anything you use: Android stops locking files in
-memory, Trebuchet is switched off by default when another launcher is available,
-services for hardware the Thor doesn't have are stopped, and swap compresses better. The
-[details](docs/HOW-IT-WORKS.md#memory) are in How it works.
-
 ### And a few fixes
 
-* The bottom screen has no status bar or notification shade, and the top screen no navigation
-  bar by default. The hardware Home and Back buttons do that job, so apps get the full height.
+* The bottom screen has no status bar or notification shade, so apps there get the full height.
 * Auto-rotate works the right way round (LineageOS had the motion sensors 90° off).
-* Cocoon shows LineageOS's Browser and Gallery in "All apps".
 * If the bottom screen boots up dark, Thor Control wakes it.
 * With the lid closed, the power button does nothing, so the Thor can't wake up in a bag.
 * Stick lights: solid, breathing or rainbow, per stick or both, any colour.
+* Swap compresses better (zstd), so more fits in it.
 
 ---
 
@@ -144,14 +135,12 @@ services for hardware the Thor doesn't have are stopped, and swap compresses bet
    ```
 
 Everything else happens on its own: the menu's accessibility service is switched on at every boot,
-the memory savings are applied on every boot, and the app shows up as **Thor Control** in your
-launcher.
+and the app shows up as **Thor Control** in your launcher.
 
 **Updating:** install the new zip the same way and reboot. Your settings are kept.
 
 **Removing:** in Magisk, remove the module (or switch it off) and reboot. The fan goes back to
-LineageOS right away, and Trebuchet and the stopped services come back. The navigation bar
-returns after the reboot.
+LineageOS right away, and swap goes back to Android's own compression.
 
 ## How-to
 
@@ -303,11 +292,6 @@ back within a few seconds if Android rebuilt it. Some consoles only accept their
 It remembers the Thor's IDs from when the two were first paired, and Thor Control versions up to
 2.1 used different ones. Remove "Thor" from that device's Bluetooth settings, then pair again with
 **Pair a new device**.
-
-**I miss swipe navigation.** In Magisk, open Modules and tap **Action** on the Thor Control card
-to toggle **top-screen swipe navigation**, then reboot. The option keeps Trebuchet available for
-Android's swipe-up Recents. Tap Action again and reboot to restore Thor Control's default navigation.
-Use Android's gesture navigation mode for swipe gestures.
 
 **Where are the logs and settings?** `/data/adb/thorctl/daemon.log`, `logcat -s thorctld` and
 `/data/adb/thorctl/config.json`.

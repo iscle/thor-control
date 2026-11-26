@@ -45,6 +45,9 @@ interface Sys {
     /** System property value ("" if unset), without spawning getprop. */
     fun prop(name: String): String
 
+    /** Sets a system property; false if the system refused. */
+    fun setProp(name: String, value: String): Boolean
+
     /** Runs a shell command as the daemon (root). Returns stdout, or null on failure/timeout. */
     fun sh(command: String, timeoutMs: Long = 5000): String?
 }

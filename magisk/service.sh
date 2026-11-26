@@ -27,15 +27,12 @@ esac
 # Thor Keyboard stays available in the keyboard list (choosing it as the keyboard is up to you).
 ime enable $PKG/.app.ThorKeyboard >/dev/null 2>&1
 
-# Cocoon only lists LineageOS apps once they are "updated" system apps (see unhide-apps.sh).
-sh "$MODDIR/unhide-apps.sh" >> "$LOG" 2>&1 &
-
-# Memory savings: unused services stopped, Trebuchet off, zstd swap (see system-tweaks.sh).
+# zstd swap (see system-tweaks.sh).
 sh "$MODDIR/system-tweaks.sh" apply >> "$LOG" 2>&1 &
 
 while true; do
   # Module disabled or being removed from the Magisk app (thorctld exits when it sees the flag):
-  # hand the fan, clocks, apps and services back and stop.
+  # hand the fan, clocks and swap back and stop.
   if [ -f "$MODDIR/disable" ] || [ -f "$MODDIR/remove" ]; then
     sh "$MODDIR/restore-kernel.sh"
     sh "$MODDIR/system-tweaks.sh" revert >> "$LOG" 2>&1

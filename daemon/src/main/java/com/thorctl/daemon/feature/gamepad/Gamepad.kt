@@ -14,6 +14,7 @@ import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.concurrent.thread
 
 /**
@@ -48,6 +49,7 @@ class Gamepad(
     private val gadget: UsbGadget,
     private val usb: UsbHidEndpoint,
     private val bluetooth: BluetoothReportSender,
+    private val bluetoothIds: BluetoothIdentity,
     private val sys: Sys,
     private val clock: Clock,
 ) {
@@ -71,6 +73,7 @@ class Gamepad(
         state = state.copy(transport = transport, screensOff = screensOff)
         // A crash in gamepad mode can leave the USB function linked or the IDs changed: undo it.
         if (gadget.hasLeftovers()) thread(name = "gamepad-usb-cleanup", isDaemon = true) { usbTeardown() }
+        bluetoothIds.useOwnIds()
     }
 
     // ---- Control ------------------------------------------------------------------------------
@@ -122,6 +125,18 @@ class Gamepad(
     fun shutdown() {
         if (!state.on) return
         stop(usbTeardownNow = true)
+        awaitOwnBluetoothIds()
+    }
+
+    /** The device's own Bluetooth IDs are back before the daemon exits (restarting Bluetooth takes seconds). */
+    private fun awaitOwnBluetoothIds() {
+        try {
+            bluetoothIds.useOwnIds().get(BLUETOOTH_IDS_TIMEOUT_S, TimeUnit.SECONDS)
+        } catch (e: TimeoutException) {
+            Timber.w("gamepad: Bluetooth IDs not restored in time (restore-kernel.sh will)")
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
     }
 
     /** Every couple of seconds from the daemon's housekeeping. */
@@ -167,8 +182,8 @@ class Gamepad(
             }
         }
         if (state.transport == GamepadTransport.BLUETOOTH) {
-            // The app registers the HID device once the adapter is on.
-            thread(name = "gamepad-bt-on", isDaemon = true) { sys.sh("cmd bluetooth_manager enable") }
+            // Bluetooth comes on announcing a gamepad; the app registers the HID device once it is.
+            bluetoothIds.useGamepadIds()
         }
         grab()
         Timber.i("gamepad mode on (${state.transport.wire})")
@@ -185,6 +200,7 @@ class Gamepad(
         input.releaseGamepad()
         // Let the host see everything released before it goes away.
         reports.send(GamepadHid.neutral())
+        if (transport == GamepadTransport.BLUETOOTH) bluetoothIds.useOwnIds()
         if (transport == GamepadTransport.USB) {
             usb.stop()
             if (usbTeardownNow) usbTeardown() else thread(name = "gamepad-usb-teardown", isDaemon = true) { usbTeardown() }
@@ -258,6 +274,9 @@ class Gamepad(
     }
 
     companion object {
+        /** How long shutdown waits for the device's own Bluetooth IDs (a Bluetooth restart). */
+        const val BLUETOOTH_IDS_TIMEOUT_S = 15L
+
         /** A grab lost for this long (and a controller there) is taken again. */
         const val REGRAB_AFTER_MS = 3000L
 

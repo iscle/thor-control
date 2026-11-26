@@ -69,6 +69,11 @@ class FakeSys : Sys {
 
     override fun prop(name: String): String = properties[name].orEmpty()
 
+    override fun setProp(name: String, value: String): Boolean {
+        properties[name] = value
+        return true
+    }
+
     override fun sh(command: String, timeoutMs: Long): String? {
         commands += command
         return shell(command)

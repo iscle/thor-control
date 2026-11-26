@@ -75,6 +75,15 @@ class AndroidSys : Sys {
 
     override fun prop(name: String): String = SystemProperties.get(name)
 
+    override fun setProp(name: String, value: String): Boolean = try {
+        SystemProperties.set(name, value)
+        true
+    } catch (e: RuntimeException) {
+        // The property service refused it (SELinux, or a read-only property already set).
+        Timber.w("setprop $name=$value failed: ${e.message}")
+        false
+    }
+
     override fun sh(command: String, timeoutMs: Long): String? = try {
         val process = ProcessBuilder("/system/bin/sh", "-c", command).redirectErrorStream(true).start()
         val output = process.inputStream.bufferedReader().readText()

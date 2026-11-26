@@ -54,6 +54,7 @@ class GamepadTest {
         gadget = gadget,
         usb = usb,
         bluetooth = BluetoothReportSender(link, clock),
+        bluetoothIds = BluetoothIdentity(sys),
         sys = sys,
         clock = clock,
     )

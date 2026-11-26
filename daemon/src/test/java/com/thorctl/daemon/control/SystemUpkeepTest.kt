@@ -7,13 +7,6 @@ import kotlin.test.assertTrue
 
 class SystemUpkeepTest {
     @Test
-    fun restartsNothingThatIsStopped() {
-        val sys = FakeSys().apply { properties["init.svc.cameraserver"] = "running"; properties["init.svc.wifidisplayhalservice"] = "stopped" }
-        SystemUpkeep(sys).keepServicesStopped()
-        assertEquals(listOf("stop cameraserver"), sys.commands)
-    }
-
-    @Test
     fun theModuleCanBeTurnedOff() {
         val sys = FakeSys()
         val upkeep = SystemUpkeep(sys)

@@ -9,7 +9,7 @@ package com.thorctl.protocol
  * vendor and product ID. The Stadia controller is a plain HID gamepad, with no handshake, that
  * macOS, SDL (its HIDAPI driver), Chrome, Linux and Android all know. It uses Google's vendor
  * ID, which the Thor's USB already has. Over Bluetooth the same IDs come from the Thor's Device
- * ID record (`bluetooth.device_id.*` in magisk/system.prop).
+ * ID record (`bluetooth.device_id.*`, set by the daemon's BluetoothIdentity while Bluetooth gamepad mode is on).
  *
  * Input report 3, 10 bytes after the report ID:
  *  - [0] D-pad hat, 0 = up, clockwise, 8 = centred.
