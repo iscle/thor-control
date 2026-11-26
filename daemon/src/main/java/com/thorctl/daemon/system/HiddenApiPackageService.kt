@@ -33,7 +33,7 @@ class HiddenApiPackageService : PackageService {
 
     override fun homePackage(): String? = try {
         packageManager.getHomeActivities()?.packageName
-    } catch (e: Throwable) {
+    } catch (e: ReflectiveOperationException) {
         Timber.w(e, "getHomeActivities failed")
         null
     }

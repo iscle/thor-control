@@ -11,6 +11,6 @@ private val getServiceMethod: Method by lazy {
 /** The binder ServiceManager has registered under [name], or null. */
 internal fun serviceBinder(name: String): IBinder? = try {
     getServiceMethod.invoke(null, name) as IBinder?
-} catch (_: Throwable) {
+} catch (_: ReflectiveOperationException) {
     null
 }

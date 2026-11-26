@@ -27,9 +27,13 @@ internal class SystemServiceProxy(private val serviceName: String, interfaceName
         return proxy
     }
 
-    /** Calls one of the interface's [method]s; throws if the service is missing or the call fails. */
+    /**
+     * Calls one of the interface's [method]s. Throws a [ReflectiveOperationException] if the service
+     * is missing ([SystemServiceUnavailableException]) or the call fails (the service's own
+     * exception wrapped in an InvocationTargetException).
+     */
     fun call(method: Method, vararg arguments: Any?): Any? {
-        val service = get() ?: throw IllegalStateException("service $serviceName not available")
+        val service = get() ?: throw SystemServiceUnavailableException(serviceName)
         return method.invoke(service, *arguments)
     }
 }

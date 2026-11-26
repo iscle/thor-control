@@ -33,7 +33,7 @@ class HiddenApiAppProviderClient : AppProviderClient {
         } finally {
             try {
                 activityManager.removeContentProviderExternalAsUser(ThorIpc.AUTHORITY, token, USER_SYSTEM)
-            } catch (_: Throwable) {
+            } catch (_: ReflectiveOperationException) {
             }
         }
     }

@@ -19,7 +19,7 @@ class HiddenApiTaskService : TaskService {
 
     override fun focusedDisplayId(): Int = try {
         service.getFocusedRootTaskInfo()?.displayIdOrNone ?: -1
-    } catch (_: Throwable) {
+    } catch (_: ReflectiveOperationException) {
         -1
     }
 
@@ -43,7 +43,7 @@ class HiddenApiTaskService : TaskService {
         // Launcher believes it is still visible and the next app-switch toggles the wrong state.
         try {
             startFromRecents(taskId, displayId)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "bring task $taskId to front failed")
         }
     }
@@ -73,7 +73,7 @@ class HiddenApiTaskService : TaskService {
         // Only the file is wanted: release the snapshot's graphics buffer right away.
         try {
             snapshot.releaseSnapshotBuffer()
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
         }
     }
 

@@ -16,7 +16,7 @@ class HiddenApiPowerService : PowerService {
 
     override fun isInteractive(): Boolean = try {
         service.isInteractive()
-    } catch (_: Throwable) {
+    } catch (_: ReflectiveOperationException) {
         true
     }
 

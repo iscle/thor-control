@@ -8,6 +8,6 @@ private val getMethod: Method by lazy { Class.forName("android.os.SystemProperti
 /** A system property's value ("" if unset or unreadable), without spawning getprop. */
 internal fun systemProperty(name: String): String = try {
     getMethod.invoke(null, name) as String
-} catch (_: Throwable) {
+} catch (_: ReflectiveOperationException) {
     ""
 }
