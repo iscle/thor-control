@@ -5,7 +5,7 @@ import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.GameMode
 import com.thorctl.daemon.feature.Gamepad
-import com.thorctl.daemon.feature.Recents
+import com.thorctl.daemon.feature.recents.Recents
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputRouter
 import com.thorctl.daemon.hardware.InputWatcher
