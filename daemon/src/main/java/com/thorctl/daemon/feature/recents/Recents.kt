@@ -30,6 +30,7 @@ import timber.log.Timber
  *    we know whether it becomes a press or a hold;
  *  - the home screen is captured whenever it is in front and nothing of ours covers it, and kept
  *    on disk (one per display), so it is ready when Home is pressed inside an app;
+ *  - apps visible on the other screen get a fresh picture of that screen when recents opens;
  *  - other apps use the previews the system persists in /data/system_ce/0/snapshots/.
  *
  * Events to the app:   RecentsOpened, RecentsThumb, RecentsButton, RecentsClosed, HomeAnimation
@@ -44,7 +45,7 @@ class Recents(
     private val link: ClientLink,
     inputService: InputService,
     taskService: TaskService,
-    capturer: ScreenCapturer,
+    private val capturer: ScreenCapturer,
     private val files: ScreenshotFiles,
     private val guard: CaptureGuard,
     private val session: RecentsSession,
@@ -154,22 +155,21 @@ class Recents(
         val grabbed = input.grabController(navigator.start(homeHeld = input.isDown(EvdevCodes.KEY_HOME)))
         Timber.i("recents: open on display $displayId from ${origin?.packageName ?: "home"}, ${cards.size} apps (controller ${if (grabbed) "grabbed" else "not grabbed"})")
         bumpIdle()
-        if (previews.taskIds.isNotEmpty()) refreshThumbs(previews.taskIds, previews.since, attempt = 0)
+        capturePreviews(previews)
     }
 
-    /** Sends the fresh previews of apps on the other screen once the system has written them. */
-    private fun refreshThumbs(ids: List<Int>, since: Long, attempt: Int) {
-        thread.schedule(THUMB_FIRST_CHECK_MS + attempt * THUMB_CHECK_STEP_MS) {
-            if (!isOpen) return@schedule
-            val pending = ids.filter { id ->
-                if (session.previewWrittenSince(id, since)) {
-                    session.thumb(id)?.let { link.broadcast(DaemonEvent.RecentsThumb(id, it)) }
-                    false
-                } else {
-                    true
+    /** Captures the other screens and sends each app shown there that picture as its preview. */
+    private fun capturePreviews(request: PreviewRequest) {
+        val number = session.number
+        for ((display, taskIds) in request.tasksByDisplay) {
+            captureExecutor.execute {
+                val file = files.preview(display)
+                if (!capturer.capture(display, file)) return@execute
+                thread.run {
+                    if (!isOpen || session.number != number) return@run
+                    for (id in taskIds) JpegFiles.read(file)?.let { link.broadcast(DaemonEvent.RecentsThumb(id, it)) }
                 }
             }
-            if (pending.isNotEmpty() && attempt < THUMB_RETRIES) refreshThumbs(pending, since, attempt + 1)
         }
     }
 
@@ -201,8 +201,5 @@ class Recents(
     companion object {
         const val IDLE_CLOSE_MS = 120_000L
         const val CLOSE_ANIMATION_MS = 2500L
-        const val THUMB_FIRST_CHECK_MS = 200L
-        const val THUMB_CHECK_STEP_MS = 250L
-        const val THUMB_RETRIES = 3
     }
 }

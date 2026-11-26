@@ -68,15 +68,6 @@ class HiddenApiTaskService : TaskService {
 
     override fun removeTask(taskId: Int): Boolean = service.removeTask(taskId)
 
-    override fun takeSnapshot(taskId: Int) {
-        val snapshot = service.takeTaskSnapshot(taskId) ?: return
-        // Only the file is wanted: release the snapshot's graphics buffer right away.
-        try {
-            snapshot.releaseSnapshotBuffer()
-        } catch (_: ReflectiveOperationException) {
-        }
-    }
-
     override fun snapshotFile(taskId: Int): File? {
         val root = File(SNAPSHOT_DIRECTORY)
         val directories = listOf(root) + (root.listFiles()?.filter { it.isDirectory } ?: emptyList())

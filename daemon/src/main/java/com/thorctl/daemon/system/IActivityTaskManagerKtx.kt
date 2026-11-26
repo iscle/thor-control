@@ -13,15 +13,7 @@ private val moveRootTaskToDisplayMethod: Method by lazy { activityTaskManager.me
 private val startActivityFromRecentsMethod: Method by lazy { activityTaskManager.method("startActivityFromRecents", 2) }
 private val getRecentTasksMethod: Method by lazy { activityTaskManager.method("getRecentTasks", 3) }
 private val removeTaskMethod: Method by lazy { activityTaskManager.method("removeTask", 1) }
-private val getTaskSnapshotManagerMethod: Method by lazy { activityTaskManager.method("getTaskSnapshotManager", 0) }
 
-/**
- * The snapshot manager's takeTaskSnapshot, found on the type getTaskSnapshotManager declares (its
- * name and parameters vary by release); null if this release has none.
- */
-private val takeTaskSnapshotMethod: Method? by lazy {
-    getTaskSnapshotManagerMethod.returnType.methods.firstOrNull { it.name == "takeTaskSnapshot" }
-}
 
 /** The focused root task (an ActivityTaskManager.RootTaskInfo), or null. */
 internal fun SystemServiceProxy.getFocusedRootTaskInfo(): TaskInfo? = call(getFocusedRootTaskInfoMethod) as? TaskInfo
@@ -48,19 +40,3 @@ internal fun SystemServiceProxy.getRecentTasks(limit: Int, flags: Int, userId: I
 
 internal fun SystemServiceProxy.removeTask(taskId: Int): Boolean = call(removeTaskMethod, taskId) as? Boolean ?: false
 
-/**
- * Asks for a fresh preview of a task, with updateCache so it is also written to disk, and
- * returns the TaskSnapshot (see TaskSnapshotKtx.kt); null if this release can't.
- */
-internal fun SystemServiceProxy.takeTaskSnapshot(taskId: Int): Any? {
-    val takeMethod = takeTaskSnapshotMethod ?: return null
-    val snapshotManager = call(getTaskSnapshotManagerMethod) ?: return null
-    // updateCache = true writes it to disk; the extra flags vary by release.
-    val arguments: Array<Any?> = when (takeMethod.parameterCount) {
-        4 -> arrayOf(taskId, true, false, false)
-        3 -> arrayOf(taskId, true, false)
-        2 -> arrayOf(taskId, true)
-        else -> return null
-    }
-    return takeMethod.invoke(snapshotManager, *arguments)
-}

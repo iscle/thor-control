@@ -29,9 +29,13 @@ class RecentsSession(private val taskService: TaskService) {
     var tasks: List<RecentTaskEntry> = emptyList()
         private set
 
+    /** Counts openings, so work for an earlier one can tell it is too late. */
+    var number = 0
+        private set
+
     /**
-     * Opens on [display], coming from [origin] (null: the home screen): lists the recent apps and
-     * asks for fresh previews of the ones visible elsewhere. Returns that request.
+     * Opens on [display], coming from [origin] (null: the home screen): lists the recent apps.
+     * Returns the apps visible on another screen, whose persisted previews may be stale.
      */
     fun open(display: Int, origin: AppTask?): PreviewRequest {
         val list = taskService.recentTasks(MAX_TASKS).toMutableList()
@@ -40,19 +44,11 @@ class RecentsSession(private val taskService: TaskService) {
             val index = list.indexOfFirst { it.taskId == origin.taskId }
             if (index > 0) list.add(0, list.removeAt(index))
         }
-        // Apps visible elsewhere (the other screen) get a fresh preview; written within ~150 ms.
-        val requested = System.currentTimeMillis()
-        val others = list.filter { it.visible && it.taskId != origin?.taskId }
-        others.forEach {
-            try {
-                taskService.takeSnapshot(it.taskId)
-            } catch (e: ReflectiveOperationException) {
-                Timber.w(e, "snapshot of task ${it.taskId} failed")
-            }
-        }
+        val onOtherScreens = list.filter { it.visible && it.displayId >= 0 && it.displayId != display && it.taskId != origin?.taskId }
         tasks = list
         openOn = display
-        return PreviewRequest(others.map { it.taskId }, requested)
+        number++
+        return PreviewRequest(onOtherScreens.groupBy({ it.displayId }, { it.taskId }))
     }
 
     /** False if it was not open. */
@@ -72,11 +68,6 @@ class RecentsSession(private val taskService: TaskService) {
     /** The system's persisted preview of a task. */
     fun thumb(taskId: Int): Jpeg? = JpegFiles.read(taskService.snapshotFile(taskId))
 
-    /** The system wrote the preview of [taskId] after [since] (wall-clock, allowing a little slack). */
-    fun previewWrittenSince(taskId: Int, since: Long): Boolean {
-        val snapshot = taskService.snapshotFile(taskId)
-        return snapshot != null && snapshot.lastModified() >= since - PREVIEW_SLACK_MS
-    }
 
     /** The listed entry of task [taskId], if any. */
     fun task(taskId: Int): RecentTaskEntry? = tasks.firstOrNull { it.taskId == taskId }
@@ -113,6 +104,5 @@ class RecentsSession(private val taskService: TaskService) {
 
     companion object {
         const val MAX_TASKS = 16
-        const val PREVIEW_SLACK_MS = 50L
     }
 }

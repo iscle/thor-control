@@ -17,6 +17,9 @@ class ScreenshotFiles(private val ids: PhysicalDisplayIds, private val directory
     /** The home screen of [display]. */
     fun home(display: Int): File = File(directory, "home-${ids.of(display)}.jpg")
 
+    /** The latest picture of [display] taken for recents' previews of the apps on it. */
+    fun preview(display: Int): File = File(directory, "preview-${ids.of(display)}.jpg")
+
     /** Where a Home press captures [display]: on the home screen ([origin] null) the capture doubles as a fresh picture of it. */
     fun forPress(display: Int, origin: AppTask?): File = if (origin == null) home(display) else appScreen
 

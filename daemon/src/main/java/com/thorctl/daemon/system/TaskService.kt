@@ -27,9 +27,6 @@ interface TaskService {
     /** Removes the task from recents and closes it, like swiping it away. */
     fun removeTask(taskId: Int): Boolean
 
-    /** Asks for a fresh preview of a visible task, written where [snapshotFile] finds it within ~150 ms. */
-    fun takeSnapshot(taskId: Int)
-
     /** The persisted low-resolution preview of a task, if the system has one. */
     fun snapshotFile(taskId: Int): File?
 }

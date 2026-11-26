@@ -9,8 +9,6 @@ import com.thorctl.daemon.system.TaskService
 class UnavailableTaskService(private val fake: FakeTaskService = FakeTaskService()) : TaskService by fake {
     override fun topAppTask(displayId: Int): AppTask? = throw SystemServiceUnavailableException("activity_task")
 
-    override fun takeSnapshot(taskId: Int) = throw SystemServiceUnavailableException("activity_task")
-
     override fun moveTaskToDisplay(taskId: Int, displayId: Int) = throw SystemServiceUnavailableException("activity_task")
 
     override fun startFromRecents(taskId: Int, displayId: Int) = throw SystemServiceUnavailableException("activity_task")

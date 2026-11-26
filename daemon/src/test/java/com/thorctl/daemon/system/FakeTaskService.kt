@@ -38,9 +38,5 @@ class FakeTaskService : TaskService {
         return true
     }
 
-    override fun takeSnapshot(taskId: Int) {
-        actions += "snapshot $taskId"
-    }
-
     override fun snapshotFile(taskId: Int): File? = snapshots[taskId]
 }

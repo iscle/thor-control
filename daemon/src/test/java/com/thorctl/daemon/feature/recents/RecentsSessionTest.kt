@@ -39,11 +39,25 @@ class RecentsSessionTest {
     }
 
     @Test
-    fun asksForFreshPreviewsOfAppsVisibleElsewhere() {
-        taskService.recents = listOf(entry(1, displayId = 0, visible = true), entry(2, displayId = 1, visible = true), entry(3))
+    fun asksForFreshPreviewsOfAppsVisibleOnTheOtherScreen() {
+        taskService.recents = listOf(
+            entry(1, displayId = 0, visible = true),
+            entry(2, displayId = 1, visible = true),
+            entry(3, displayId = 0, visible = true),
+            entry(4),
+        )
         val request = session.open(display = 0, origin = AppTask(1, "app1"))
-        assertEquals(listOf(2), request.taskIds)
-        assertEquals(listOf("snapshot 2"), taskService.actions)
+        assertEquals(mapOf(1 to listOf(2)), request.tasksByDisplay)
+        assertTrue(taskService.actions.isEmpty())
+    }
+
+    @Test
+    fun eachOpeningHasItsOwnNumber() {
+        val first = session.number
+        session.open(display = 0, origin = null)
+        session.close()
+        session.open(display = 0, origin = null)
+        assertEquals(first + 2, session.number)
     }
 
     @Test
@@ -59,16 +73,6 @@ class RecentsSessionTest {
         assertNotNull(withHero[1].thumb)
         assertNotNull(session.cards(origin, heroCaptured = false)[0].thumb)
         assertEquals("app2", withHero[1].packageName)
-    }
-
-    @Test
-    fun aPreviewCountsWhenWrittenAfterTheRequest() {
-        val file = snapshot(4)
-        taskService.snapshots[4] = file
-        file.setLastModified(10_000)
-        assertTrue(session.previewWrittenSince(4, since = 10_000 + RecentsSession.PREVIEW_SLACK_MS))
-        assertFalse(session.previewWrittenSince(4, since = 10_000 + RecentsSession.PREVIEW_SLACK_MS + 1000))
-        assertFalse(session.previewWrittenSince(5, since = 0))
     }
 
     @Test
@@ -106,7 +110,7 @@ class RecentsSessionTest {
         val fake = FakeTaskService().apply { recents = listOf(entry(1, displayId = 1, visible = true), entry(2)) }
         val session = RecentsSession(UnavailableTaskService(fake))
         val request = session.open(display = 0, origin = null)
-        assertEquals(listOf(1), request.taskIds)
+        assertEquals(mapOf(1 to listOf(1)), request.tasksByDisplay)
         assertTrue(session.isOpen)
         session.launch(1, session.task(1), 0)
         session.launch(2, session.task(2), 0)
