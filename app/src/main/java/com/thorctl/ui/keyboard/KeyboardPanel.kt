@@ -1,7 +1,7 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KbTop
-import com.thorctl.ui.keyboard.KeyboardColors.KbBottom
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardTop
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardBottom
 import com.thorctl.ui.recents.StrongInOut
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -40,8 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
  * Select / Copy / Paste above it and a preview of the text around the cursor on it.
  */
 @Composable
-fun KeyboardPanel(ui: StateFlow<KeyboardUi>, visible: StateFlow<Boolean>) {
-    val state by ui.collectAsState()
+fun KeyboardPanel(uiState: StateFlow<KeyboardUi>, visible: StateFlow<Boolean>) {
+    val state by uiState.collectAsState()
     val shown by visible.collectAsState()
     // Starts hidden, so even a freshly created window slides in. The whole panel slides up from
     // below the screen and back down, on the same strong in-out curve as the recents screen.
@@ -52,10 +52,10 @@ fun KeyboardPanel(ui: StateFlow<KeyboardUi>, visible: StateFlow<Boolean>) {
         enter = slideInVertically(tween(330, easing = StrongInOut)) { it },
         exit = slideOutVertically(tween(290, easing = StrongInOut)) { it },
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(KbTop, KbBottom)))) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(KeyboardTop, KeyboardBottom)))) {
             val keysHeight = maxHeight * 0.5f
             val popup = remember { KeyPopup() }
-            popup.panelW = constraints.maxWidth.toFloat()
+            popup.panelWidth = constraints.maxWidth.toFloat()
             Column(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxWidth().weight(1f).padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)) {
                     ToolRow(state)
@@ -75,15 +75,15 @@ fun KeyboardPanel(ui: StateFlow<KeyboardUi>, visible: StateFlow<Boolean>) {
 
 @Composable
 private fun ToolRow(state: KeyboardUi) {
-    val kb = LocalKeyboardActions.current
+    val actions = LocalKeyboardActions.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Pill(Icons.Rounded.HighlightAlt, "Select", active = state.selecting) {
-            kb.toggleSelect()
+            actions.toggleSelect()
         }
         Spacer(Modifier.width(10.dp))
-        Pill(Icons.Rounded.ContentCopy, "Copy") { kb.copy() }
+        Pill(Icons.Rounded.ContentCopy, "Copy") { actions.copy() }
         Spacer(Modifier.width(10.dp))
-        Pill(Icons.Rounded.ContentPaste, "Paste") { kb.paste() }
+        Pill(Icons.Rounded.ContentPaste, "Paste") { actions.paste() }
         Spacer(Modifier.weight(1f))
         HideButton()
     }

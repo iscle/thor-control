@@ -31,7 +31,7 @@ class GamepadViewModel(private val daemon: DaemonRepository, private val pairing
 
     fun setOn(on: Boolean) = daemon.send(DaemonCommand.SetGamepad(on))
 
-    fun setTransport(t: GamepadTransport) = daemon.send(DaemonCommand.SetGamepadTransport(t))
+    fun setTransport(transport: GamepadTransport) = daemon.send(DaemonCommand.SetGamepadTransport(transport))
 
     fun setScreensOff(on: Boolean) = daemon.send(DaemonCommand.SetGamepadScreensOff(on))
 

@@ -76,9 +76,9 @@ fun LightsScreen(onBack: () -> Unit, viewModel: LightsViewModel = metroViewModel
             }
         }
         Spacer(Modifier.height(10.dp))
-        val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV(0xFF000000.toInt() or content.color, it) }
+        val hsvComponents = FloatArray(3).also { android.graphics.Color.colorToHSV(0xFF000000.toInt() or content.color, it) }
         QsSlider(
-            value = hsv[0] / 360f,
+            value = hsvComponents[0] / 360f,
             onValueChange = { hue -> viewModel.setColor(android.graphics.Color.HSVToColor(floatArrayOf(hue * 360f, 1f, 1f))) },
             onValueChangeFinished = {},
             icon = Icons.Rounded.Palette,
@@ -114,29 +114,29 @@ private val Swatches = listOf(
 /** Color swatch: a circle that morphs into a 9-sided cookie (and turns) when selected. */
 @Composable
 private fun Swatch(rgb: Int, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
+    val colors = MaterialTheme.colorScheme
     val morph = rememberMorph(MaterialShapes.Circle, MaterialShapes.Cookie9Sided)
-    val p by animateFloatAsState(if (selected) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "swatch")
+    val selection by animateFloatAsState(if (selected) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "swatch")
     val color = Color(0xFF000000.toInt() or rgb).copy(alpha = if (enabled) 1f else 0.3f)
     Box(
         Modifier
             .size(40.dp)
             .graphicsLayer {
-                rotationZ = p * 40f
-                val s = 0.82f + 0.18f * p
-                scaleX = s
-                scaleY = s
+                rotationZ = selection * 40f
+                val scale = 0.82f + 0.18f * selection
+                scaleX = scale
+                scaleY = scale
             }
-            .clip(MorphShape(morph, p))
+            .clip(MorphShape(morph, selection))
             .background(color)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         if (selected) {
             val onColor = if (rgb == 0xFFFFFF || rgb == 0xFFCC00 || rgb == 0x4FC3F7 || rgb == 0x00C7BE) Color.Black else Color.White
-            Icon(Icons.Rounded.Check, null, Modifier.size(18.dp).graphicsLayer { rotationZ = -p * 40f }, tint = onColor.copy(alpha = p))
+            Icon(Icons.Rounded.Check, null, Modifier.size(18.dp).graphicsLayer { rotationZ = -selection * 40f }, tint = onColor.copy(alpha = selection))
         } else if (rgb == 0xFFFFFF || rgb == 0x000000) {
-            Box(Modifier.size(40.dp).clip(MorphShape(morph, 0f)).background(cs.outline.copy(alpha = 0.15f)))
+            Box(Modifier.size(40.dp).clip(MorphShape(morph, 0f)).background(colors.outline.copy(alpha = 0.15f)))
         }
     }
 }

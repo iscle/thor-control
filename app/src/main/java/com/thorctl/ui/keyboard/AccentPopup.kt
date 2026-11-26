@@ -27,28 +27,28 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 @Composable
-internal fun AccentPopup(p: KeyPopup) {
-    if (p.options.isEmpty()) return
-    val d = LocalDensity.current
+internal fun AccentPopup(popup: KeyPopup) {
+    if (popup.options.isEmpty()) return
+    val density = LocalDensity.current
     Row(
         Modifier
-            .offset { IntOffset(p.x.roundToInt(), p.y.roundToInt()) }
-            .size(with(d) { (p.cellW * p.options.size).toDp() }, with(d) { p.cellH.toDp() })
+            .offset { IntOffset(popup.left.roundToInt(), popup.top.roundToInt()) }
+            .size(with(density) { (popup.cellWidth * popup.options.size).toDp() }, with(density) { popup.cellHeight.toDp() })
             .shadow(10.dp, KeyShape, ambientColor = KeyShadow, spotColor = KeyShadow)
             .clip(KeyShape)
             .background(KeyFill)
             .padding(4.dp),
     ) {
-        p.options.forEachIndexed { i, o ->
+        popup.options.forEachIndexed { index, option ->
             Box(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(9.dp))
-                    .background(if (i == p.selected) Accent else Color.Transparent),
+                    .background(if (index == popup.selected) Accent else Color.Transparent),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(o, color = if (i == p.selected) Color.White else KeyInk, fontSize = 24.sp)
+                Text(option, color = if (index == popup.selected) Color.White else KeyInk, fontSize = 24.sp)
             }
         }
     }

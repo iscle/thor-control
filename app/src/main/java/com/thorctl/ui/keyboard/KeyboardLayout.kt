@@ -12,27 +12,27 @@ internal object KeyboardLayout {
     val MORE_ROWS = listOf("[ ] { } ^ ~ < > | \\", "_ € £ ¥ ¢ • ° … ¶", "© ® ™ ✓ × ÷ §", "¡ ¿")
 
     fun rows(layer: Layer): List<List<Key>> {
-        val (main, alt) = when (layer) {
+        val (mainRows, alternateRows) = when (layer) {
             Layer.LETTERS -> LETTER_ROWS to SYMBOL_ROWS
             Layer.SYMBOLS -> SYMBOL_ROWS to MORE_ROWS
             Layer.MORE -> MORE_ROWS to null
         }
-        fun row(i: Int): List<Ch> {
-            val alts = alt?.get(i)?.split(' ')
-            return main[i].split(' ').mapIndexed { j, c -> Ch(c, alts?.getOrNull(j)) }
+        fun row(rowIndex: Int): List<Ch> {
+            val alternates = alternateRows?.get(rowIndex)?.split(' ')
+            return mainRows[rowIndex].split(' ').mapIndexed { keyIndex, character -> Ch(character, alternates?.getOrNull(keyIndex)) }
         }
-        val r2 = row(1).let { r -> r.mapIndexed { j, k -> k.copy(lead = if (j == 0) 0.5f else 0f, trail = if (j == r.lastIndex) 0.5f else 0f) } }
-        val r4 = row(3)
-        val (left3, left4) = when (layer) {
+        val secondRow = row(1).let { keys -> keys.mapIndexed { keyIndex, charKey -> charKey.copy(lead = if (keyIndex == 0) 0.5f else 0f, trail = if (keyIndex == keys.lastIndex) 0.5f else 0f) } }
+        val bottomRow = row(3)
+        val (thirdRowLeft, bottomRowLeft) = when (layer) {
             Layer.LETTERS -> FnKind.SHIFT to FnKind.TO_SYMBOLS
             Layer.SYMBOLS -> FnKind.TO_MORE to FnKind.TO_LETTERS
             Layer.MORE -> FnKind.TO_SYMBOLS to FnKind.TO_LETTERS
         }
         return listOf(
             row(0),
-            r2,
-            listOf(Fn(left3, 1.5f)) + row(2) + Fn(FnKind.BACK, 1.5f),
-            listOf(Fn(left4, 1.5f), r4[0], Fn(FnKind.SPACE, 5f), r4[1], Fn(FnKind.ENTER, 1.5f)),
+            secondRow,
+            listOf(Fn(thirdRowLeft, 1.5f)) + row(2) + Fn(FnKind.BACK, 1.5f),
+            listOf(Fn(bottomRowLeft, 1.5f), bottomRow[0], Fn(FnKind.SPACE, 5f), bottomRow[1], Fn(FnKind.ENTER, 1.5f)),
         )
     }
 

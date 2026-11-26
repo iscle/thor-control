@@ -19,22 +19,22 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun Modifier.enter(index: Int, visible: Boolean): Modifier {
-    val p = remember { Animatable(0f) }
+    val progress = remember { Animatable(0f) }
     LaunchedEffect(visible) {
         if (visible) {
             delay(10L + index * 16L)
-            p.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 650f))
+            progress.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 650f))
         } else {
-            p.animateTo(0f, tween(110, easing = FastOutLinearInEasing))
+            progress.animateTo(0f, tween(110, easing = FastOutLinearInEasing))
         }
     }
     return this.graphicsLayer {
-        val v = p.value
-        alpha = v.coerceIn(0f, 1f)
-        translationY = (1f - v) * -28.dp.toPx()
-        val s = 0.9f + 0.1f * v
-        scaleX = s
-        scaleY = s
+        val entered = progress.value
+        alpha = entered.coerceIn(0f, 1f)
+        translationY = (1f - entered) * -28.dp.toPx()
+        val scale = 0.9f + 0.1f * entered
+        scaleX = scale
+        scaleY = scale
         transformOrigin = TransformOrigin(0.5f, 0f)
     }
 }

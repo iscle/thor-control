@@ -27,19 +27,19 @@ fun ConnectedChoice(
     onSelect: (Int) -> Unit,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-        options.forEachIndexed { i, label ->
+        options.forEachIndexed { index, label ->
             ToggleButton(
-                checked = selected == i,
-                onCheckedChange = { onSelect(i) },
+                checked = selected == index,
+                onCheckedChange = { onSelect(index) },
                 enabled = enabled,
                 modifier = Modifier.weight(1f).height(48.dp),
-                shapes = when (i) {
+                shapes = when (index) {
                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                     options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
             ) {
-                if (selected == i) {
+                if (selected == index) {
                     Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                 }

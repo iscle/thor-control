@@ -8,6 +8,6 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 @Composable
 fun UprightKeyboard(viewModel: KeyboardViewModel = metroViewModel()) {
     CompositionLocalProvider(LocalKeyboardActions provides viewModel) {
-        InlineKeyboard(viewModel.ui)
+        InlineKeyboard(viewModel.uiState)
     }
 }

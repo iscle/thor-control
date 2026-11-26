@@ -30,9 +30,9 @@ fun LedRingGlyph(leds: LedState, color: Color, modifier: Modifier = Modifier.siz
         if (!rainbow) return@LaunchedEffect
         var last = 0L
         while (true) {
-            withFrameNanos { t ->
-                if (last != 0L) hueShift = (hueShift + (t - last) / 1e9f * 90f) % 360f
-                last = t
+            withFrameNanos { frameNanos ->
+                if (last != 0L) hueShift = (hueShift + (frameNanos - last) / 1e9f * 90f) % 360f
+                last = frameNanos
             }
         }
     }
@@ -40,15 +40,15 @@ fun LedRingGlyph(leds: LedState, color: Color, modifier: Modifier = Modifier.siz
         val stroke = size.minDimension * 0.17f
         val inset = stroke / 2 + size.minDimension * 0.06f
         val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
-        for (i in 0 until 4) {
-            val c = when {
+        for (segment in 0 until 4) {
+            val segmentColor = when {
                 !leds.enabled -> color.copy(alpha = 0.45f)
-                rainbow -> Color.hsv((hueShift + i * 90f) % 360f, 0.85f, 1f)
-                else -> Color(0xFF000000.toInt() or (if (i < 2) leds.left else leds.rightColor))
+                rainbow -> Color.hsv((hueShift + segment * 90f) % 360f, 0.85f, 1f)
+                else -> Color(0xFF000000.toInt() or (if (segment < 2) leds.left else leds.rightColor))
             }
             drawArc(
-                c,
-                startAngle = -90f + i * 90f + 9f,
+                segmentColor,
+                startAngle = -90f + segment * 90f + 9f,
                 sweepAngle = 72f,
                 useCenter = false,
                 topLeft = Offset(inset, inset),

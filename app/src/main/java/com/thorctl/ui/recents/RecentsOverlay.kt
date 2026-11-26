@@ -51,7 +51,7 @@ import timber.log.Timber
 @Inject
 @SingleIn(AppScope::class)
 class RecentsOverlay(
-    private val app: Context,
+    private val context: Context,
     private val daemon: DaemonRepository,
     private val windows: OverlayWindows,
     private val apps: AppInfoRepository,
@@ -70,18 +70,18 @@ class RecentsOverlay(
     private var displayId = -1
 
     // Home press: the switch underneath starts once our first frame is on screen.
-    private var homeSeq = 0
+    private var homeSequence = 0
     private var frameShown = false
     private var homeGoPending = false
 
     fun start() {
         scope.launch {
-            daemon.events.collect { e ->
-                when (e) {
-                    is DaemonEvent.RecentsOpened -> openRecents(e)
-                    is DaemonEvent.HomeAnimation -> openHomePress(e)
-                    is DaemonEvent.RecentsThumb -> updateThumb(e.taskId, e.thumb)
-                    is DaemonEvent.RecentsKey -> keys.tryEmit(e.key)
+            daemon.events.collect { event ->
+                when (event) {
+                    is DaemonEvent.RecentsOpened -> openRecents(event)
+                    is DaemonEvent.HomeAnimation -> openHomePress(event)
+                    is DaemonEvent.RecentsThumb -> updateThumb(event.taskId, event.thumb)
+                    is DaemonEvent.RecentsKey -> keys.tryEmit(event.key)
                     DaemonEvent.RecentsClosed -> removeNow()
                     else -> {}
                 }
@@ -91,11 +91,11 @@ class RecentsOverlay(
 
     // ---- Opening ------------------------------------------------------------------------------
 
-    private fun openRecents(e: DaemonEvent.RecentsOpened) {
+    private fun openRecents(event: DaemonEvent.RecentsOpened) {
         removeNow()
-        val s = ++session
-        val display = windows.display(e.displayId) ?: run {
-            e.closeImages()
+        val sessionId = ++session
+        val display = windows.display(event.displayId) ?: run {
+            event.closeImages()
             daemon.send(DaemonCommand.RecentsClose)
             return
         }
@@ -106,66 +106,66 @@ class RecentsOverlay(
         scope.launch {
             val built = withContext(Dispatchers.Default) {
                 try {
-                    buildCards(e, bottomId)
+                    buildCards(event, bottomId)
                 } finally {
-                    e.closeImages() // whatever wasn't read (a failure partway): closing twice is harmless
+                    event.closeImages() // whatever wasn't read (a failure partway): closing twice is harmless
                 }
             }
-            if (s != session) return@launch
+            if (sessionId != session) return@launch
             cards.value = built
-            val intro = if (e.fromHome) Intro.FROM_HOME else Intro.FROM_APP
-            if (!show(display, Session(s, intro, startIndex(built, e.fromHome, e.originTask), e.originTask))) {
+            val intro = if (event.fromHome) Intro.FROM_HOME else Intro.FROM_APP
+            if (!show(display, Session(sessionId, intro, startIndex(built, event.fromHome, event.originTask), event.originTask))) {
                 daemon.send(DaemonCommand.RecentsClose)
             }
         }
     }
 
     /** Decodes every image of [e] (each closes its pipe) into the stage's cards: apps oldest first, home last. */
-    private fun buildCards(e: DaemonEvent.RecentsOpened, bottomId: Int): List<Card> {
-        val hero = decode(e.hero)
-        val appCards = e.tasks.map { t ->
-            val thumb = decode(t.thumb)
+    private fun buildCards(event: DaemonEvent.RecentsOpened, bottomId: Int): List<Card> {
+        val hero = decode(event.hero)
+        val appCards = event.tasks.map { task ->
+            val thumb = decode(task.thumb)
             Card(
-                key = t.id,
-                packageName = t.packageName,
-                label = apps.label(t.packageName),
-                icon = icons.icon(t.packageName)?.asImageBitmap(),
-                image = if (t.id == e.originTask && hero != null) hero else thumb,
-                onBottom = bottomId >= 0 && t.displayId == bottomId,
-                running = t.running,
+                key = task.id,
+                packageName = task.packageName,
+                label = apps.label(task.packageName),
+                icon = icons.icon(task.packageName)?.asImageBitmap(),
+                image = if (task.id == event.originTask && hero != null) hero else thumb,
+                onBottom = bottomId >= 0 && task.displayId == bottomId,
+                running = task.running,
             )
         }
-        return appCards.reversed() + Card(Card.HOME_KEY, "", "Home", image = decode(e.home), isHome = true)
+        return appCards.reversed() + Card(Card.HOME_KEY, "", "Home", image = decode(event.home), isHome = true)
     }
 
-    private fun openHomePress(e: DaemonEvent.HomeAnimation) {
+    private fun openHomePress(event: DaemonEvent.HomeAnimation) {
         removeNow()
-        val s = ++session
-        homeSeq = e.seq
-        val display = windows.display(e.displayId) ?: run {
-            e.closeImages()
+        val sessionId = ++session
+        homeSequence = event.seq
+        val display = windows.display(event.displayId) ?: run {
+            event.closeImages()
             return
         }
         scope.launch {
             val built = withContext(Dispatchers.Default) {
                 listOf(
-                    Card(Card.PRESS_APP_KEY, "", "", image = decode(e.appScreen)),
-                    Card(Card.HOME_KEY, "", "Home", image = decode(e.homeScreen), isHome = true),
+                    Card(Card.PRESS_APP_KEY, "", "", image = decode(event.appScreen)),
+                    Card(Card.HOME_KEY, "", "Home", image = decode(event.homeScreen), isHome = true),
                 )
             }
-            if (s != session) return@launch
+            if (sessionId != session) return@launch
             if (built.any { it.image == null }) return@launch // the daemon sends Home itself shortly
             cards.value = built
-            show(display, Session(s, Intro.HOME_PRESS, 0, Card.PRESS_APP_KEY))
+            show(display, Session(sessionId, Intro.HOME_PRESS, 0, Card.PRESS_APP_KEY))
         }
     }
 
     private fun updateThumb(id: Int, jpeg: Jpeg) {
-        val s = session
+        val sessionId = session
         scope.launch {
-            val bmp = withContext(Dispatchers.Default) { decode(jpeg) } ?: return@launch
-            if (s != session) return@launch
-            cards.value = cards.value.map { if (it.key == id) it.copy(image = bmp) else it }
+            val bitmap = withContext(Dispatchers.Default) { decode(jpeg) } ?: return@launch
+            if (sessionId != session) return@launch
+            cards.value = cards.value.map { if (it.key == id) it.copy(image = bitmap) else it }
         }
     }
 
@@ -173,10 +173,10 @@ class RecentsOverlay(
     private fun decode(jpeg: Jpeg?): ImageBitmap? {
         if (jpeg == null) return null
         return try {
-            val opts = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
-            jpeg.open().use { BitmapFactory.decodeStream(it, null, opts) }?.asImageBitmap()
-        } catch (e: Exception) {
-            Timber.w(e, "decode failed")
+            val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
+            jpeg.open().use { BitmapFactory.decodeStream(it, null, options) }?.asImageBitmap()
+        } catch (error: Exception) {
+            Timber.w(error, "decode failed")
             null
         } finally {
             jpeg.close()
@@ -185,27 +185,27 @@ class RecentsOverlay(
 
     // ---- Window -------------------------------------------------------------------------------
 
-    private fun show(display: Display, s: Session): Boolean {
-        val oc = windows.contextFor(display) ?: run {
+    private fun show(display: Display, stageSession: Session): Boolean {
+        val overlayContext = windows.contextFor(display) ?: run {
             Timber.w("no way to show an overlay")
             return false
         }
         displayId = display.displayId
-        val d = Dialog(oc.context, R.style.Theme_ThorControl_Menu)
-        val w = d.window ?: return false
-        w.setType(oc.type)
-        w.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-        w.setFormat(PixelFormat.TRANSLUCENT)
-        w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        val recentsDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
+        val window = recentsDialog.window ?: return false
+        window.setType(overlayContext.type)
+        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setFormat(PixelFormat.TRANSLUCENT)
+        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         // Never focusable: the app underneath keeps focus (and keeps running); buttons come from the daemon.
-        w.addFlags(
+        window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
-        w.attributes = w.attributes.apply {
+        window.attributes = window.attributes.apply {
             title = "ThorControlRecents"
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
@@ -214,40 +214,40 @@ class RecentsOverlay(
         frameShown = false
         homeGoPending = false
 
-        val o = OverlayOwner()
-        val v = ComposeView(oc.context)
-        o.attach(v)
-        v.setContent {
+        val overlayOwner = OverlayOwner()
+        val composeView = ComposeView(overlayContext.context)
+        overlayOwner.attach(composeView)
+        composeView.setContent {
             ThorTheme {
-                RecentsStage(session = s, cards = cards, keys = keys, actions = Actions(s.id))
+                RecentsStage(session = stageSession, cards = cards, keys = keys, actions = Actions(stageSession.id))
             }
         }
         // The first frame is on screen: only now may the app underneath change.
-        v.viewTreeObserver.registerFrameCommitCallback {
+        composeView.viewTreeObserver.registerFrameCommitCallback {
             main.postDelayed({
                 frameShown = true
                 if (homeGoPending) sendHomeGo()
             }, 24)
         }
-        d.setContentView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        d.setCancelable(false)
+        recentsDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        recentsDialog.setCancelable(false)
         return try {
-            d.show()
-            o.resume()
-            dialog = d
-            view = v
-            owner = o
+            recentsDialog.show()
+            overlayOwner.resume()
+            dialog = recentsDialog
+            view = composeView
+            owner = overlayOwner
             true
-        } catch (e: Exception) {
-            Timber.w(e, "show failed")
-            o.destroy()
+        } catch (error: Exception) {
+            Timber.w(error, "show failed")
+            overlayOwner.destroy()
             false
         }
     }
 
     private fun sendHomeGo() {
         homeGoPending = false
-        daemon.send(DaemonCommand.HomeGo(homeSeq))
+        daemon.send(DaemonCommand.HomeGo(homeSequence))
     }
 
     /** After the zoom: let the switch underneath settle, fade out, and drop everything. */
@@ -259,19 +259,19 @@ class RecentsOverlay(
         }
         main.postDelayed({
             if (sessionId != session) return@postDelayed
-            val v = view ?: return@postDelayed
-            v.animate().alpha(0f).setDuration(140).withEndAction { if (sessionId == session) removeNow() }.start()
+            val shownView = view ?: return@postDelayed
+            shownView.animate().alpha(0f).setDuration(140).withEndAction { if (sessionId == session) removeNow() }.start()
         }, settleMs)
     }
 
     private fun removeNow() {
-        val d = dialog ?: return
+        val shownDialog = dialog ?: return
         dialog = null
         view = null
         try {
-            d.dismiss()
-        } catch (e: Exception) {
-            Timber.w(e, "dismiss")
+            shownDialog.dismiss()
+        } catch (error: Exception) {
+            Timber.w(error, "dismiss")
         }
         owner?.destroy()
         owner = null
@@ -281,18 +281,18 @@ class RecentsOverlay(
     }
 
     /** Starts an app whose task is no longer running, like a launcher would, on the same screen. */
-    private fun launch(c: Card) {
-        val intent = app.packageManager.getLaunchIntentForPackage(c.packageName) ?: run {
-            Timber.w("no launch intent for ${c.packageName}")
+    private fun launch(card: Card) {
+        val intent = context.packageManager.getLaunchIntentForPackage(card.packageName) ?: run {
+            Timber.w("no launch intent for ${card.packageName}")
             return
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-        val opts = ActivityOptions.makeBasic()
-        if (displayId >= 0) opts.launchDisplayId = displayId
+        val options = ActivityOptions.makeBasic()
+        if (displayId >= 0) options.launchDisplayId = displayId
         try {
-            app.startActivity(intent, opts.toBundle())
-        } catch (e: Exception) {
-            Timber.w(e, "launch ${c.packageName} failed")
+            context.startActivity(intent, options.toBundle())
+        } catch (error: Exception) {
+            Timber.w(error, "launch ${card.packageName} failed")
         }
     }
 

@@ -1,7 +1,7 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KbTop
-import com.thorctl.ui.keyboard.KeyboardColors.KbBottom
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardTop
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardBottom
 import com.thorctl.ui.keyboard.KeyboardMetrics.INLINE_KEYBOARD_HEIGHT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,23 +32,23 @@ import kotlinx.coroutines.flow.StateFlow
  * touchpad; the text field is right there to tap).
  */
 @Composable
-fun InlineKeyboard(ui: StateFlow<KeyboardUi>) {
-    val kb = LocalKeyboardActions.current
-    val state by ui.collectAsState()
+fun InlineKeyboard(uiState: StateFlow<KeyboardUi>) {
+    val actions = LocalKeyboardActions.current
+    val state by uiState.collectAsState()
     val popup = remember { KeyPopup() }
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
             .height(INLINE_KEYBOARD_HEIGHT)
-            .background(Brush.verticalGradient(listOf(KbTop, KbBottom))),
+            .background(Brush.verticalGradient(listOf(KeyboardTop, KeyboardBottom))),
     ) {
-        popup.panelW = constraints.maxWidth.toFloat()
+        popup.panelWidth = constraints.maxWidth.toFloat()
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Pill(Icons.Rounded.ContentPaste, "Paste") { kb.paste() }
+                Pill(Icons.Rounded.ContentPaste, "Paste") { actions.paste() }
                 Spacer(Modifier.weight(1f))
                 HideButton()
             }

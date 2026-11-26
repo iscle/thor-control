@@ -29,23 +29,23 @@ import androidx.compose.ui.unit.dp
 import com.thorctl.ui.theme.qsColors
 
 @Composable
-fun SwitchTile(icon: ImageVector, title: String, desc: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
-    val qs = qsColors()
+fun SwitchTile(icon: ImageVector, title: String, description: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val shade = qsColors()
     Row(
         Modifier
             .fillMaxWidth()
             .height(72.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(qs.container)
+            .background(shade.container)
             .clickable(enabled = enabled) { onChange(!checked) }
             .padding(start = 20.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = qs.textSecondary)
+        Icon(icon, null, tint = shade.textSecondary)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = qs.text, maxLines = 1)
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = qs.textSecondary, maxLines = 2)
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text, maxLines = 1)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary, maxLines = 2)
         }
         Spacer(Modifier.width(12.dp))
         Switch(

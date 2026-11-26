@@ -8,6 +8,6 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 @Composable
 fun BottomKeyboard(viewModel: KeyboardViewModel = metroViewModel()) {
     CompositionLocalProvider(LocalKeyboardActions provides viewModel) {
-        KeyboardPanel(ui = viewModel.ui, visible = viewModel.visible)
+        KeyboardPanel(uiState = viewModel.uiState, visible = viewModel.visible)
     }
 }

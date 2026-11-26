@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ThorTheme(content: @Composable () -> Unit) {
-    val ctx = LocalContext.current
-    val scheme = if (isSystemInDarkTheme()) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+    val context = LocalContext.current
+    val scheme = if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     MaterialExpressiveTheme(colorScheme = scheme, motionScheme = MotionScheme.expressive(), content = content)
 }

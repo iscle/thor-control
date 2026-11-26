@@ -59,26 +59,26 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    val msg by state.collectAsState()
+    val colors = MaterialTheme.colorScheme
+    val message by state.collectAsState()
     var last by remember { mutableStateOf<HudMessage?>(null) }
-    if (msg != null) last = msg
+    if (message != null) last = message
     val gone by rememberUpdatedState(onGone)
     val pop = remember { Animatable(0f) }
-    val morphP = remember { Animatable(0f) }
+    val morphProgress = remember { Animatable(0f) }
     val morph = rememberMorph(MaterialShapes.Circle, MaterialShapes.Cookie9Sided)
     var shownIcon by remember { mutableStateOf<HudIcon?>(null) }
 
-    LaunchedEffect(msg?.stamp) {
-        val cur = msg
-        if (cur != null) {
+    LaunchedEffect(message?.stamp) {
+        val currentMessage = message
+        if (currentMessage != null) {
             // Another step on a level pill that is already up: only the bar moves.
-            val update = cur.level != null && shownIcon == cur.icon && pop.value > 0.5f
-            shownIcon = cur.icon
+            val update = currentMessage.level != null && shownIcon == currentMessage.icon && pop.value > 0.5f
+            shownIcon = currentMessage.icon
             launch { pop.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 520f)) }
             if (update) return@LaunchedEffect
-            morphP.snapTo(0f)
-            morphP.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 260f))
+            morphProgress.snapTo(0f)
+            morphProgress.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 260f))
         } else if (last != null) {
             pop.animateTo(0f, tween(170, easing = FastOutLinearInEasing))
             shownIcon = null
@@ -86,34 +86,34 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
         }
     }
 
-    val m = last ?: return
+    val shownMessage = last ?: return
     Row(
         Modifier
             .padding(12.dp)
             .graphicsLayer {
-                val v = pop.value
-                alpha = v.coerceIn(0f, 1f)
-                scaleX = 0.6f + 0.4f * v
-                scaleY = 0.6f + 0.4f * v
-                translationY = (1f - v) * -24.dp.toPx()
+                val popProgress = pop.value
+                alpha = popProgress.coerceIn(0f, 1f)
+                scaleX = 0.6f + 0.4f * popProgress
+                scaleY = 0.6f + 0.4f * popProgress
+                translationY = (1f - popProgress) * -24.dp.toPx()
                 transformOrigin = TransformOrigin(0.5f, 0f)
             }
             .shadow(12.dp, RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
-            .background(cs.surfaceContainerHigh)
+            .background(colors.surfaceContainerHigh)
             .padding(start = 8.dp, end = 22.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
                 .size(42.dp)
-                .graphicsLayer { rotationZ = (1f - morphP.value) * -120f }
-                .clip(MorphShape(morph, morphP.value))
-                .background(cs.primary),
+                .graphicsLayer { rotationZ = (1f - morphProgress.value) * -120f }
+                .clip(MorphShape(morph, morphProgress.value))
+                .background(colors.primary),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                when (m.icon) {
+                when (shownMessage.icon) {
                     HudIcon.CONTROLLER -> Icons.Rounded.SportsEsports
                     HudIcon.MOVE_DOWN -> Icons.Rounded.VerticalAlignBottom
                     HudIcon.MOVE_UP -> Icons.Rounded.VerticalAlignTop
@@ -122,17 +122,17 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
                     HudIcon.BRIGHTNESS -> Icons.Rounded.LightMode
                 },
                 null,
-                tint = cs.onPrimary,
-                modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = (1f - morphP.value) * 120f },
+                tint = colors.onPrimary,
+                modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = (1f - morphProgress.value) * 120f },
             )
         }
         Spacer(Modifier.width(14.dp))
-        val level = m.level
+        val level = shownMessage.level
         if (level != null) {
             LevelBar(level)
         } else {
-            AnimatedContent(m.text, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) }, label = "hud") { t ->
-                Text(t, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp), color = cs.onSurface)
+            AnimatedContent(shownMessage.text, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) }, label = "hud") { text ->
+                Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp), color = colors.onSurface)
             }
         }
     }
@@ -141,7 +141,7 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
 /** A level shown as a linear scale (display only, not a slider); glides to each new value. */
 @Composable
 private fun LevelBar(level: Float) {
-    val cs = MaterialTheme.colorScheme
+    val colors = MaterialTheme.colorScheme
     val shown by animateFloatAsState(level.coerceIn(0f, 1f), spring(dampingRatio = 1f, stiffness = 500f), label = "level")
     Box(
         Modifier
@@ -149,14 +149,14 @@ private fun LevelBar(level: Float) {
             .width(168.dp)
             .height(8.dp)
             .clip(RoundedCornerShape(50))
-            .background(cs.onSurface.copy(alpha = 0.12f)),
+            .background(colors.onSurface.copy(alpha = 0.12f)),
     ) {
         Box(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(shown)
                 .clip(RoundedCornerShape(50))
-                .background(cs.primary),
+                .background(colors.primary),
         )
     }
 }

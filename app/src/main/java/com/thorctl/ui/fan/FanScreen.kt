@@ -128,7 +128,7 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                 editable = !draft.isBuiltin,
                 liveTemp = stats.fanTemp,
                 unit = content.unit,
-                livePct = stats.fanPercent,
+                livePercent = stats.fanPercent,
                 onChange = { draft = it },
                 onCommit = viewModel::save,
             )
