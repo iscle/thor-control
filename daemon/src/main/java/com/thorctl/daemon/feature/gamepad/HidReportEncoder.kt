@@ -1,12 +1,12 @@
 package com.thorctl.daemon.feature.gamepad
 
-import com.thorctl.daemon.hardware.input.InputWatcher
+import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.protocol.GamepadHid
 
 /**
  * Controller state, folded from evdev events into the report layout of [GamepadHid]: buttons,
- * sticks, analog triggers and the d-pad hat. Pure; the grab thread feeds it events and the
- * coordinator resets or loads it while no events flow.
+ * sticks, analog triggers and the d-pad hat. Pure and not thread-safe: [ControllerReports] owns
+ * the one in use and only touches it under its lock.
  */
 class HidReportEncoder {
     private val held = HashSet<Int>()
@@ -29,16 +29,16 @@ class HidReportEncoder {
         reset()
         held += keys
         leftX = axisValues[ABS_X]; leftY = axisValues[ABS_Y]; rightX = axisValues[ABS_RX]; rightY = axisValues[ABS_RY]
-        leftTrigger = axisValues[InputWatcher.ABS_Z]; rightTrigger = axisValues[InputWatcher.ABS_RZ]
-        hatX = axisValues[InputWatcher.ABS_HAT0X]; hatY = axisValues[InputWatcher.ABS_HAT0Y]
+        leftTrigger = axisValues[EvdevCodes.ABS_Z]; rightTrigger = axisValues[EvdevCodes.ABS_RZ]
+        hatX = axisValues[EvdevCodes.ABS_HAT0X]; hatY = axisValues[EvdevCodes.ABS_HAT0Y]
     }
 
     /** One raw evdev event. Returns the report when it completes a frame (SYN_REPORT), else null. */
     fun onEvent(type: Int, code: Int, value: Int): ByteArray? {
         when (type) {
-            InputWatcher.EV_KEY -> key(code, value != 0)
-            InputWatcher.EV_ABS -> abs(code, value)
-            InputWatcher.EV_SYN -> if (code == SYN_REPORT) return build()
+            EvdevCodes.EV_KEY -> key(code, value != 0)
+            EvdevCodes.EV_ABS -> abs(code, value)
+            EvdevCodes.EV_SYN -> if (code == EvdevCodes.SYN_REPORT) return build()
         }
         return null
     }
@@ -53,10 +53,10 @@ class HidReportEncoder {
             ABS_Y -> leftY = value
             ABS_RX -> rightX = value
             ABS_RY -> rightY = value
-            InputWatcher.ABS_Z -> leftTrigger = value
-            InputWatcher.ABS_RZ -> rightTrigger = value
-            InputWatcher.ABS_HAT0X -> hatX = value
-            InputWatcher.ABS_HAT0Y -> hatY = value
+            EvdevCodes.ABS_Z -> leftTrigger = value
+            EvdevCodes.ABS_RZ -> rightTrigger = value
+            EvdevCodes.ABS_HAT0X -> hatX = value
+            EvdevCodes.ABS_HAT0Y -> hatY = value
         }
     }
 
@@ -68,20 +68,20 @@ class HidReportEncoder {
         var buttonByte2 = 0
         for (code in held) {
             when (code) {
-                InputWatcher.BTN_SOUTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_A
-                InputWatcher.BTN_EAST -> buttonByte2 = buttonByte2 or GamepadHid.B2_B
-                InputWatcher.BTN_NORTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_X
-                InputWatcher.BTN_WEST -> buttonByte2 = buttonByte2 or GamepadHid.B2_Y
-                InputWatcher.BTN_TL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L1
-                InputWatcher.BTN_TR -> buttonByte2 = buttonByte2 or GamepadHid.B2_R1
+                EvdevCodes.BTN_SOUTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_A
+                EvdevCodes.BTN_EAST -> buttonByte2 = buttonByte2 or GamepadHid.B2_B
+                EvdevCodes.BTN_NORTH -> buttonByte2 = buttonByte2 or GamepadHid.B2_X
+                EvdevCodes.BTN_WEST -> buttonByte2 = buttonByte2 or GamepadHid.B2_Y
+                EvdevCodes.BTN_TL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L1
+                EvdevCodes.BTN_TR -> buttonByte2 = buttonByte2 or GamepadHid.B2_R1
                 BTN_THUMBL -> buttonByte2 = buttonByte2 or GamepadHid.B2_L3
-                InputWatcher.BTN_THUMBR -> buttonByte1 = buttonByte1 or GamepadHid.B1_R3
-                InputWatcher.BTN_TL2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_L2
-                InputWatcher.BTN_TR2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_R2
+                EvdevCodes.BTN_THUMBR -> buttonByte1 = buttonByte1 or GamepadHid.B1_R3
+                EvdevCodes.BTN_TL2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_L2
+                EvdevCodes.BTN_TR2 -> buttonByte1 = buttonByte1 or GamepadHid.B1_R2
                 BTN_SELECT -> buttonByte1 = buttonByte1 or GamepadHid.B1_SELECT
                 BTN_START -> buttonByte1 = buttonByte1 or GamepadHid.B1_START
-                BTN_MODE, InputWatcher.KEY_HOME -> buttonByte1 = buttonByte1 or GamepadHid.B1_HOME
-                InputWatcher.KEY_BACK -> buttonByte1 = buttonByte1 or GamepadHid.B1_CAPTURE
+                BTN_MODE, EvdevCodes.KEY_HOME -> buttonByte1 = buttonByte1 or GamepadHid.B1_HOME
+                EvdevCodes.KEY_BACK -> buttonByte1 = buttonByte1 or GamepadHid.B1_CAPTURE
             }
         }
         // The triggers' digital bits, as on the Stadia: pressed past half way.
@@ -121,7 +121,6 @@ class HidReportEncoder {
         ((value - TRIGGER_DEAD) * 255 / (255 - TRIGGER_DEAD)).coerceIn(0, 255)
 
     companion object {
-        const val SYN_REPORT = 0
         const val ABS_X = 0x00
         const val ABS_Y = 0x01
         const val ABS_RX = 0x03

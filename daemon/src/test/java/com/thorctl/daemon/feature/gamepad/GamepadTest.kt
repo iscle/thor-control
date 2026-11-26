@@ -4,8 +4,12 @@ import android.view.KeyEvent
 import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
+import com.thorctl.daemon.awaitUntil
 import com.thorctl.daemon.hardware.BottomPanelHealer
 import com.thorctl.daemon.hardware.DisplayController
+import com.thorctl.daemon.hardware.input.EvdevCodes
+import com.thorctl.daemon.hardware.input.FakeEvdev
+import com.thorctl.daemon.hardware.input.TestInputDevices
 import com.thorctl.daemon.hardware.input.TestInputWatcher
 import com.thorctl.daemon.ipc.FakeClientLink
 import com.thorctl.daemon.ipc.FakeDaemonNotifier
@@ -15,34 +19,39 @@ import com.thorctl.daemon.system.FakePowerService
 import com.thorctl.protocol.GamepadHid
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.GamepadTransport
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import org.junit.After
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The coordinator, over Bluetooth (no I/O threads) and with a fake USB gadget. */
+/** The coordinator over fakes: Bluetooth to the app, USB through a fake gadget and /dev/hidg0. */
 class GamepadTest {
-    private val sys = FakeSys()
+    private val sys = FakeSys().apply { TestInputDevices.install(this, TestInputDevices.POWER_KEY) }
     private val clock = FakeClock()
     private val link = FakeClientLink()
     private val notifier = FakeDaemonNotifier()
+    private val evdev = FakeEvdev()
     private val inputService = FakeInputService()
     private val powerService = FakePowerService()
     private val displayService = FakeDisplayService()
     private val displays = DisplayController(displayService, inputService, BottomPanelHealer(sys, clock, displayService, FakeScheduledExecutor(clock)))
     private val gadget = FakeUsbGadget()
-    private val bluetoothOn = CountDownLatch(1)
+    private val hidg = FakeHidgNode()
+    private val usb = UsbHidEndpoint(hidg)
+
+    /** Shell commands run, from any thread. */
+    private val commands = CopyOnWriteArrayList<String>()
 
     private val gamepad = Gamepad(
-        input = TestInputWatcher.create(sys),
+        input = TestInputWatcher.create(sys, evdev),
         notifier = notifier,
         displays = displays,
         awake = AwakeKeeper(displays, powerService, inputService, sys),
         gadget = gadget,
-        usb = UsbHidEndpoint(),
+        usb = usb,
         bluetooth = BluetoothReportSender(link, clock),
         sys = sys,
         clock = clock,
@@ -50,25 +59,35 @@ class GamepadTest {
 
     init {
         sys.shell = { command ->
-            if (command == "cmd bluetooth_manager enable") bluetoothOn.countDown()
+            commands += command
             null
         }
     }
 
+    @After
+    fun turnOff() {
+        gamepad.shutdown()
+    }
+
     private fun reports() = synchronized(link.events) { link.events.filterIsInstance<DaemonEvent.GamepadReport>().map { it.report } }
 
-    private fun onBluetooth() {
-        gamepad.init(GamepadTransport.BLUETOOTH, screensOff = true)
+    private fun onBluetooth(screensOff: Boolean = true) {
+        gamepad.init(GamepadTransport.BLUETOOTH, screensOff)
         gamepad.setOn(true)
     }
 
-    private fun await(what: String, condition: () -> Boolean) {
-        val until = System.currentTimeMillis() + 3000
-        while (!condition()) {
-            if (System.currentTimeMillis() > until) throw AssertionError("timed out waiting for $what")
-            Thread.sleep(10)
-        }
+    private fun onUsb() {
+        gamepad.init(GamepadTransport.USB, screensOff = true)
+        gamepad.setOn(true)
+        awaitUntil("the USB writer") { hidg.written.isNotEmpty() }
     }
+
+    /** The power button, as grabbed for the [session]th time (each gamepad mode start grabs it again). */
+    private fun power(down: Boolean, session: Int = 1) =
+        evdev.awaitOpened(TestInputDevices.POWER_NODE, session).send(EvdevCodes.EV_KEY, EvdevCodes.KEY_POWER, if (down) 1 else 0)
+
+    /** Long enough for a hold timer that wasn't cancelled to have fired. */
+    private fun waitPastTheHold() = Thread.sleep(PowerButton.LONG_PRESS_MS + 300)
 
     @Test
     fun turningOnOverBluetoothKeepsAwakeEnablesTheAdapterAndSendsTheCurrentState() {
@@ -77,7 +96,7 @@ class GamepadTest {
         assertEquals(1, notifier.stateChanges.get())
         assertEquals(AwakeKeeper.WAKE_LOCK, sys.writes.first().first)
         assertEquals(listOf(0), powerService.userActivity)
-        assertTrue(bluetoothOn.await(3, TimeUnit.SECONDS))
+        awaitUntil("the Bluetooth adapter") { "cmd bluetooth_manager enable" in commands }
         assertContentEquals(GamepadHid.neutral(), reports().single())
     }
 
@@ -103,8 +122,7 @@ class GamepadTest {
 
     @Test
     fun screensStayLitWhenNotWanted() {
-        gamepad.init(GamepadTransport.BLUETOOTH, screensOff = false)
-        gamepad.setOn(true)
+        onBluetooth(screensOff = false)
         gamepad.onBluetooth(true, "Pixel")
         assertTrue(gamepad.state.connected)
         assertFalse(gamepad.state.dark)
@@ -151,23 +169,109 @@ class GamepadTest {
     }
 
     @Test
+    fun overUsbTheHostGetsReportsAndConnectsThroughTheGadget() {
+        onUsb()
+        assertContentEquals(byteArrayOf(GamepadHid.REPORT_ID.toByte()) + GamepadHid.neutral(), hidg.written.first())
+        gamepad.tick()
+        assertFalse(gamepad.state.connected)
+        gadget.configured = true
+        gamepad.tick()
+        assertTrue(gamepad.state.connected)
+        assertTrue(gamepad.state.dark)
+    }
+
+    @Test
     fun aFailedUsbSetUpShowsItsErrorAndTurningOffTearsDown() {
         gadget.setupError = "No USB controller"
         gamepad.init(GamepadTransport.USB, screensOff = true)
         gamepad.setOn(true)
-        await("the set-up error") { gamepad.state.error == "No USB controller" }
+        awaitUntil("the set-up error") { gamepad.state.error == "No USB controller" }
         gamepad.tick() // an error stops the re-adding
         assertEquals(1, gadget.setups.get())
         gamepad.setOn(false)
-        await("the teardown") { gadget.teardowns.get() == 1 }
+        awaitUntil("the teardown") { gadget.teardowns.get() == 1 }
         assertEquals("", gamepad.state.error)
+    }
+
+    @Test
+    fun shutdownClosesHidgBeforeTheGadgetGoesAndDoesNotLinger() {
+        onUsb()
+        var openAtTeardown = -1
+        gadget.onRemove = { openAtTeardown = hidg.openNow }
+        val startedAt = System.currentTimeMillis()
+        gamepad.shutdown()
+        val took = System.currentTimeMillis() - startedAt
+        assertEquals(1, gadget.teardowns.get())
+        assertEquals(0, openAtTeardown)
+        // A writer left asleep waits up to a second for a report; shutdown wakes it.
+        assertTrue(took < 600, "shutdown took ${took}ms")
+    }
+
+    @Test
+    fun shutdownLeavesNothingStale() {
+        onUsb()
+        gadget.configured = true
+        gamepad.tick()
+        assertTrue(gamepad.state.dark)
+        gamepad.shutdown()
+        val state = gamepad.state
+        assertFalse(state.on)
+        assertFalse(state.connected)
+        assertFalse(state.dark)
+        assertEquals("", state.host)
+        assertEquals("", state.error)
+        assertFalse(displays.gamepadDark)
+        assertEquals(AwakeKeeper.WAKE_UNLOCK to AwakeKeeper.WAKELOCK, sys.writes.last())
+        assertEquals(GamepadTransport.USB, state.transport)
+        assertTrue(state.screensOff)
+    }
+
+    @Test
+    fun holdingPowerOpensThePowerMenu() {
+        onBluetooth()
+        power(true)
+        awaitUntil("the power menu") { Gamepad.POWER_MENU_COMMAND in commands }
+        power(false)
+        assertFalse(gamepad.state.dark)
+    }
+
+    @Test
+    fun aQuickPowerPressTogglesDark() {
+        onBluetooth()
+        power(true)
+        power(false)
+        assertTrue(gamepad.state.dark)
+        power(true)
+        power(false)
+        assertFalse(gamepad.state.dark)
+    }
+
+    @Test
+    fun turningOffMidHoldNeverOpensThePowerMenu() {
+        onBluetooth()
+        power(true)
+        gamepad.setOn(false)
+        waitPastTheHold()
+        assertFalse(Gamepad.POWER_MENU_COMMAND in commands)
+    }
+
+    @Test
+    fun switchingTransportMidHoldNeverOpensThePowerMenuAndSpendsThePress() {
+        onBluetooth()
+        power(true)
+        gamepad.setTransport(GamepadTransport.USB)
+        waitPastTheHold()
+        assertFalse(Gamepad.POWER_MENU_COMMAND in commands)
+        // The release belongs to the press before the switch: it doesn't darken the screens.
+        power(false, session = 2)
+        assertFalse(gamepad.state.dark)
     }
 
     @Test
     fun initCleansUpWhatACrashLeft() {
         gadget.leftovers = true
         gamepad.init(GamepadTransport.USB, screensOff = true)
-        await("the cleanup") { gadget.teardowns.get() == 1 }
+        awaitUntil("the cleanup") { gadget.teardowns.get() == 1 }
     }
 
     @Test

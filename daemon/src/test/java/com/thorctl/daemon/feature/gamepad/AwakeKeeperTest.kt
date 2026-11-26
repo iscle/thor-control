@@ -10,8 +10,12 @@ import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
 import com.thorctl.daemon.system.FakePowerService
+import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.SystemServiceUnavailableException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 class AwakeKeeperTest {
@@ -49,6 +53,37 @@ class AwakeKeeperTest {
         assertFalse(awake.isInteractive())
         awake.wakeUp()
         assertEquals(listOf(KeyEvent.KEYCODE_WAKEUP to 0), inputService.injectedKeys)
+    }
+
+    @Test
+    fun aPanelThatCantBePokedDoesNotStopTheOthers() {
+        displayService.displays = listOf(display(0, 1080, 1920), display(3, 1080, 1240))
+        displays.refresh()
+        val poked = mutableListOf<Int>()
+        val flakyPower = object : PowerService by powerService {
+            override fun userActivity(displayId: Int) {
+                if (displayId == 0) throw SystemServiceUnavailableException("power")
+                poked += displayId
+            }
+        }
+        AwakeKeeper(displays, flakyPower, inputService, sys).keepAwake()
+        assertEquals(listOf(3), poked)
+    }
+
+    @Test
+    fun onlySystemServiceFailuresAreSwallowed() {
+        val brokenPower = object : PowerService by powerService {
+            override fun userActivity(displayId: Int) = throw IllegalStateException("a bug")
+        }
+        assertFailsWith<IllegalStateException> { AwakeKeeper(displays, brokenPower, inputService, sys).keepAwake() }
+    }
+
+    @Test
+    fun aWakeUpThatFailsIsLoggedNotThrown() {
+        val noInput = object : InputService by inputService {
+            override fun injectKey(keyCode: Int, displayId: Int) = throw SystemServiceUnavailableException("input")
+        }
+        AwakeKeeper(displays, powerService, noInput, sys).wakeUp()
     }
 
     private fun display(id: Int, width: Int, height: Int) =

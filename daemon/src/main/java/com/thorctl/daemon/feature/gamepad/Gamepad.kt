@@ -21,7 +21,7 @@ import kotlin.concurrent.thread
  * as a Stadia Controller ([GamepadHid] explains why).
  *
  * The controller is grabbed exclusively (nothing reaches Android) and every evdev frame becomes a
- * HID report ([HidReportEncoder]) the moment its SYN_REPORT arrives:
+ * HID report ([ControllerReports]) the moment its SYN_REPORT arrives:
  *
  *  - USB: an f_hid function is added next to adb in the USB gadget ([UsbGadget]), and the gadget
  *    takes the gamepad's vendor / product ID while it is there, so a computer sees a composite
@@ -57,10 +57,7 @@ class Gamepad(
 
     private var grabbedAt = 0L
 
-    private val encoder = HidReportEncoder()
-
-    @Volatile
-    private var lastSubmitted = ByteArray(0)
+    private val reports = ControllerReports(::submit)
 
     private val powerTimer = Executors.newSingleThreadScheduledExecutor { Thread(it, "gamepad-pwr").apply { isDaemon = true } }
 
@@ -81,7 +78,7 @@ class Gamepad(
     @Synchronized
     fun setOn(on: Boolean) {
         if (on == state.on) return
-        if (on) start() else stop()
+        if (on) start() else stop(usbTeardownNow = false)
         notifier.stateChanged()
     }
 
@@ -89,7 +86,7 @@ class Gamepad(
     fun setTransport(transport: GamepadTransport) {
         if (transport == state.transport) return
         val wasOn = state.on
-        if (wasOn) stop()
+        if (wasOn) stop(usbTeardownNow = false)
         state = state.copy(transport = transport)
         if (wasOn) start()
         notifier.stateChanged()
@@ -117,17 +114,14 @@ class Gamepad(
         return true
     }
 
-    /** Daemon exiting (module disabled): give USB and the controller back right now. */
+    /**
+     * Daemon exiting (module disabled): give USB and the controller back right now. Like turning
+     * gamepad mode off, except that the USB function is gone when this returns.
+     */
     @Synchronized
     fun shutdown() {
         if (!state.on) return
-        input.setPowerKeyHandler(null)
-        if (state.dark) displays.setGamepadDark(false)
-        input.releaseGamepad()
-        usb.stop(wakeWriter = false)
-        if (state.transport == GamepadTransport.USB) usbTeardown()
-        state = state.copy(on = false, connected = false, host = "")
-        awake.release()
+        stop(usbTeardownNow = true)
     }
 
     /** Every couple of seconds from the daemon's housekeeping. */
@@ -166,7 +160,7 @@ class Gamepad(
                 synchronized(this) {
                     if (state.on && state.transport == GamepadTransport.USB) {
                         if (setupError != null) state = state.copy(error = setupError)
-                        if (setupError == null) usb.start { lastSubmitted }
+                        if (setupError == null) usb.start { reports.last }
                         notifier.stateChanged()
                     }
                 }
@@ -176,19 +170,24 @@ class Gamepad(
             // The app registers the HID device once the adapter is on.
             thread(name = "gamepad-bt-on", isDaemon = true) { sys.sh("cmd bluetooth_manager enable") }
         }
-        encoder.reset()
         grab()
         Timber.i("gamepad mode on (${state.transport.wire})")
     }
 
-    private fun stop() {
+    /**
+     * Gamepad mode off: everything back as it was before [start]. The USB function goes away on a
+     * thread of its own, or before this returns with [usbTeardownNow] (the daemon is exiting).
+     */
+    private fun stop(usbTeardownNow: Boolean) {
         val transport = state.transport
+        // A hold timer still pending would open the power menu after gamepad mode is gone.
+        powerButton.cancel()
         input.releaseGamepad()
         // Let the host see everything released before it goes away.
-        submit(GamepadHid.neutral())
+        reports.send(GamepadHid.neutral())
         if (transport == GamepadTransport.USB) {
-            usb.stop(wakeWriter = true)
-            thread(name = "gamepad-usb-teardown", isDaemon = true) { usbTeardown() }
+            usb.stop()
+            if (usbTeardownNow) usbTeardown() else thread(name = "gamepad-usb-teardown", isDaemon = true) { usbTeardown() }
         }
         input.setPowerKeyHandler(null)
         if (state.dark) displays.setGamepadDark(false)
@@ -197,19 +196,18 @@ class Gamepad(
         Timber.i("gamepad mode off")
     }
 
-    /** Before the function goes away, the I/O threads must have closed /dev/hidg0. */
+    /** The I/O threads close /dev/hidg0 before the function goes away. */
     private fun usbTeardown() {
-        usb.join()
+        if (!usb.join()) Timber.w("gamepad: /dev/hidg0 still open, removing the HID function anyway")
         gadget.removeHidFunction()
     }
 
     private fun grab() {
-        if (!input.grabForGamepad(::onEvent)) Timber.w("gamepad: could not grab the controller")
+        if (!input.grabForGamepad(reports::onEvent)) Timber.w("gamepad: could not grab the controller")
         grabbedAt = clock.elapsedRealtime()
         // Start from what is held right now.
         val (keys, axisValues) = input.controllerSnapshot()
-        encoder.load(keys, axisValues)
-        submit(encoder.build())
+        reports.restart(keys, axisValues)
     }
 
     private fun setConnected(connected: Boolean, host: String) {
@@ -246,19 +244,13 @@ class Gamepad(
     /** Held: the power menu, on lit screens. */
     private fun onPowerHold() {
         darken(false)
-        thread(name = "gamepad-pwr-menu", isDaemon = true) { sys.sh("input keyevent --longpress KEYCODE_POWER") }
+        thread(name = "gamepad-pwr-menu", isDaemon = true) { sys.sh(POWER_MENU_COMMAND) }
     }
 
     // ---- Reports ------------------------------------------------------------------------------
 
-    /** Grab thread: one raw evdev event. */
-    private fun onEvent(type: Int, code: Int, value: Int) {
-        val report = encoder.onEvent(type, code, value) ?: return
-        if (!report.contentEquals(lastSubmitted)) submit(report)
-    }
-
+    /** Under [reports]' lock: one report to the current transport. */
     private fun submit(report: ByteArray) {
-        lastSubmitted = report
         when (state.transport) {
             GamepadTransport.USB -> usb.submit(report)
             else -> bluetooth.submit(report)
@@ -268,5 +260,7 @@ class Gamepad(
     companion object {
         /** A grab lost for this long (and a controller there) is taken again. */
         const val REGRAB_AFTER_MS = 3000L
+
+        const val POWER_MENU_COMMAND = "input keyevent --longpress KEYCODE_POWER"
     }
 }

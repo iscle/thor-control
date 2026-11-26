@@ -1,24 +1,21 @@
 package com.thorctl.daemon.feature.gamepad
 
-import android.system.Os
-import android.system.OsConstants
-import android.system.StructPollfd
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.protocol.GamepadHid
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.concurrent.thread
 
 /**
- * The gamepad's end of /dev/hidg0, the HID function's device node. A writer thread always sends
- * the newest report; f_hid only blocks while the previous one waits for the host's next poll, so
+ * The gamepad's end of the HID function's node ([HidgNode]). A writer thread always sends the
+ * newest report; f_hid only blocks while the previous one waits for the host's next poll, so
  * nothing queues up. A reader drains what the host sends (rumble), so the host never stalls on a
  * full queue.
  */
 @Inject
 @SingleIn(DaemonScope::class)
-class UsbHidEndpoint {
+class UsbHidEndpoint(private val node: HidgNode) {
     private val lock = Any()
     private var pending: ByteArray? = null
 
@@ -44,60 +41,24 @@ class UsbHidEndpoint {
         running = true
         synchronized(threads) {
             threads += thread(name = "gamepad-usb-tx", isDaemon = true) { writeLoop(current) }
-            threads += thread(name = "gamepad-usb-rx", isDaemon = true) { readLoop() }
+            threads += thread(name = "gamepad-usb-rx", isDaemon = true) { node.drainHostReports { running } }
         }
     }
 
-    /**
-     * Asks the I/O threads to finish. [wakeWriter] also wakes a writer waiting for a report;
-     * without it, the writer notices within a second (its wait times out).
-     */
-    fun stop(wakeWriter: Boolean) {
+    /** Asks the I/O threads to finish, waking a writer that waits for a report so it finishes at once. */
+    fun stop() {
         running = false
-        if (wakeWriter) synchronized(lock) { (lock as Object).notifyAll() }
-    }
-
-    /** Before the function goes away: waits (up to a second each) until the I/O threads have closed /dev/hidg0. */
-    fun join() {
-        val stopping = synchronized(threads) { threads.toList().also { threads.clear() } }
-        stopping.forEach { it.join(1000) }
+        synchronized(lock) { (lock as Object).notifyAll() }
     }
 
     /**
-     * Drains reports from the host (rumble, output report 5). f_hid hands the host a new buffer
-     * only once the previous one is read, so unread reports would leave the host waiting.
+     * Before the function goes away: waits (up to [JOIN_MS] each) until the I/O threads have
+     * closed the node. False if one is still running (a write the host never polls for).
      */
-    private fun readLoop() {
-        val buffer = ByteArray(64)
-        while (running) {
-            val fileDescriptor = try {
-                Os.open(HIDG, OsConstants.O_RDONLY or OsConstants.O_NONBLOCK, 0)
-            } catch (_: Exception) {
-                Thread.sleep(300) // node not there yet
-                continue
-            }
-            try {
-                val pollRequest = StructPollfd().apply {
-                    this.fd = fileDescriptor
-                    events = OsConstants.POLLIN.toShort()
-                }
-                while (running) {
-                    pollRequest.revents = 0
-                    if (Os.poll(arrayOf(pollRequest), 250) <= 0) continue
-                    val returnedEvents = pollRequest.revents.toInt()
-                    if (returnedEvents and (OsConstants.POLLERR or OsConstants.POLLHUP) != 0) break
-                    if (returnedEvents and OsConstants.POLLIN != 0) Os.read(fileDescriptor, buffer, 0, buffer.size)
-                }
-            } catch (_: Exception) {
-                // Host gone or nothing to read after all: open again shortly.
-            } finally {
-                try {
-                    Os.close(fileDescriptor)
-                } catch (_: Exception) {
-                }
-            }
-            if (running) Thread.sleep(250)
-        }
+    fun join(): Boolean {
+        val stopping = synchronized(threads) { threads.toList().also { threads.clear() } }
+        stopping.forEach { it.join(JOIN_MS) }
+        return stopping.none { it.isAlive }
     }
 
     private fun writeLoop(current: () -> ByteArray) {
@@ -105,37 +66,41 @@ class UsbHidEndpoint {
         frameBytes[0] = GamepadHid.REPORT_ID.toByte()
         while (running) {
             val hidOutput = try {
-                FileOutputStream(HIDG)
-            } catch (_: Exception) {
+                node.openOutput()
+            } catch (_: IOException) {
                 Thread.sleep(300) // node not there yet (the gadget is still binding)
                 continue
             }
-            hidOutput.use { output ->
-                // A fresh host: send the current state first.
-                var next: ByteArray? = current().takeIf { it.size == GamepadHid.PAYLOAD }
-                while (running) {
-                    val report = next ?: synchronized(lock) {
-                        while (pending == null && running) (lock as Object).wait(1000)
-                        pending.also { pending = null }
-                    } ?: continue
-                    next = null
-                    System.arraycopy(report, 0, frameBytes, 1, GamepadHid.PAYLOAD)
-                    try {
-                        // Returns as soon as the report is queued; only blocks while the previous
-                        // one is still waiting for the host's poll (newer reports replace pending).
-                        output.write(frameBytes)
-                    } catch (_: Exception) {
-                        // Not configured (no host) or the host went away: retry shortly.
-                        synchronized(lock) { if (pending == null) pending = report }
-                        Thread.sleep(250)
-                        break
+            try {
+                hidOutput.use { output ->
+                    // A fresh host: send the current state first.
+                    var next: ByteArray? = current().takeIf { it.size == GamepadHid.PAYLOAD }
+                    while (running) {
+                        val report = next ?: synchronized(lock) {
+                            while (pending == null && running) (lock as Object).wait(1000)
+                            pending.also { pending = null }
+                        } ?: continue
+                        next = null
+                        System.arraycopy(report, 0, frameBytes, 1, GamepadHid.PAYLOAD)
+                        try {
+                            // Returns as soon as the report is queued; only blocks while the previous
+                            // one is still waiting for the host's poll (newer reports replace pending).
+                            output.write(frameBytes)
+                        } catch (_: IOException) {
+                            // Not configured (no host) or the host went away: retry shortly.
+                            synchronized(lock) { if (pending == null) pending = report }
+                            Thread.sleep(250)
+                            break
+                        }
                     }
                 }
+            } catch (_: IOException) {
+                // Closing failed: the node is gone anyway; open it again (or stop).
             }
         }
     }
 
     companion object {
-        const val HIDG = "/dev/hidg0"
+        const val JOIN_MS = 1000L
     }
 }
