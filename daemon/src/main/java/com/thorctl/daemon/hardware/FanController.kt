@@ -53,15 +53,15 @@ class FanController(private val sys: Sys, private val clock: Clock) {
     private var screenOffHot = false
 
     init {
-        val cdev = coolingDevice?.let(sys::canonical)
+        val canonicalCoolingDevice = coolingDevice?.let(sys::canonical)
         val found = ArrayList<Pair<String, Int>>()
         val sensors = LinkedHashSet<String>()
         val usb = LinkedHashSet<String>()
-        if (cdev != null) {
+        if (canonicalCoolingDevice != null) {
             sys.list(THERMAL).filter { it.name().startsWith("thermal_zone") }.forEach { zone ->
                 val type = sys.read("$zone/type") ?: return@forEach
-                sys.list(zone).filter { it.name().matches(CDEV) }.forEach { link ->
-                    if (sys.canonical(link) == cdev) {
+                sys.list(zone).filter { it.name().matches(COOLING_DEVICE_LINK) }.forEach { link ->
+                    if (sys.canonical(link) == canonicalCoolingDevice) {
                         val trip = sys.readInt("${link}_trip_point") ?: return@forEach
                         found += "$zone/trip_point_${trip}_temp" to (sys.readInt("$zone/trip_point_${trip}_temp") ?: 0)
                         if (type.startsWith("usb")) usb += "$zone/temp" else sensors += "$zone/temp"
@@ -77,18 +77,18 @@ class FanController(private val sys: Sys, private val clock: Clock) {
 
     /** Original values are captured once per boot; a restarted daemon must not capture our own overrides. */
     private fun loadOrSaveOriginals(current: List<Pair<String, Int>>): List<Trip> {
-        sys.mkdirs(STATE_DIR)
-        val f = "$STATE_DIR/trips.orig"
-        val savedText = sys.read(f)
+        sys.mkdirs(STATE_DIRECTORY)
+        val originalsFile = "$STATE_DIRECTORY/trips.orig"
+        val savedText = sys.read(originalsFile)
         if (savedText != null) {
             val saved = savedText.lines().mapNotNull { line ->
                 val parts = line.trim().split(' ')
                 if (parts.size == 2) parts[0] to parts[1].toIntOrNull() else null
             }.filter { it.second != null }.associate { it.first to it.second!! }
-            if (saved.isNotEmpty()) return current.map { Trip(it.first, saved[it.first] ?: it.second.takeIf { v -> v < DISABLED_TEMP } ?: 60000) }
+            if (saved.isNotEmpty()) return current.map { Trip(it.first, saved[it.first] ?: it.second.takeIf { original -> original < DISABLED_TEMP } ?: 60000) }
         }
         val list = current.map { Trip(it.first, if (it.second >= DISABLED_TEMP) 60000 else it.second) }
-        sys.write(f, list.joinToString("\n") { "${it.path} ${it.original}" } + "\n")
+        sys.write(originalsFile, list.joinToString("\n") { "${it.path} ${it.original}" } + "\n")
         return list
     }
 
@@ -99,7 +99,7 @@ class FanController(private val sys: Sys, private val clock: Clock) {
             kernelMode = enabled
             return
         }
-        for (t in trips) sys.write(t.path, if (enabled) t.original.toString() else DISABLED_TEMP.toString())
+        for (trip in trips) sys.write(trip.path, if (enabled) trip.original.toString() else DISABLED_TEMP.toString())
         kernelMode = enabled
         Timber.i("fan: kernel control ${if (enabled) "restored" else "disabled"}")
     }
@@ -115,13 +115,13 @@ class FanController(private val sys: Sys, private val clock: Clock) {
      */
     fun tick(profile: FanProfile, screenOn: Boolean) {
         val pwm = pwmPath ?: return
-        val t = readMax(controlSensors)
-        controlTemp = t
+        val temperature = readMax(controlSensors)
+        controlTemp = temperature
 
         // Hysteresis: once heat brought the fan back with the screen off, it runs until well below.
-        val usb = readMax(usbSensors)
-        screenOffHot = !screenOn && (t >= SCREEN_OFF_MAX_TEMP || usb >= SCREEN_OFF_MAX_USB_TEMP ||
-            (screenOffHot && (t >= SCREEN_OFF_MAX_TEMP - 7f || usb >= SCREEN_OFF_MAX_USB_TEMP - 3f)))
+        val usbTemperature = readMax(usbSensors)
+        screenOffHot = !screenOn && (temperature >= SCREEN_OFF_MAX_TEMP || usbTemperature >= SCREEN_OFF_MAX_USB_TEMP ||
+            (screenOffHot && (temperature >= SCREEN_OFF_MAX_TEMP - 7f || usbTemperature >= SCREEN_OFF_MAX_USB_TEMP - 3f)))
         if (!screenOn && !screenOffHot) {
             if (kernelMode) {
                 setKernelControl(false)
@@ -130,7 +130,7 @@ class FanController(private val sys: Sys, private val clock: Clock) {
             if (sys.readInt(pwm) != 0) sys.write(pwm, "0")
             lastWritten = 0
             currentPwm = 0
-            filtered = t
+            filtered = temperature
             return
         }
 
@@ -138,7 +138,7 @@ class FanController(private val sys: Sys, private val clock: Clock) {
             if (!kernelMode) setKernelControl(true)
             currentPwm = sys.readInt(pwm) ?: 0
             lastWritten = -1
-            filtered = t
+            filtered = temperature
             return
         }
         if (kernelMode) {
@@ -148,16 +148,16 @@ class FanController(private val sys: Sys, private val clock: Clock) {
 
         // Per-core sensors spike for a second at a time (app launches, JIT). Rise fairly quickly,
         // fall slowly, so the fan neither bursts on spikes nor hunts around a curve knee.
-        filtered = if (filtered == 0f) t else filtered + (t - filtered) * (if (t >= filtered) 0.35f else 0.12f)
+        filtered = if (filtered == 0f) temperature else filtered + (temperature - filtered) * (if (temperature >= filtered) 0.35f else 0.12f)
         controlTemp = filtered
         var percent = profile.percentAt(filtered)
 
         // Charging heat: the stock zones spin the fan for a hot USB port, keep that behaviour.
-        val usbT = readMax(usbSensors)
-        if (usbT >= 45f) percent = max(percent, 40f) else if (usbT >= 43f) percent = max(percent, 20f)
+        val chargingPortTemperature = readMax(usbSensors)
+        if (chargingPortTemperature >= 45f) percent = max(percent, 40f) else if (chargingPortTemperature >= 43f) percent = max(percent, 20f)
 
         // Safety net independent of the selected curve.
-        if (filtered >= SAFETY_TEMP || t >= SAFETY_TEMP + 8f) percent = 100f
+        if (filtered >= SAFETY_TEMP || temperature >= SAFETY_TEMP + 8f) percent = 100f
 
         var desired = (percent * 2.55f).roundToInt().coerceIn(0, 255)
         if (desired in 1 until MIN_SPIN_PWM) desired = MIN_SPIN_PWM
@@ -183,7 +183,7 @@ class FanController(private val sys: Sys, private val clock: Clock) {
         currentPwm = target
     }
 
-    private val zoneDirs: List<String> by lazy { trips.map { it.path.substringBeforeLast('/') }.distinct() }
+    private val zoneDirectories: List<String> by lazy { trips.map { it.path.substringBeforeLast('/') }.distinct() }
     private var lastWritten = -1
     private var overriddenTicks = 0
     private var lastRelease = 0L
@@ -198,17 +198,17 @@ class FanController(private val sys: Sys, private val clock: Clock) {
      */
     private fun releaseKernelTargets() {
         val pwm = pwmPath ?: return
-        val emul = zoneDirs.map { "$it/emul_temp" }.filter { sys.exists(it) }
+        val emulatedTemps = zoneDirectories.map { "$it/emul_temp" }.filter { sys.exists(it) }
         sys.write(pwm, "0")
-        if (emul.isEmpty()) return
-        emul.forEach { sys.write(it, "20000") }
+        if (emulatedTemps.isEmpty()) return
+        emulatedTemps.forEach { sys.write(it, "20000") }
         try {
             Thread.sleep(300)
         } finally {
-            emul.forEach { sys.write(it, "0") }
+            emulatedTemps.forEach { sys.write(it, "0") }
         }
         lastRelease = clock.elapsedRealtime()
-        Timber.i("fan: released latched kernel fan targets in ${emul.size} zones")
+        Timber.i("fan: released latched kernel fan targets in ${emulatedTemps.size} zones")
     }
 
     /** Last reading of pwm1, used for stats. */
@@ -217,11 +217,11 @@ class FanController(private val sys: Sys, private val clock: Clock) {
     companion object {
         private const val HWMON = "/sys/class/hwmon"
         private const val THERMAL = "/sys/class/thermal"
-        private val CDEV = Regex("cdev\\d+")
+        private val COOLING_DEVICE_LINK = Regex("cdev\\d+")
 
         private fun String.name() = substringAfterLast('/')
 
-        const val STATE_DIR = "/dev/thorctl"
+        const val STATE_DIRECTORY = "/dev/thorctl"
         const val DISABLED_TEMP = 150000
         const val SAFETY_TEMP = 90f
         const val SCREEN_OFF_MAX_TEMP = 62f

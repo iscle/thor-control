@@ -16,23 +16,23 @@ import kotlin.system.exitProcess
  */
 object Main {
     @JvmStatic
-    fun main(args: Array<String>) {
+    fun main(arguments: Array<String>) {
         DaemonLogTree.plant()
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            Timber.w(e, "uncaught exception in ${t.name}")
-            if (t.name == "main") exitProcess(1)
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            Timber.w(error, "uncaught exception in ${thread.name}")
+            if (thread.name == "main") exitProcess(1)
         }
         try {
             // Immune to the kernel OOM killer; lmkd only manages app processes anyway.
             File("/proc/self/oom_score_adj").writeText("-1000")
-        } catch (e: Exception) {
-            Timber.w(e, "could not set oom_score_adj")
+        } catch (error: Exception) {
+            Timber.w(error, "could not set oom_score_adj")
         }
         Timber.i("thorctld starting, pid=${android.os.Process.myPid()} uid=${android.os.Process.myUid()}")
         try {
             createGraph<DaemonGraph>().daemon.run()
-        } catch (e: Throwable) {
-            Timber.w(e, "daemon died")
+        } catch (error: Throwable) {
+            Timber.w(error, "daemon died")
             exitProcess(1)
         }
     }

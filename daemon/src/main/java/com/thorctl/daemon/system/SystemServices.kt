@@ -22,44 +22,44 @@ import java.lang.reflect.Method
 @Inject
 @SingleIn(DaemonScope::class)
 class SystemServices {
-    private class Svc(val name: String, val iface: String) {
+    private class Svc(val name: String, val interfaceName: String) {
         private var binder: IBinder? = null
         private var proxy: Any? = null
         private val methods = HashMap<String, Method>()
 
         @Synchronized
         fun get(): Any? {
-            val b = binder
-            if (b != null && b.isBinderAlive && proxy != null) return proxy
-            val nb = getService(name) ?: return null
-            binder = nb
+            val cachedBinder = binder
+            if (cachedBinder != null && cachedBinder.isBinderAlive && proxy != null) return proxy
+            val freshBinder = getService(name) ?: return null
+            binder = freshBinder
             methods.clear()
-            proxy = Class.forName("$iface\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, nb)
+            proxy = Class.forName("$interfaceName\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, freshBinder)
             return proxy
         }
 
         @Synchronized
-        fun call(method: String, vararg args: Any?): Any? {
-            val p = get() ?: throw IllegalStateException("service $name not available")
-            val m = methods.getOrPut(method + args.size) {
-                p.javaClass.methods.first { it.name == method && it.parameterTypes.size == args.size }
+        fun call(method: String, vararg arguments: Any?): Any? {
+            val service = get() ?: throw IllegalStateException("service $name not available")
+            val javaMethod = methods.getOrPut(method + arguments.size) {
+                service.javaClass.methods.first { it.name == method && it.parameterTypes.size == arguments.size }
             }
-            return m.invoke(p, *args)
+            return javaMethod.invoke(service, *arguments)
         }
     }
 
     private val display = Svc("display", "android.hardware.display.IDisplayManager")
     private val input = Svc("input", "android.hardware.input.IInputManager")
     private val power = Svc("power", "android.os.IPowerManager")
-    private val atm = Svc("activity_task", "android.app.IActivityTaskManager")
-    private val am = Svc("activity", "android.app.IActivityManager")
+    private val activityTaskManager = Svc("activity_task", "android.app.IActivityTaskManager")
+    private val activityManager = Svc("activity", "android.app.IActivityManager")
 
     /**
      * The same service for the binder hand-off only: that call can wait seconds for Android to
-     * start the app, and must not hold [am]'s lock (game mode's process calls) meanwhile.
+     * start the app, and must not hold [activityManager]'s lock (game mode's process calls) meanwhile.
      */
-    private val amProviders = Svc("activity", "android.app.IActivityManager")
-    private val pm = Svc("package", "android.content.pm.IPackageManager")
+    private val activityManagerForProviders = Svc("activity", "android.app.IActivityManager")
+    private val packageManager = Svc("package", "android.content.pm.IPackageManager")
 
     fun servicesReady(): Boolean =
         getService("display") != null && getService("input") != null &&
@@ -72,15 +72,15 @@ class SystemServices {
     fun displays(): List<DisplayDesc> {
         val ids = display.call("getDisplayIds", false) as IntArray
         return ids.toList().mapNotNull { id ->
-            val info = display.call("getDisplayInfo", id) ?: return@mapNotNull null
-            val c = info.javaClass
+            val displayInfo = display.call("getDisplayInfo", id) ?: return@mapNotNull null
+            val infoClass = displayInfo.javaClass
             DisplayDesc(
                 id = id,
-                uniqueId = c.getField("uniqueId").get(info) as? String ?: "",
-                type = c.getField("type").getInt(info),
-                width = c.getField("logicalWidth").getInt(info),
-                height = c.getField("logicalHeight").getInt(info),
-                state = c.getField("state").getInt(info),
+                uniqueId = infoClass.getField("uniqueId").get(displayInfo) as? String ?: "",
+                type = infoClass.getField("type").getInt(displayInfo),
+                width = infoClass.getField("logicalWidth").getInt(displayInfo),
+                height = infoClass.getField("logicalHeight").getInt(displayInfo),
+                state = infoClass.getField("state").getInt(displayInfo),
             )
         }
     }
@@ -132,42 +132,42 @@ class SystemServices {
 
     /** Display of the focused task, or -1. */
     fun focusedDisplayId(): Int = try {
-        atm.call("getFocusedRootTaskInfo")?.let { field(it, "displayId") as? Int } ?: -1
+        activityTaskManager.call("getFocusedRootTaskInfo")?.let { field(it, "displayId") as? Int } ?: -1
     } catch (_: Throwable) {
         -1
     }
 
     fun focusTopTask(displayId: Int) {
-        atm.call("focusTopTask", displayId)
+        activityTaskManager.call("focusTopTask", displayId)
     }
 
     data class TaskDesc(val taskId: Int, val packageName: String?)
 
     /** Top-most visible standard (non-home) root task on a display, i.e. the app the user sees. */
     fun topAppTask(displayId: Int): TaskDesc? {
-        val list = atm.call("getAllRootTaskInfosOnDisplay", displayId) as? List<*> ?: return null
-        for (info in list) {
-            if (info == null) continue
-            val type = field(info, "topActivityType") as? Int ?: continue
-            val visible = (field(info, "visible") as? Boolean ?: false) || (field(info, "isVisible") as? Boolean ?: false)
+        val list = activityTaskManager.call("getAllRootTaskInfosOnDisplay", displayId) as? List<*> ?: return null
+        for (taskInfo in list) {
+            if (taskInfo == null) continue
+            val type = field(taskInfo, "topActivityType") as? Int ?: continue
+            val visible = (field(taskInfo, "visible") as? Boolean ?: false) || (field(taskInfo, "isVisible") as? Boolean ?: false)
             if (type == ACTIVITY_TYPE_STANDARD && visible) {
-                val top = field(info, "topActivity") as? android.content.ComponentName
-                    ?: field(info, "baseActivity") as? android.content.ComponentName
-                return TaskDesc(field(info, "taskId") as Int, top?.packageName)
+                val top = field(taskInfo, "topActivity") as? android.content.ComponentName
+                    ?: field(taskInfo, "baseActivity") as? android.content.ComponentName
+                return TaskDesc(field(taskInfo, "taskId") as Int, top?.packageName)
             }
         }
         return null
     }
 
     fun moveTaskToDisplay(taskId: Int, displayId: Int) {
-        atm.call("moveRootTaskToDisplay", taskId, displayId)
+        activityTaskManager.call("moveRootTaskToDisplay", taskId, displayId)
         // A raw reparent skips the "task to front" transition that Launcher tracks; without it
         // Launcher believes it is still visible and the next app-switch toggles the wrong state.
         try {
-            val opts = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
-            atm.call("startActivityFromRecents", taskId, opts)
-        } catch (e: Throwable) {
-            Timber.w(e, "bring task $taskId to front failed")
+            val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
+            activityTaskManager.call("startActivityFromRecents", taskId, options)
+        } catch (error: Throwable) {
+            Timber.w(error, "bring task $taskId to front failed")
         }
     }
 
@@ -175,29 +175,29 @@ class SystemServices {
     fun injectKey(keyCode: Int, displayId: Int) {
         val now = android.os.SystemClock.uptimeMillis()
         for (action in intArrayOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP)) {
-            val ev = android.view.KeyEvent(
+            val event = android.view.KeyEvent(
                 now, now, action, keyCode, 0, 0,
                 android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
                 android.view.KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD,
             )
             if (displayId >= 0) {
-                android.view.KeyEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType).invoke(ev, displayId)
+                android.view.KeyEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType).invoke(event, displayId)
             }
-            input.call("injectInputEvent", ev, 0 /* INJECT_INPUT_EVENT_MODE_ASYNC */)
+            input.call("injectInputEvent", event, 0 /* INJECT_INPUT_EVENT_MODE_ASYNC */)
         }
     }
 
     /** Packages of every visible root task on a display (any activity type, home included). */
     fun visiblePackages(displayId: Int): Set<String> {
-        val list = atm.call("getAllRootTaskInfosOnDisplay", displayId) as? List<*> ?: return emptySet()
-        val out = HashSet<String>()
-        for (info in list) {
-            if (info == null) continue
-            val visible = (field(info, "visible") as? Boolean ?: false) || (field(info, "isVisible") as? Boolean ?: false)
+        val list = activityTaskManager.call("getAllRootTaskInfosOnDisplay", displayId) as? List<*> ?: return emptySet()
+        val packages = HashSet<String>()
+        for (taskInfo in list) {
+            if (taskInfo == null) continue
+            val visible = (field(taskInfo, "visible") as? Boolean ?: false) || (field(taskInfo, "isVisible") as? Boolean ?: false)
             if (!visible) continue
-            ((field(info, "topActivity") ?: field(info, "baseActivity")) as? android.content.ComponentName)?.let { out += it.packageName }
+            ((field(taskInfo, "topActivity") ?: field(taskInfo, "baseActivity")) as? android.content.ComponentName)?.let { packages += it.packageName }
         }
-        return out
+        return packages
     }
 
     // ---- Recent tasks ---------------------------------------------------------------------
@@ -206,33 +206,33 @@ class SystemServices {
     data class RecentTask(val taskId: Int, val packageName: String, val displayId: Int, val visible: Boolean, val running: Boolean)
 
     /** Most recent first, as the system's recents list (home and excluded tasks are left out). */
-    fun recentTasks(max: Int): List<RecentTask> {
-        val slice = atm.call("getRecentTasks", max, RECENT_IGNORE_UNAVAILABLE, 0) ?: return emptyList()
+    fun recentTasks(limit: Int): List<RecentTask> {
+        val slice = activityTaskManager.call("getRecentTasks", limit, RECENT_IGNORE_UNAVAILABLE, 0) ?: return emptyList()
         val list = slice.javaClass.getMethod("getList").invoke(slice) as? List<*> ?: return emptyList()
-        return list.mapNotNull { info ->
-            if (info == null) return@mapNotNull null
-            val base = (field(info, "baseIntent") as? android.content.Intent)?.component
-            val packageName = ((field(info, "topActivity") ?: field(info, "baseActivity")) as? android.content.ComponentName)?.packageName
+        return list.mapNotNull { recentTaskInfo ->
+            if (recentTaskInfo == null) return@mapNotNull null
+            val base = (field(recentTaskInfo, "baseIntent") as? android.content.Intent)?.component
+            val packageName = ((field(recentTaskInfo, "topActivity") ?: field(recentTaskInfo, "baseActivity")) as? android.content.ComponentName)?.packageName
                 ?: base?.packageName ?: return@mapNotNull null
             RecentTask(
-                taskId = field(info, "taskId") as? Int ?: return@mapNotNull null,
+                taskId = field(recentTaskInfo, "taskId") as? Int ?: return@mapNotNull null,
                 packageName = packageName,
-                displayId = field(info, "displayId") as? Int ?: -1,
-                visible = field(info, "isVisible") as? Boolean ?: false,
-                running = field(info, "isRunning") as? Boolean ?: false,
+                displayId = field(recentTaskInfo, "displayId") as? Int ?: -1,
+                visible = field(recentTaskInfo, "isVisible") as? Boolean ?: false,
+                running = field(recentTaskInfo, "isRunning") as? Boolean ?: false,
             )
         }
     }
 
     /** Brings a recent task to front on [displayId], restoring it if it is no longer running. */
     fun startFromRecents(taskId: Int, displayId: Int) {
-        val opts = android.app.ActivityOptions.makeBasic()
-        if (displayId >= 0) opts.launchDisplayId = displayId
-        atm.call("startActivityFromRecents", taskId, opts.toBundle())
+        val options = android.app.ActivityOptions.makeBasic()
+        if (displayId >= 0) options.launchDisplayId = displayId
+        activityTaskManager.call("startActivityFromRecents", taskId, options.toBundle())
     }
 
     /** Removes the task from recents and closes it, like swiping it away. */
-    fun removeTask(taskId: Int): Boolean = atm.call("removeTask", taskId) as? Boolean ?: false
+    fun removeTask(taskId: Int): Boolean = activityTaskManager.call("removeTask", taskId) as? Boolean ?: false
 
     /**
      * Asks the system for a fresh preview of a visible task. With updateCache it is also written
@@ -240,17 +240,17 @@ class SystemServices {
      * TaskSnapshot is dropped right away (its graphics buffer is released).
      */
     fun takeSnapshot(taskId: Int) {
-        val tsm = atm.call("getTaskSnapshotManager") ?: return
-        val m = tsm.javaClass.methods.firstOrNull { it.name == "takeTaskSnapshot" } ?: return
-        val args: Array<Any?> = when (m.parameterTypes.size) {
+        val snapshotManager = activityTaskManager.call("getTaskSnapshotManager") ?: return
+        val takeMethod = snapshotManager.javaClass.methods.firstOrNull { it.name == "takeTaskSnapshot" } ?: return
+        val arguments: Array<Any?> = when (takeMethod.parameterTypes.size) {
             4 -> arrayOf(taskId, true, false, false)
             3 -> arrayOf(taskId, true, false)
             2 -> arrayOf(taskId, true)
             else -> return
         }
-        val snap = m.invoke(tsm, *args) ?: return
+        val snapshot = takeMethod.invoke(snapshotManager, *arguments) ?: return
         try {
-            (snap.javaClass.getMethod("getHardwareBuffer").invoke(snap) as? AutoCloseable)?.close()
+            (snapshot.javaClass.getMethod("getHardwareBuffer").invoke(snapshot) as? AutoCloseable)?.close()
         } catch (_: Throwable) {
         }
     }
@@ -258,9 +258,9 @@ class SystemServices {
     /** The persisted low-resolution preview of a task, if the system has one. */
     fun snapshotFile(taskId: Int): java.io.File? {
         val root = java.io.File("/data/system_ce/0/snapshots")
-        val dirs = listOf(root) + (root.listFiles()?.filter { it.isDirectory } ?: emptyList())
+        val directories = listOf(root) + (root.listFiles()?.filter { it.isDirectory } ?: emptyList())
         for (name in listOf("${taskId}_reduced.jpg", "$taskId.jpg")) {
-            dirs.map { java.io.File(it, name) }.filter { it.isFile }.maxByOrNull { it.lastModified() }?.let { return it }
+            directories.map { java.io.File(it, name) }.filter { it.isFile }.maxByOrNull { it.lastModified() }?.let { return it }
         }
         return null
     }
@@ -270,45 +270,45 @@ class SystemServices {
     data class AppProcess(val pid: Int, val uid: Int, val name: String, val packageNames: List<String>, val importance: Int)
 
     fun runningApps(): List<AppProcess> {
-        val list = am.call("getRunningAppProcesses") as? List<*> ?: return emptyList()
-        return list.mapNotNull { p ->
-            val i = p as? android.app.ActivityManager.RunningAppProcessInfo ?: return@mapNotNull null
-            AppProcess(i.pid, i.uid, i.processName ?: "", i.pkgList?.toList() ?: emptyList(), i.importance)
+        val list = activityManager.call("getRunningAppProcesses") as? List<*> ?: return emptyList()
+        return list.mapNotNull { process ->
+            val processInfo = process as? android.app.ActivityManager.RunningAppProcessInfo ?: return@mapNotNull null
+            AppProcess(processInfo.pid, processInfo.uid, processInfo.processName ?: "", processInfo.pkgList?.toList() ?: emptyList(), processInfo.importance)
         }
     }
 
     fun forceStop(packageName: String) {
-        am.call("forceStopPackage", packageName, 0)
+        activityManager.call("forceStopPackage", packageName, 0)
     }
 
     /** Kills the package's processes that are in the background (adj >= service); visible ones survive. */
     fun killBackground(packageName: String) {
-        am.call("killBackgroundProcesses", packageName, 0)
+        activityManager.call("killBackgroundProcesses", packageName, 0)
     }
 
     /** ApplicationInfo.flags, or null if the package is unknown. */
     fun appFlags(packageName: String): Int? {
-        val p = pm.get() ?: return null
-        val m = p.javaClass.methods.firstOrNull { it.name == "getApplicationInfo" && it.parameterTypes.size == 3 } ?: return null
-        val flagsArg: Any = if (m.parameterTypes[1] == Long::class.javaPrimitiveType) 0L else 0
-        val info = m.invoke(p, packageName, flagsArg, 0) as? android.content.pm.ApplicationInfo ?: return null
-        return info.flags
+        val packageService = packageManager.get() ?: return null
+        val getInfoMethod = packageService.javaClass.methods.firstOrNull { it.name == "getApplicationInfo" && it.parameterTypes.size == 3 } ?: return null
+        val flagsArgument: Any = if (getInfoMethod.parameterTypes[1] == Long::class.javaPrimitiveType) 0L else 0
+        val applicationInfo = getInfoMethod.invoke(packageService, packageName, flagsArgument, 0) as? android.content.pm.ApplicationInfo ?: return null
+        return applicationInfo.flags
     }
 
     fun homePackage(): String? = try {
-        (pm.call("getHomeActivities", ArrayList<android.content.pm.ResolveInfo>()) as? android.content.ComponentName)?.packageName
-    } catch (e: Throwable) {
-        Timber.w(e, "getHomeActivities failed")
+        (packageManager.call("getHomeActivities", ArrayList<android.content.pm.ResolveInfo>()) as? android.content.ComponentName)?.packageName
+    } catch (error: Throwable) {
+        Timber.w(error, "getHomeActivities failed")
         null
     }
 
-    private fun field(obj: Any, name: String): Any? {
-        var c: Class<*>? = obj.javaClass
-        while (c != null) {
+    private fun field(instance: Any, name: String): Any? {
+        var currentClass: Class<*>? = instance.javaClass
+        while (currentClass != null) {
             try {
-                return c.getDeclaredField(name).apply { isAccessible = true }.get(obj)
+                return currentClass.getDeclaredField(name).apply { isAccessible = true }.get(instance)
             } catch (_: NoSuchFieldException) {
-                c = c.superclass
+                currentClass = currentClass.superclass
             }
         }
         return null
@@ -323,7 +323,7 @@ class SystemServices {
      */
     fun callAppProvider(method: String, extras: Bundle): Bundle? {
         val token = Binder()
-        val holder = amProviders.call("getContentProviderExternal", ThorIpc.AUTHORITY, 0, token, ThorIpc.AUTHORITY)
+        val holder = activityManagerForProviders.call("getContentProviderExternal", ThorIpc.AUTHORITY, 0, token, ThorIpc.AUTHORITY)
             ?: throw IllegalStateException("provider ${ThorIpc.AUTHORITY} not found")
         try {
             val provider = field(holder, "provider") ?: throw IllegalStateException("provider ${ThorIpc.AUTHORITY} has no binder")
@@ -332,7 +332,7 @@ class SystemServices {
             return call.invoke(provider, source, ThorIpc.AUTHORITY, method, null, extras) as Bundle?
         } finally {
             try {
-                amProviders.call("removeContentProviderExternalAsUser", ThorIpc.AUTHORITY, token, 0)
+                activityManagerForProviders.call("removeContentProviderExternalAsUser", ThorIpc.AUTHORITY, token, 0)
             } catch (_: Throwable) {
             }
         }

@@ -7,13 +7,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class FanProfilesTest {
-    private fun profile(vararg pts: Pair<Float, Float>, id: String = "custom-1", name: String = "Mine") =
-        FanProfile(id, name, pts.map { FanPoint(it.first, it.second) })
+    private fun profile(vararg points: Pair<Float, Float>, id: String = "custom-1", name: String = "Mine") =
+        FanProfile(id, name, points.map { FanPoint(it.first, it.second) })
 
     @Test
     fun clampsAndSortsPoints() {
-        val p = FanProfiles.sanitize(profile(120f to 150f, 10f to -5f, 50f to 40f))!!
-        assertEquals(listOf(FanPoint(20f, 0f), FanPoint(50f, 40f), FanPoint(100f, 100f)), p.points)
+        val sanitized = FanProfiles.sanitize(profile(120f to 150f, 10f to -5f, 50f to 40f))!!
+        assertEquals(listOf(FanPoint(20f, 0f), FanPoint(50f, 40f), FanPoint(100f, 100f)), sanitized.points)
     }
 
     @Test

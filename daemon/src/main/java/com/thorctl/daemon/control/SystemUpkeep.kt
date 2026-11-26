@@ -16,10 +16,10 @@ class SystemUpkeep(private val sys: Sys) {
      * (soft reboot) starts some of them again through its onrestart list; stop them again.
      */
     fun keepServicesStopped() {
-        for (svc in STOPPED_SERVICES) {
-            if (sys.prop("init.svc.$svc") == "running") {
-                sys.sh("stop $svc")
-                Timber.i("stopped $svc again")
+        for (service in STOPPED_SERVICES) {
+            if (sys.prop("init.svc.$service") == "running") {
+                sys.sh("stop $service")
+                Timber.i("stopped $service again")
             }
         }
     }
@@ -27,18 +27,18 @@ class SystemUpkeep(private val sys: Sys) {
     /** The overlay lives in an accessibility service so nothing can draw above or hide it. */
     fun ensureAccessibility() {
         if (!sys.exists("/data/data/${Proto.PACKAGE}")) return
-        val cur = sys.sh("cmd settings get secure enabled_accessibility_services") ?: return
-        val next = withService(cur) ?: return
+        val current = sys.sh("cmd settings get secure enabled_accessibility_services") ?: return
+        val next = withService(current) ?: return
         sys.sh("cmd settings put secure enabled_accessibility_services '$next'")
         sys.sh("cmd settings put secure accessibility_enabled 1")
         Timber.i("re-enabled accessibility service")
     }
 
     /** Disabling / removing the module in the Magisk app: time to exit, so service.sh restores everything. */
-    fun moduleTurnedOff(): Boolean = sys.exists("$MODULE_DIR/disable") || sys.exists("$MODULE_DIR/remove")
+    fun moduleTurnedOff(): Boolean = sys.exists("$MODULE_DIRECTORY/disable") || sys.exists("$MODULE_DIRECTORY/remove")
 
     companion object {
-        const val MODULE_DIR = "/data/adb/modules/thorctl"
+        const val MODULE_DIRECTORY = "/data/adb/modules/thorctl"
         val STOPPED_SERVICES = listOf("cameraserver", "wifidisplayhalservice")
 
         /** The enabled_accessibility_services value with ours added, or null if it is already there. */

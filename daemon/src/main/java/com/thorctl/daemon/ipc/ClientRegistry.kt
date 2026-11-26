@@ -39,31 +39,31 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
     fun add(client: IThorClient, uid: Int): Boolean {
         val binder = client.asBinder()
         if (clients.any { it.binder == binder }) return true
-        val c = Client(client, uid)
+        val newClient = Client(client, uid)
         try {
-            binder.linkToDeath(c, 0)
+            binder.linkToDeath(newClient, 0)
         } catch (_: RemoteException) {
             return false
         }
-        clients += c
+        clients += newClient
         Timber.i("client uid=$uid registered (${clients.size} now)")
         return true
     }
 
     fun remove(binder: IBinder) {
-        val c = clients.firstOrNull { it.binder == binder } ?: return
-        if (clients.remove(c)) {
+        val client = clients.firstOrNull { it.binder == binder } ?: return
+        if (clients.remove(client)) {
             try {
-                binder.unlinkToDeath(c, 0)
+                binder.unlinkToDeath(client, 0)
             } catch (_: Exception) {
             }
-            Timber.i("client uid=${c.uid} gone (${clients.size} left)")
+            Timber.i("client uid=${client.uid} gone (${clients.size} left)")
         }
     }
 
     fun setStats(binder: IBinder, on: Boolean): Boolean {
-        val c = clients.firstOrNull { it.binder == binder } ?: return false
-        c.wantsStats = on
+        val client = clients.firstOrNull { it.binder == binder } ?: return false
+        client.wantsStats = on
         return true
     }
 
@@ -77,22 +77,22 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
     }
 
     override fun broadcastStats(stats: Stats) {
-        val e = DaemonEvent.StatsUpdated(stats)
-        clients.forEach { if (it.wantsStats) deliver(it, e) }
+        val event = DaemonEvent.StatsUpdated(stats)
+        clients.forEach { if (it.wantsStats) deliver(it, event) }
     }
 
-    private fun deliver(c: Client, e: DaemonEvent) {
+    private fun deliver(client: Client, event: DaemonEvent) {
         try {
-            c.sender.send(e)
-        } catch (ex: RemoteException) {
+            client.sender.send(event)
+        } catch (error: RemoteException) {
             // A oneway call also fails while the client's buffer is full; only a dead client goes
             // (its death recipient fires too). If it is dropped anyway, the next binder offer
             // makes the app register again.
-            Timber.w("client uid=${c.uid} unreachable: ${ex.javaClass.simpleName}")
-            if (!c.binder.isBinderAlive) remove(c.binder)
-        } catch (ex: RuntimeException) {
+            Timber.w("client uid=${client.uid} unreachable: ${error.javaClass.simpleName}")
+            if (!client.binder.isBinderAlive) remove(client.binder)
+        } catch (error: RuntimeException) {
             // A parcel too large or a bug in one event must not take the caller's thread down.
-            Timber.w(ex, "sending ${e.javaClass.simpleName} to uid=${c.uid} failed")
+            Timber.w(error, "sending ${event.javaClass.simpleName} to uid=${client.uid} failed")
         }
     }
 }

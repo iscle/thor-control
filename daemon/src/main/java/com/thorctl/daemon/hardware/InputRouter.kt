@@ -22,9 +22,9 @@ class InputRouter(private val displays: DisplayController, private val system: S
 
     private fun descriptor(): String {
         return try {
-            val devs = system.inputDevices()
-            devs.firstOrNull { it.descriptor == KNOWN_DESCRIPTOR }?.descriptor
-                ?: devs.firstOrNull {
+            val devices = system.inputDevices()
+            devices.firstOrNull { it.descriptor == KNOWN_DESCRIPTOR }?.descriptor
+                ?: devices.firstOrNull {
                     it.name == CONTROLLER_NAME && !it.isExternal &&
                         (it.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 }?.descriptor
@@ -34,24 +34,24 @@ class InputRouter(private val displays: DisplayController, private val system: S
         }
     }
 
-    fun apply(t: ControllerTarget) {
-        val desc = descriptor()
+    fun apply(newTarget: ControllerTarget) {
+        val deviceDescriptor = descriptor()
         try {
-            when (t) {
+            when (newTarget) {
                 ControllerTarget.TOP -> {
                     if (displays.topUniqueId.isEmpty()) return
-                    system.associateByDescriptor(desc, displays.topUniqueId)
+                    system.associateByDescriptor(deviceDescriptor, displays.topUniqueId)
                 }
                 ControllerTarget.BOTTOM -> {
                     if (displays.bottomUniqueId.isEmpty()) return
-                    system.associateByDescriptor(desc, displays.bottomUniqueId)
+                    system.associateByDescriptor(deviceDescriptor, displays.bottomUniqueId)
                 }
-                ControllerTarget.FREE -> system.removeAssociationByDescriptor(desc)
+                ControllerTarget.FREE -> system.removeAssociationByDescriptor(deviceDescriptor)
             }
-            target = t
-            Timber.i("controller -> ${t.wire} ($desc)")
-        } catch (e: Throwable) {
-            Timber.w(e, "controller routing failed")
+            target = newTarget
+            Timber.i("controller -> ${newTarget.wire} ($deviceDescriptor)")
+        } catch (error: Throwable) {
+            Timber.w(error, "controller routing failed")
         }
     }
 

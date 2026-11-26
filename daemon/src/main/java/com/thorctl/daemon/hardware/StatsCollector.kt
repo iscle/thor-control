@@ -40,11 +40,11 @@ class StatsCollector(private val sys: Sys, private val fan: FanController) {
 
     private fun cpuLoad(): Float {
         val (total, idle) = parseCpuTimes(sys.read("/proc/stat")) ?: return 0f
-        val dt = total - lastTotal
-        val di = idle - lastIdle
+        val totalDelta = total - lastTotal
+        val idleDelta = idle - lastIdle
         lastTotal = total
         lastIdle = idle
-        return if (dt <= 0) 0f else ((dt - di).toFloat() / dt).coerceIn(0f, 1f)
+        return if (totalDelta <= 0) 0f else ((totalDelta - idleDelta).toFloat() / totalDelta).coerceIn(0f, 1f)
     }
 
     private fun meminfo(): Pair<Int, Int> = parseMeminfo(sys.read("/proc/meminfo"))
@@ -52,33 +52,33 @@ class StatsCollector(private val sys: Sys, private val fan: FanController) {
     /** Called from the stats tick and from binder threads (a new subscriber): CPU load is a delta since the last call. */
     @Synchronized
     fun collect(): Stats {
-        val freqs = policies.map { (sys.readInt("$it/scaling_cur_freq") ?: 0) / 1000 }
+        val clusterFrequencies = policies.map { (sys.readInt("$it/scaling_cur_freq") ?: 0) / 1000 }
         val gpuBusy = sys.read("$KGSL/gpu_busy_percentage")?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-        val gpuClk = (sys.readLong("$KGSL/gpuclk") ?: 0L) / 1_000_000
+        val gpuClockMhz = (sys.readLong("$KGSL/gpuclk") ?: 0L) / 1_000_000
         val gpuTemp = sys.readInt("$KGSL/temp")?.let { it / 1000f } ?: maxTemp(gpuZones)
-        val (total, avail) = meminfo()
+        val (total, available) = meminfo()
 
-        val bv = (sys.readLong("$BAT/voltage_now") ?: 0L) / 1e6
-        val bi = (sys.readLong("$BAT/current_now") ?: 0L) / 1e6
+        val batteryVolts = (sys.readLong("$BATTERY/voltage_now") ?: 0L) / 1e6
+        val batteryAmps = (sys.readLong("$BATTERY/current_now") ?: 0L) / 1e6
         val usbOnline = sys.readInt("$USB/online") == 1
-        val uv = if (usbOnline) (sys.readLong("$USB/voltage_now") ?: 0L) / 1e6 else 0.0
-        val ui = if (usbOnline) (sys.readLong("$USB/current_now") ?: 0L) / 1e6 else 0.0
+        val usbVolts = if (usbOnline) (sys.readLong("$USB/voltage_now") ?: 0L) / 1e6 else 0.0
+        val usbAmps = if (usbOnline) (sys.readLong("$USB/current_now") ?: 0L) / 1e6 else 0.0
 
         return Stats(
             cpuLoad = cpuLoad(),
-            cpuFreqMhz = freqs.maxOrNull() ?: 0,
-            clusterFreqsMhz = freqs,
+            cpuFreqMhz = clusterFrequencies.maxOrNull() ?: 0,
+            clusterFreqsMhz = clusterFrequencies,
             cpuTemp = maxTemp(cpuZones),
             gpuLoad = gpuBusy / 100f,
-            gpuFreqMhz = gpuClk.toInt(),
+            gpuFreqMhz = gpuClockMhz.toInt(),
             gpuTemp = gpuTemp,
             ramTotalMb = total,
-            ramAvailMb = avail,
-            batteryLevel = sys.readInt("$BAT/capacity") ?: 0,
-            batteryStatus = sys.read("$BAT/status") ?: "Unknown",
-            batteryWatts = abs(bv * bi).toFloat(),
-            inputWatts = abs(uv * ui).toFloat(),
-            batteryTemp = (sys.readInt("$BAT/temp") ?: 0) / 10f,
+            ramAvailMb = available,
+            batteryLevel = sys.readInt("$BATTERY/capacity") ?: 0,
+            batteryStatus = sys.read("$BATTERY/status") ?: "Unknown",
+            batteryWatts = abs(batteryVolts * batteryAmps).toFloat(),
+            inputWatts = abs(usbVolts * usbAmps).toFloat(),
+            batteryTemp = (sys.readInt("$BATTERY/temp") ?: 0) / 10f,
             fanPwm = fan.readPwm(),
             fanTemp = fan.controlTemp,
         )
@@ -90,26 +90,26 @@ class StatsCollector(private val sys: Sys, private val fan: FanController) {
         /** (total, idle) jiffies from the aggregate "cpu" line of /proc/stat; idle includes iowait. */
         fun parseCpuTimes(procStat: String?): Pair<Long, Long>? {
             val line = procStat?.lineSequence()?.firstOrNull() ?: return null
-            val v = line.split(WHITESPACE).drop(1).mapNotNull { it.toLongOrNull() }
-            if (v.size < 5) return null
-            return v.take(8).sum() to v[3] + v[4]
+            val jiffies = line.split(WHITESPACE).drop(1).mapNotNull { it.toLongOrNull() }
+            if (jiffies.size < 5) return null
+            return jiffies.take(8).sum() to jiffies[3] + jiffies[4]
         }
 
         /** (MemTotal, MemAvailable) in MB from /proc/meminfo; 0 for what's missing. */
         fun parseMeminfo(meminfo: String?): Pair<Int, Int> {
             var total = 0
-            var avail = 0
-            meminfo?.lineSequence()?.forEach { l ->
+            var available = 0
+            meminfo?.lineSequence()?.forEach { line ->
                 when {
-                    l.startsWith("MemTotal:") -> total = (l.split(WHITESPACE).getOrNull(1)?.toIntOrNull() ?: 0) / 1024
-                    l.startsWith("MemAvailable:") -> avail = (l.split(WHITESPACE).getOrNull(1)?.toIntOrNull() ?: 0) / 1024
+                    line.startsWith("MemTotal:") -> total = (line.split(WHITESPACE).getOrNull(1)?.toIntOrNull() ?: 0) / 1024
+                    line.startsWith("MemAvailable:") -> available = (line.split(WHITESPACE).getOrNull(1)?.toIntOrNull() ?: 0) / 1024
                 }
             }
-            return total to avail
+            return total to available
         }
 
         const val KGSL = "/sys/class/kgsl/kgsl-3d0"
-        const val BAT = "/sys/class/power_supply/battery"
+        const val BATTERY = "/sys/class/power_supply/battery"
         const val USB = "/sys/class/power_supply/usb"
     }
 }

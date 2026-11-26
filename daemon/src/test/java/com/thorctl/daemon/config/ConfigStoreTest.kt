@@ -14,21 +14,21 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ConfigStoreTest {
-    private val dir = createTempDirectory("thorctl").toFile()
-    private val file = File(dir, "nested/config.json")
+    private val directory = createTempDirectory("thorctl").toFile()
+    private val file = File(directory, "nested/config.json")
 
     @AfterTest
     fun cleanUp() {
-        dir.deleteRecursively()
+        directory.deleteRecursively()
     }
 
     @Test
     fun defaultsWithoutAFile() {
-        val c = ConfigStore(file).apply { load() }
-        assertEquals(FanProfile.SMART_ID, c.fanProfile)
-        assertEquals(ControllerTarget.FREE, c.controller)
-        assertEquals(GamepadTransport.USB, c.gamepadTransport)
-        assertEquals(FanProfile.BUILTINS, c.allProfiles())
+        val store = ConfigStore(file).apply { load() }
+        assertEquals(FanProfile.SMART_ID, store.fanProfile)
+        assertEquals(ControllerTarget.FREE, store.controller)
+        assertEquals(GamepadTransport.USB, store.gamepadTransport)
+        assertEquals(FanProfile.BUILTINS, store.allProfiles())
     }
 
     @Test
@@ -45,16 +45,16 @@ class ConfigStoreTest {
             gamepadScreensOff = false
             save()
         }
-        val c = ConfigStore(file).apply { load() }
-        assertEquals(custom.id, c.fanProfile)
-        assertEquals(listOf(custom), c.customProfiles)
-        assertEquals(custom, c.profile(custom.id))
-        assertEquals(ControllerTarget.BOTTOM, c.controller)
-        assertEquals(LedState(mode = LedMode.RAINBOW, brightness = 12, sync = false, right = 0xABCDEF), c.leds)
-        assertEquals(false, c.keepAccessibility)
-        assertEquals(GameOptions(closeApps = false, fan = "max"), c.gameOptions)
-        assertEquals(GamepadTransport.BLUETOOTH, c.gamepadTransport)
-        assertEquals(false, c.gamepadScreensOff)
+        val store = ConfigStore(file).apply { load() }
+        assertEquals(custom.id, store.fanProfile)
+        assertEquals(listOf(custom), store.customProfiles)
+        assertEquals(custom, store.profile(custom.id))
+        assertEquals(ControllerTarget.BOTTOM, store.controller)
+        assertEquals(LedState(mode = LedMode.RAINBOW, brightness = 12, sync = false, right = 0xABCDEF), store.leds)
+        assertEquals(false, store.keepAccessibility)
+        assertEquals(GameOptions(closeApps = false, fan = "max"), store.gameOptions)
+        assertEquals(GamepadTransport.BLUETOOTH, store.gamepadTransport)
+        assertEquals(false, store.gamepadScreensOff)
     }
 
     @Test
@@ -72,11 +72,11 @@ class ConfigStoreTest {
     fun readsAHandWrittenFileWithOnlySomeKeys() {
         file.parentFile!!.mkdirs()
         file.writeText("""{"fanProfile": "quiet", "leds": {"mode": "breathe"}}""")
-        val c = ConfigStore(file).apply { load() }
-        assertEquals("quiet", c.fanProfile)
-        assertEquals(LedMode.BREATHE, c.leds.mode)
-        assertEquals(LedState().brightness, c.leds.brightness)
-        assertEquals(ControllerTarget.FREE, c.controller)
+        val store = ConfigStore(file).apply { load() }
+        assertEquals("quiet", store.fanProfile)
+        assertEquals(LedMode.BREATHE, store.leds.mode)
+        assertEquals(LedState().brightness, store.leds.brightness)
+        assertEquals(ControllerTarget.FREE, store.controller)
     }
 
     /** What 2.2 wrote with org.json: custom curves as [[temp, percent]] pairs, gamepad settings nested. */
@@ -99,15 +99,15 @@ class ConfigStoreTest {
             }
             """.trimIndent(),
         )
-        val c = ConfigStore(file).apply { load() }
-        assertEquals("custom-k1", c.fanProfile)
+        val store = ConfigStore(file).apply { load() }
+        assertEquals("custom-k1", store.fanProfile)
         // The one-point curve can't drive the fan: dropped rather than holding it at 0 %.
-        assertEquals(listOf(FanProfile("custom-k1", "Mine", listOf(FanPoint(40f, 10f), FanPoint(70f, 80f)))), c.customProfiles)
-        assertEquals(ControllerTarget.BOTTOM, c.controller)
-        assertEquals(LedState(mode = LedMode.RAINBOW, left = 255, right = 65280, sync = false, brightness = 90, speed = 1.5f, offWhenAsleep = false), c.leds)
-        assertEquals(GameOptions(closeApps = false, gpu = false, fan = "max"), c.gameOptions)
-        assertEquals(GamepadTransport.BLUETOOTH, c.gamepadTransport)
-        assertEquals(false, c.gamepadScreensOff)
+        assertEquals(listOf(FanProfile("custom-k1", "Mine", listOf(FanPoint(40f, 10f), FanPoint(70f, 80f)))), store.customProfiles)
+        assertEquals(ControllerTarget.BOTTOM, store.controller)
+        assertEquals(LedState(mode = LedMode.RAINBOW, left = 255, right = 65280, sync = false, brightness = 90, speed = 1.5f, offWhenAsleep = false), store.leds)
+        assertEquals(GameOptions(closeApps = false, gpu = false, fan = "max"), store.gameOptions)
+        assertEquals(GamepadTransport.BLUETOOTH, store.gamepadTransport)
+        assertEquals(false, store.gamepadScreensOff)
     }
 
     @Test
@@ -121,7 +121,7 @@ class ConfigStoreTest {
     fun aBrokenFileFallsBackToDefaults() {
         file.parentFile!!.mkdirs()
         file.writeText("{not json")
-        val c = ConfigStore(file).apply { load() }
-        assertEquals(FanProfile.SMART_ID, c.fanProfile)
+        val store = ConfigStore(file).apply { load() }
+        assertEquals(FanProfile.SMART_ID, store.fanProfile)
     }
 }

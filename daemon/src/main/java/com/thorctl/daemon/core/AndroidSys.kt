@@ -21,14 +21,14 @@ class AndroidSys : Sys {
     override fun write(path: String, value: String): Boolean = try {
         FileOutputStream(path).use { it.write(value.toByteArray()) }
         true
-    } catch (e: Exception) {
-        Timber.w("write $path <- '$value' failed: ${e.message}")
+    } catch (error: Exception) {
+        Timber.w("write $path <- '$value' failed: ${error.message}")
         false
     }
 
     override fun exists(path: String): Boolean = File(path).exists()
 
-    override fun list(dir: String): List<String> = File(dir).listFiles()?.map { it.path } ?: emptyList()
+    override fun list(directory: String): List<String> = File(directory).listFiles()?.map { it.path } ?: emptyList()
 
     override fun canonical(path: String): String? = try {
         File(path).canonicalPath
@@ -36,7 +36,7 @@ class AndroidSys : Sys {
         null
     }
 
-    override fun mkdirs(dir: String): Boolean = File(dir).mkdirs()
+    override fun mkdirs(directory: String): Boolean = File(directory).mkdirs()
 
     private val getProp by lazy { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java) }
 
@@ -46,17 +46,17 @@ class AndroidSys : Sys {
         ""
     }
 
-    override fun sh(cmd: String, timeoutMs: Long): String? = try {
-        val p = ProcessBuilder("/system/bin/sh", "-c", cmd).redirectErrorStream(true).start()
-        val out = p.inputStream.bufferedReader().readText()
-        if (!p.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
-            p.destroyForcibly()
+    override fun sh(command: String, timeoutMs: Long): String? = try {
+        val process = ProcessBuilder("/system/bin/sh", "-c", command).redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().readText()
+        if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
+            process.destroyForcibly()
             null
         } else {
-            out.trim()
+            output.trim()
         }
-    } catch (e: Exception) {
-        Timber.w("sh '$cmd' failed: ${e.message}")
+    } catch (error: Exception) {
+        Timber.w("sh '$command' failed: ${error.message}")
         null
     }
 }

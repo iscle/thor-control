@@ -41,12 +41,12 @@ class LedController(private val sys: Sys) : Thread("leds") {
 
     private fun list(prefix: String): List<String> =
         sys.list("/sys/class/leds")
-            .filter { it.substringAfterLast('/').let { n -> n == prefix || n.startsWith("$prefix:") } }
+            .filter { it.substringAfterLast('/').let { ledName -> ledName == prefix || ledName.startsWith("$prefix:") } }
             .sorted()
 
-    fun apply(s: LedState) {
+    fun apply(newState: LedState) {
         lock.withLock {
-            state = s
+            state = newState
             dirty = true
             changed.signalAll()
         }
@@ -71,10 +71,10 @@ class LedController(private val sys: Sys) : Thread("leds") {
     }
 
     private fun writeLed(path: String, rgb: Int, brightness: Int) {
-        val mi = "${(rgb shr 16) and 0xFF} ${(rgb shr 8) and 0xFF} ${rgb and 0xFF}"
-        if (lastWritten["$path/mi"] != mi && sys.write("$path/multi_intensity", mi)) lastWritten["$path/mi"] = mi
-        val b = brightness.coerceIn(0, 255).toString()
-        if (lastWritten["$path/b"] != b && sys.write("$path/brightness", b)) lastWritten["$path/b"] = b
+        val multiIntensity = "${(rgb shr 16) and 0xFF} ${(rgb shr 8) and 0xFF} ${rgb and 0xFF}"
+        if (lastWritten["$path/mi"] != multiIntensity && sys.write("$path/multi_intensity", multiIntensity)) lastWritten["$path/mi"] = multiIntensity
+        val brightnessValue = brightness.coerceIn(0, 255).toString()
+        if (lastWritten["$path/b"] != brightnessValue && sys.write("$path/brightness", brightnessValue)) lastWritten["$path/b"] = brightnessValue
     }
 
     private fun allOff() {
@@ -85,28 +85,28 @@ class LedController(private val sys: Sys) : Thread("leds") {
         val start = System.nanoTime()
         while (true) {
             try {
-                val s = state
-                val on = s.enabled && (awake || !s.offWhenAsleep)
-                val animated = on && s.mode != LedMode.SOLID
+                val ledState = state
+                val on = ledState.enabled && (awake || !ledState.offWhenAsleep)
+                val animated = on && ledState.mode != LedMode.SOLID
                 if (!on) {
                     allOff()
                 } else {
-                    val t = (System.nanoTime() - start) / 1e9 * s.speed
-                    when (s.mode) {
+                    val animationTime = (System.nanoTime() - start) / 1e9 * ledState.speed
+                    when (ledState.mode) {
                         LedMode.BREATHE -> {
-                            val phase = 0.5 - 0.5 * cos(2 * PI * t / 3.0)
-                            val b = (s.brightness * (0.06 + 0.94 * phase)).roundToInt()
-                            left.forEach { writeLed(it, s.left, b) }
-                            right.forEach { writeLed(it, s.rightColor, b) }
+                            val phase = 0.5 - 0.5 * cos(2 * PI * animationTime / 3.0)
+                            val breathBrightness = (ledState.brightness * (0.06 + 0.94 * phase)).roundToInt()
+                            left.forEach { writeLed(it, ledState.left, breathBrightness) }
+                            right.forEach { writeLed(it, ledState.rightColor, breathBrightness) }
                         }
                         LedMode.RAINBOW -> {
-                            val base = (t * 90.0) % 360.0
-                            left.forEachIndexed { i, p -> writeLed(p, hue(base + i * 90.0), s.brightness) }
-                            right.forEachIndexed { i, p -> writeLed(p, hue(base + 45.0 + i * 90.0), s.brightness) }
+                            val base = (animationTime * 90.0) % 360.0
+                            left.forEachIndexed { index, ledPath -> writeLed(ledPath, hue(base + index * 90.0), ledState.brightness) }
+                            right.forEachIndexed { index, ledPath -> writeLed(ledPath, hue(base + 45.0 + index * 90.0), ledState.brightness) }
                         }
                         LedMode.SOLID -> {
-                            left.forEach { writeLed(it, s.left, s.brightness) }
-                            right.forEach { writeLed(it, s.rightColor, s.brightness) }
+                            left.forEach { writeLed(it, ledState.left, ledState.brightness) }
+                            right.forEach { writeLed(it, ledState.rightColor, ledState.brightness) }
                         }
                     }
                 }
@@ -118,10 +118,10 @@ class LedController(private val sys: Sys) : Thread("leds") {
                         while (!dirty) changed.await()
                     }
                 }
-            } catch (e: InterruptedException) {
+            } catch (error: InterruptedException) {
                 return
-            } catch (e: Exception) {
-                Timber.w(e, "led loop")
+            } catch (error: Exception) {
+                Timber.w(error, "led loop")
                 sleep(1000)
             }
         }
@@ -129,18 +129,18 @@ class LedController(private val sys: Sys) : Thread("leds") {
 
     companion object {
         /** Fully saturated color for a hue in degrees (pure Kotlin; no native graphics in app_process). */
-        fun hue(deg: Double): Int {
-            val h = ((deg % 360.0) + 360.0) % 360.0 / 60.0
-            val x = 1.0 - kotlin.math.abs(h % 2.0 - 1.0)
-            val (r, g, b) = when (h.toInt()) {
-                0 -> Triple(1.0, x, 0.0)
-                1 -> Triple(x, 1.0, 0.0)
-                2 -> Triple(0.0, 1.0, x)
-                3 -> Triple(0.0, x, 1.0)
-                4 -> Triple(x, 0.0, 1.0)
-                else -> Triple(1.0, 0.0, x)
+        fun hue(degrees: Double): Int {
+            val sector = ((degrees % 360.0) + 360.0) % 360.0 / 60.0
+            val secondary = 1.0 - kotlin.math.abs(sector % 2.0 - 1.0)
+            val (red, green, blue) = when (sector.toInt()) {
+                0 -> Triple(1.0, secondary, 0.0)
+                1 -> Triple(secondary, 1.0, 0.0)
+                2 -> Triple(0.0, 1.0, secondary)
+                3 -> Triple(0.0, secondary, 1.0)
+                4 -> Triple(secondary, 0.0, 1.0)
+                else -> Triple(1.0, 0.0, secondary)
             }
-            return ((r * 255).roundToInt() shl 16) or ((g * 255).roundToInt() shl 8) or (b * 255).roundToInt()
+            return ((red * 255).roundToInt() shl 16) or ((green * 255).roundToInt() shl 8) or (blue * 255).roundToInt()
         }
     }
 }

@@ -42,16 +42,16 @@ class StatsCollectorTest {
             this["/sys/class/power_supply/battery/temp"] = 312
             this["/sys/class/power_supply/usb/online"] = 0
         }
-        val s = StatsCollector(sys, FanController(sys, FakeClock())).collect()
-        assertEquals(listOf(1800, 2400, 3000), s.clusterFreqsMhz) // by policy number
-        assertEquals(3000, s.cpuFreqMhz)
-        assertEquals(61.5f, s.cpuTemp)
-        assertEquals(0.37f, s.gpuLoad)
-        assertEquals(680, s.gpuFreqMhz)
-        assertEquals(8192, s.ramTotalMb)
-        assertEquals(6f, s.batteryWatts, 1e-4f)
-        assertEquals(0f, s.inputWatts)
-        assertEquals(31.2f, s.batteryTemp)
-        assertEquals(77, s.batteryLevel)
+        val stats = StatsCollector(sys, FanController(sys, FakeClock())).collect()
+        assertEquals(listOf(1800, 2400, 3000), stats.clusterFreqsMhz) // by policy number
+        assertEquals(3000, stats.cpuFreqMhz)
+        assertEquals(61.5f, stats.cpuTemp)
+        assertEquals(0.37f, stats.gpuLoad)
+        assertEquals(680, stats.gpuFreqMhz)
+        assertEquals(8192, stats.ramTotalMb)
+        assertEquals(6f, stats.batteryWatts, 1e-4f)
+        assertEquals(0f, stats.inputWatts)
+        assertEquals(31.2f, stats.batteryTemp)
+        assertEquals(77, stats.batteryLevel)
     }
 }

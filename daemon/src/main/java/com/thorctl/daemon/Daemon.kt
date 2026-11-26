@@ -31,7 +31,7 @@ import kotlin.system.exitProcess
 @Inject
 @SingleIn(DaemonScope::class)
 class Daemon(
-    private val cfg: ConfigStore,
+    private val config: ConfigStore,
     private val displays: DisplayController,
     private val leds: LedController,
     private val router: InputRouter,
@@ -49,7 +49,7 @@ class Daemon(
     private val notifier: DaemonNotifier,
     private val system: SystemServices,
     private val lock: DaemonLock,
-    private val sched: ScheduledExecutorService,
+    private val scheduler: ScheduledExecutorService,
 ) {
     private var lastInteractive = true
     private var tickCount = 0L
@@ -61,22 +61,22 @@ class Daemon(
             Thread.sleep(1000)
         }
         synchronized(lock) {
-            cfg.load()
+            config.load()
             displays.refresh()
-            game.init(cfg.gameOptions)
-            gamepad.init(cfg.gamepadTransport, cfg.gamepadScreensOff)
+            game.init(config.gameOptions)
+            gamepad.init(config.gamepadTransport, config.gamepadScreensOff)
             displays.setBottomTouch(true) // never leave touch disabled from a previous crash
 
-            leds.apply(cfg.leds)
+            leds.apply(config.leds)
             leds.start()
-            router.apply(cfg.controller)
+            router.apply(config.controller)
         }
 
         every(1000) { actions.fanTick() }
         every(1000) { statsTick() }
         every(2000) { housekeeping() }
         // AynParts restores its own light/focus prefs on BOOT_COMPLETED; win that race.
-        sched.schedule({ reapply() }, 20, TimeUnit.SECONDS)
+        scheduler.schedule({ reapply() }, 20, TimeUnit.SECONDS)
 
         input.start(buttons)
         publisher.offer()
@@ -85,14 +85,14 @@ class Daemon(
         CountDownLatch(1).await()
     }
 
-    private fun every(ms: Long, block: () -> Unit) {
-        sched.scheduleWithFixedDelay({
+    private fun every(intervalMs: Long, block: () -> Unit) {
+        scheduler.scheduleWithFixedDelay({
             try {
                 block()
-            } catch (e: Throwable) {
-                Timber.w(e, "periodic task failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "periodic task failed")
             }
-        }, ms, ms, TimeUnit.MILLISECONDS)
+        }, intervalMs, intervalMs, TimeUnit.MILLISECONDS)
     }
 
     private fun statsTick() {
@@ -108,7 +108,7 @@ class Daemon(
             if (interactive) displays.onWake()
             if (interactive && (displays.bottomForcedOff || displays.gamepadDark)) {
                 // Waking powers every display back on; hold ours off again.
-                for (delay in longArrayOf(150, 600, 1500)) sched.schedule({ displays.reassertOverrides() }, delay, TimeUnit.MILLISECONDS)
+                for (delay in longArrayOf(150, 600, 1500)) scheduler.schedule({ displays.reassertOverrides() }, delay, TimeUnit.MILLISECONDS)
             }
         }
         publisher.offerIfNeeded()
@@ -122,7 +122,7 @@ class Daemon(
             displays.refresh()
             if (before != displays.bottomId) notifier.stateChanged()
         }
-        if (tickCount % 15 == 1L && cfg.keepAccessibility) upkeep.ensureAccessibility()
+        if (tickCount % 15 == 1L && config.keepAccessibility) upkeep.ensureAccessibility()
         if (tickCount % 15 == 2L) upkeep.keepServicesStopped()
         if (tickCount % 10 == 4L && !recents.isOpen) recents.maybeCaptureHome(interactive)
         if (tickCount % 5 == 3L && upkeep.moduleTurnedOff()) {
@@ -136,9 +136,9 @@ class Daemon(
     private fun reapply() {
         try {
             leds.invalidate()
-            router.apply(cfg.controller)
-        } catch (e: Throwable) {
-            Timber.w(e, "reapply failed")
+            router.apply(config.controller)
+        } catch (error: Throwable) {
+            Timber.w(error, "reapply failed")
         }
     }
 }

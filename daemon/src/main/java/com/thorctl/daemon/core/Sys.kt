@@ -21,16 +21,16 @@ interface Sys {
     fun exists(path: String): Boolean
 
     /** Paths of the entries of a directory (empty if it isn't one). */
-    fun list(dir: String): List<String>
+    fun list(directory: String): List<String>
 
     /** Where a symlink points, fully resolved; null if it doesn't resolve. */
     fun canonical(path: String): String?
 
-    fun mkdirs(dir: String): Boolean
+    fun mkdirs(directory: String): Boolean
 
     /** System property value ("" if unset), without spawning getprop. */
     fun prop(name: String): String
 
     /** Runs a shell command as the daemon (root). Returns stdout, or null on failure/timeout. */
-    fun sh(cmd: String, timeoutMs: Long = 5000): String?
+    fun sh(command: String, timeoutMs: Long = 5000): String?
 }

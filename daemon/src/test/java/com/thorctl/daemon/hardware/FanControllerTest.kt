@@ -40,8 +40,8 @@ class FanControllerTest {
     private val linear = FanProfile("custom-x", "Linear", listOf(FanPoint(40f, 0f), FanPoint(80f, 100f)))
     private val auto = FanProfile.BUILTINS.first()
 
-    private fun temp(c: Int, usb: Int = 30) {
-        sys["$cpuZone/temp"] = c * 1000
+    private fun temp(cpuCelsius: Int, usb: Int = 30) {
+        sys["$cpuZone/temp"] = cpuCelsius * 1000
         sys["$usbZone/temp"] = usb * 1000
     }
 

@@ -52,7 +52,7 @@ class GameMode(
     private val system: SystemServices,
     private val sys: Sys,
     private val notifier: DaemonNotifier,
-    private val sched: ScheduledExecutorService,
+    private val scheduler: ScheduledExecutorService,
 ) {
     private fun onChanged() = notifier.stateChanged()
 
@@ -64,11 +64,11 @@ class GameMode(
     /** Leaving or returning to the game: react in [delayMs] instead of on the next tick. */
     fun nudge(delayMs: Long = 500) {
         if (!enabled) return
-        sched.schedule({
+        scheduler.schedule({
             try {
                 tick(system.isInteractive())
-            } catch (e: Throwable) {
-                Timber.w(e, "game mode tick failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "game mode tick failed")
             }
         }, delayMs, TimeUnit.MILLISECONDS)
     }
@@ -106,8 +106,8 @@ class GameMode(
     private var keepBottomOn = false
     private var frontTicks = 0
 
-    private val onFlag = File(FanController.STATE_DIR, "game.on")
-    private val origFile = File(FanController.STATE_DIR, "game.orig")
+    private val onFlag = File(FanController.STATE_DIRECTORY, "game.on")
+    private val originalsFile = File(FanController.STATE_DIRECTORY, "game.orig")
 
     /** Fan profile to run instead of the selected one, while boosting. */
     val fanOverride: String? get() = if (boosted && options.fan.isNotEmpty()) options.fan else null
@@ -116,8 +116,8 @@ class GameMode(
 
     /** Daemon start: keep a game mode that was on earlier this boot, otherwise undo leftovers. */
     @Synchronized
-    fun init(opts: GameOptions) {
-        options = opts
+    fun init(savedOptions: GameOptions) {
+        options = savedOptions
         enabled = onFlag.exists()
         if (!enabled) restoreSaved()
         Timber.i("game mode: cpu knobs=${cpuKnobs.size} gpu knobs=${gpuKnobs.size} enabled=$enabled")
@@ -143,14 +143,14 @@ class GameMode(
     }
 
     @Synchronized
-    fun setOptions(o: GameOptions) {
+    fun setOptions(newOptions: GameOptions) {
         val old = options
-        options = o
-        if (boosted && (old.cpu != o.cpu || old.gpu != o.gpu)) {
+        options = newOptions
+        if (boosted && (old.cpu != newOptions.cpu || old.gpu != newOptions.gpu)) {
             release()
             apply()
         }
-        if (!o.bottomOff) bottomOn()
+        if (!newOptions.bottomOff) bottomOn()
     }
 
     /** Called every couple of seconds, and right after game mode is turned on. */
@@ -161,14 +161,14 @@ class GameMode(
         val before = state()
         val running = try {
             system.runningApps()
-        } catch (e: Throwable) {
-            Timber.w(e, "game mode: listing processes failed")
+        } catch (error: Throwable) {
+            Timber.w(error, "game mode: listing processes failed")
             return
         }
 
-        val g = game
-        if (g != null && running.none { g in it.packageNames }) {
-            Timber.i("game mode: $g closed, waiting for the next game")
+        val currentGame = game
+        if (currentGame != null && running.none { currentGame in it.packageNames }) {
+            Timber.i("game mode: $currentGame closed, waiting for the next game")
             game = null
             freedMb = 0
             keepBottomOn = false
@@ -201,17 +201,17 @@ class GameMode(
             bottomOffByUs = false
             keepBottomOn = true
         }
-        val g = game
-        val inFront = g != null && options.bottomOff && !keepBottomOn && displays.bottomId >= 0 &&
-            (try { system.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == g
+        val currentGame = game
+        val inFront = currentGame != null && options.bottomOff && !keepBottomOn && displays.bottomId >= 0 &&
+            (try { system.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == currentGame
         if (!inFront) {
             frontTicks = 0
             return bottomOn()
         }
         // Wait a couple of seconds in front, so quick switches don't flash the bottom screen.
         if (bottomOffByUs || !displays.bottomOn || ++frontTicks < 2) return false
-        if (gameOnBottom(g!!, running)) {
-            Timber.i("game mode: $g uses the bottom screen, leaving it on")
+        if (gameOnBottom(currentGame!!, running)) {
+            Timber.i("game mode: $currentGame uses the bottom screen, leaving it on")
             keepBottomOn = true
             return false
         }
@@ -233,22 +233,22 @@ class GameMode(
      * layer tree for layers owned by the game's uid under the bottom display. Only runs when the
      * bottom screen is about to be turned off.
      */
-    private fun gameOnBottom(g: String, running: List<SystemServices.AppProcess>): Boolean {
-        val b = displays.bottomId
+    private fun gameOnBottom(gamePackage: String, running: List<SystemServices.AppProcess>): Boolean {
+        val bottomDisplay = displays.bottomId
         try {
-            if (g in system.visiblePackages(b)) return true
+            if (gamePackage in system.visiblePackages(bottomDisplay)) return true
         } catch (_: Throwable) {
         }
-        val uids = running.filter { g in it.packageNames }.map { it.uid }.toSet()
+        val uids = running.filter { gamePackage in it.packageNames }.map { it.uid }.toSet()
         if (uids.isEmpty()) return false
         val dump = sys.sh("dumpsys SurfaceFlinger", 4000) ?: return false
         var inBottom = false
         for (line in dump.lineSequence()) {
-            val d = SF_DISPLAY.find(line)
+            val displayMatch = SURFACE_FLINGER_DISPLAY.find(line)
             when {
-                d != null -> inBottom = d.groupValues[1].toInt() == b
-                SF_ROOT_CHILD.containsMatchIn(line) || !line.startsWith(" ") -> inBottom = false
-                inBottom -> SF_UID.find(line)?.let { if (it.groupValues[1].toInt() in uids) return true }
+                displayMatch != null -> inBottom = displayMatch.groupValues[1].toInt() == bottomDisplay
+                SURFACE_FLINGER_ROOT_CHILD.containsMatchIn(line) || !line.startsWith(" ") -> inBottom = false
+                inBottom -> SURFACE_FLINGER_UID.find(line)?.let { if (it.groupValues[1].toInt() in uids) return true }
             }
         }
         return false
@@ -258,10 +258,10 @@ class GameMode(
 
     /** The user-installed app in front on the top screen, if any. */
     private fun pickGame(): String? {
-        val d = displays.topId
-        if (d < 0) return null
+        val topDisplay = displays.topId
+        if (topDisplay < 0) return null
         val packageName = try {
-            system.topAppTask(d)?.packageName
+            system.topAppTask(topDisplay)?.packageName
         } catch (_: Throwable) {
             null
         } ?: return null
@@ -292,8 +292,8 @@ class GameMode(
                     system.forceStop(packageName)
                     stopped++
                 }
-            } catch (e: Throwable) {
-                Timber.w(e, "game mode: closing $packageName failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "game mode: closing $packageName failed")
             }
         }
         sys.write("/proc/sys/vm/compact_memory", "1")
@@ -305,15 +305,15 @@ class GameMode(
 
     /** Clears background processes that came back (or were opened and left) while playing. */
     private fun trimCached(running: List<SystemServices.AppProcess>) {
-        val g = game ?: return
+        val currentGame = game ?: return
         val packageNames = running
-            .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && g !in it.packageNames }
+            .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && currentGame !in it.packageNames }
             .flatMap { it.packageNames }
-            .toSet() - ALWAYS_KEEP - Proto.PACKAGE - g
+            .toSet() - ALWAYS_KEEP - Proto.PACKAGE - currentGame
         if (packageNames.isEmpty()) return
-        for (p in packageNames) {
+        for (packageName in packageNames) {
             try {
-                system.killBackground(p)
+                system.killBackground(packageName)
             } catch (_: Throwable) {
             }
         }
@@ -324,10 +324,10 @@ class GameMode(
         val keep = HashSet(ALWAYS_KEEP)
         keep += game
         keep += Proto.PACKAGE
-        for (d in intArrayOf(displays.topId, displays.bottomId)) {
-            if (d < 0) continue
+        for (displayId in intArrayOf(displays.topId, displays.bottomId)) {
+            if (displayId < 0) continue
             try {
-                keep += system.visiblePackages(d) // e.g. a guide open on the other screen
+                keep += system.visiblePackages(displayId) // e.g. a guide open on the other screen
             } catch (_: Throwable) {
             }
         }
@@ -347,14 +347,14 @@ class GameMode(
     private val cpuKnobs: List<Knob> by lazy {
         File("/sys/devices/system/cpu/cpufreq").listFiles()
             ?.filter { it.name.matches(Regex("policy\\d+")) }?.sortedBy { it.name }
-            ?.mapNotNull { p -> sys.read("${p.path}/cpuinfo_max_freq")?.let { Knob("${p.path}/scaling_min_freq", it) } }
+            ?.mapNotNull { policy -> sys.read("${policy.path}/cpuinfo_max_freq")?.let { Knob("${policy.path}/scaling_min_freq", it) } }
             ?: emptyList()
     }
 
     /** Lowest allowed GPU power level = highest allowed one (level 0 is the top clock). */
     private val gpuKnobs: List<Knob> by lazy {
-        val k = "/sys/class/kgsl/kgsl-3d0"
-        if (File("$k/min_pwrlevel").exists()) listOf(Knob("$k/min_pwrlevel", sys.read("$k/max_pwrlevel") ?: "0")) else emptyList()
+        val gpuDirectory = "/sys/class/kgsl/kgsl-3d0"
+        if (File("$gpuDirectory/min_pwrlevel").exists()) listOf(Knob("$gpuDirectory/min_pwrlevel", sys.read("$gpuDirectory/max_pwrlevel") ?: "0")) else emptyList()
     }
 
     /**
@@ -362,17 +362,17 @@ class GameMode(
      * boosts (msm_performance). Saving that would make a temporary boost permanent, so restore the
      * floor the vendor boot script sets instead (or the hardware minimum).
      */
-    private val vendorMinFreqs: Map<String, String> by lazy {
-        val out = HashMap<String, String>()
-        val re = Regex("""echo\s+(\d+)\s*>\s*(/sys/devices/system/cpu/cpufreq/policy\d+/scaling_min_freq)""")
+    private val vendorMinFrequencies: Map<String, String> by lazy {
+        val floors = HashMap<String, String>()
+        val floorPattern = Regex("""echo\s+(\d+)\s*>\s*(/sys/devices/system/cpu/cpufreq/policy\d+/scaling_min_freq)""")
         File("/vendor/bin").listFiles()?.filter { it.name.startsWith("init.kernel.post_boot") }?.sortedBy { it.name }
-            ?.forEach { f -> sys.read(f.path)?.let { text -> re.findAll(text).forEach { out[it.groupValues[2]] = it.groupValues[1] } } }
-        out
+            ?.forEach { script -> sys.read(script.path)?.let { text -> floorPattern.findAll(text).forEach { floors[it.groupValues[2]] = it.groupValues[1] } } }
+        floors
     }
 
     private fun originalOf(path: String): String? =
         if (path.endsWith("/scaling_min_freq")) {
-            vendorMinFreqs[path] ?: sys.read(path.replace("scaling_min_freq", "cpuinfo_min_freq"))
+            vendorMinFrequencies[path] ?: sys.read(path.replace("scaling_min_freq", "cpuinfo_min_freq"))
         } else {
             sys.read(path)
         }
@@ -380,16 +380,16 @@ class GameMode(
     private fun apply() {
         val knobs = (if (options.cpu) cpuKnobs else emptyList()) + (if (options.gpu) gpuKnobs else emptyList())
         val originals = LinkedHashMap(loadSaved())
-        for (k in knobs) if (k.path !in originals) originalOf(k.path)?.let { originals[k.path] = it }
+        for (knob in knobs) if (knob.path !in originals) originalOf(knob.path)?.let { originals[knob.path] = it }
         saveOriginals(originals)
-        for (k in knobs) sys.write(k.path, k.boost)
+        for (knob in knobs) sys.write(knob.path, knob.boost)
         applied = knobs
         boosted = true
         Timber.i("game mode: boost applied (cpu=${options.cpu} gpu=${options.gpu} fan=${options.fan.ifEmpty { "unchanged" }})")
     }
 
     private fun release() {
-        if (!boosted && !origFile.exists()) return
+        if (!boosted && !originalsFile.exists()) return
         restoreSaved()
         applied = emptyList()
         boosted = false
@@ -398,39 +398,39 @@ class GameMode(
 
     /** Puts back a GPU floor something else lowered while we were boosting. */
     private fun reassert() {
-        for (k in applied) {
-            val cur = sys.read(k.path) ?: continue
+        for (knob in applied) {
+            val current = sys.read(knob.path) ?: continue
             // scaling_min_freq reads back the effective floor, which thermal limits may lower.
-            if (cur != k.boost && !k.path.endsWith("/scaling_min_freq")) sys.write(k.path, k.boost)
+            if (current != knob.boost && !knob.path.endsWith("/scaling_min_freq")) sys.write(knob.path, knob.boost)
         }
     }
 
     private fun restoreSaved() {
         val saved = loadSaved()
-        for ((path, v) in saved) sys.write(path, v)
-        origFile.delete()
+        for ((path, value) in saved) sys.write(path, value)
+        originalsFile.delete()
     }
 
     private fun loadSaved(): Map<String, String> {
-        if (!origFile.exists()) return emptyMap()
-        return origFile.readLines().mapNotNull { line ->
+        if (!originalsFile.exists()) return emptyMap()
+        return originalsFile.readLines().mapNotNull { line ->
             val parts = line.trim().split(' ')
             if (parts.size == 2 && parts[0].isNotEmpty() && parts[1].isNotEmpty()) parts[0] to parts[1] else null
         }.toMap()
     }
 
-    private fun saveOriginals(m: Map<String, String>) {
-        origFile.parentFile?.mkdirs()
-        val tmp = File(origFile.path + ".tmp")
-        tmp.writeText(m.entries.joinToString("") { "${it.key} ${it.value}\n" })
-        tmp.renameTo(origFile)
+    private fun saveOriginals(originals: Map<String, String>) {
+        originalsFile.parentFile?.mkdirs()
+        val tempFile = File(originalsFile.path + ".tmp")
+        tempFile.writeText(originals.entries.joinToString("") { "${it.key} ${it.value}\n" })
+        tempFile.renameTo(originalsFile)
     }
 
     companion object {
         const val FIRST_APP_UID = 10000
-        private val SF_DISPLAY = Regex("""^ [├└]─ Display (\d+) """)
-        private val SF_ROOT_CHILD = Regex("""^ [├└]─ """)
-        private val SF_UID = Regex("""\buid=(\d+)""")
+        private val SURFACE_FLINGER_DISPLAY = Regex("""^ [├└]─ Display (\d+) """)
+        private val SURFACE_FLINGER_ROOT_CHILD = Regex("""^ [├└]─ """)
+        private val SURFACE_FLINGER_UID = Regex("""\buid=(\d+)""")
         const val TRIM_EVERY_TICKS = 5
 
         /** Never closed: core system processes and the storage daemon games read from. */

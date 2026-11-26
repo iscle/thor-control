@@ -15,19 +15,19 @@ import dev.zacsweers.metro.SingleIn
 @Inject
 @SingleIn(DaemonScope::class)
 class StateSnapshot(
-    private val cfg: ConfigStore,
+    private val config: ConfigStore,
     private val displays: DisplayController,
     private val fan: FanController,
     private val game: GameMode,
     private val gamepad: Gamepad,
 ) {
     fun current(): DaemonState = DaemonState(
-        fanProfile = cfg.fanProfile,
-        profiles = cfg.allProfiles(),
+        fanProfile = config.fanProfile,
+        profiles = config.allProfiles(),
         brightnessTop = displays.getBrightness(Screen.TOP),
         brightnessBottom = displays.getBrightness(Screen.BOTTOM),
-        controller = cfg.controller,
-        leds = cfg.leds,
+        controller = config.controller,
+        leds = config.leds,
         bottomOn = displays.bottomOn,
         topDisplayId = displays.topId,
         bottomDisplayId = displays.bottomId,

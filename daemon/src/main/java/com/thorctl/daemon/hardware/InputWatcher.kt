@@ -53,8 +53,8 @@ class InputWatcher(private val sys: Sys) {
 
     /** True when Android no longer maps the controller's KEY_HOME (module key layout applied). */
     val homeRemapped: Boolean = run {
-        val kl = sys.read(CONTROLLER_KL) ?: return@run false
-        !Regex("^key\\s+$KEY_HOME\\s+HOME\\b", RegexOption.MULTILINE).containsMatchIn(kl)
+        val keyLayout = sys.read(CONTROLLER_KEY_LAYOUT) ?: return@run false
+        !Regex("^key\\s+$KEY_HOME\\s+HOME\\b", RegexOption.MULTILINE).containsMatchIn(keyLayout)
     }
 
     /** Exclusive controller grab; every raw event goes to [handler] until [releaseController]. */
@@ -69,7 +69,7 @@ class InputWatcher(private val sys: Sys) {
      * keep working (and never reach the other device).
      */
     fun grabForGamepad(handler: (type: Int, code: Int, value: Int) -> Unit): Boolean =
-        pad.beginGrab(Owner.GAMEPAD, { t, c, v -> if (aynDown) pad.detect(t, c, v) else handler(t, c, v) }, 0)
+        pad.beginGrab(Owner.GAMEPAD, { type, code, value -> if (aynDown) pad.detect(type, code, value) else handler(type, code, value) }, 0)
 
     fun releaseGamepad() = pad.endGrab(Owner.GAMEPAD)
 
@@ -89,9 +89,9 @@ class InputWatcher(private val sys: Sys) {
 
     private lateinit var listener: Listener
 
-    /** Starts reading the AYN button, the controller, Home, the lid and the power key; [l] gets the presses. */
-    fun start(l: Listener) {
-        listener = l
+    /** Starts reading the AYN button, the controller, Home, the lid and the power key; [newListener] gets the presses. */
+    fun start(newListener: Listener) {
+        listener = newListener
         Timber.i("input: home remapped=$homeRemapped")
         thread(name = "ayn", isDaemon = true) { aynLoop() }
         thread(name = "pad", isDaemon = true) { pad.loop() }
@@ -101,8 +101,8 @@ class InputWatcher(private val sys: Sys) {
         worker.execute {
             try {
                 block()
-            } catch (e: Throwable) {
-                Timber.w(e, "input handler failed")
+            } catch (error: Throwable) {
+                Timber.w(error, "input handler failed")
             }
         }
     }
@@ -120,16 +120,16 @@ class InputWatcher(private val sys: Sys) {
             }
             Timber.i("watching AYN button on $node")
             try {
-                FileInputStream(node).use { s ->
+                FileInputStream(node).use { stream ->
                     // The lid's hall sensor is a switch on the same node.
-                    lidClosedNow(s.fd)?.let { setLidClosed(it) }
-                    readEvents(s) { type, code, value ->
+                    lidClosedNow(stream.fd)?.let { setLidClosed(it) }
+                    readEvents(stream) { type, code, value ->
                         if (type == EV_KEY && code == KEY_F24) onAyn(value)
                         if (type == EV_SW && code == SW_LID) setLidClosed(value != 0)
                     }
                 }
-            } catch (e: Exception) {
-                Timber.w(e, "AYN read failed")
+            } catch (error: Exception) {
+                Timber.w(error, "AYN read failed")
             }
             Thread.sleep(1000)
         }
@@ -152,9 +152,9 @@ class InputWatcher(private val sys: Sys) {
         }
     }
 
-    private fun combo(c: Combo) {
+    private fun combo(pressedCombo: Combo) {
         comboUsed = true
-        post { listener.onCombo(c) }
+        post { listener.onCombo(pressedCombo) }
     }
 
     // ---- Power button: ignored with the lid closed, handled by gamepad mode -------------------
@@ -183,10 +183,10 @@ class InputWatcher(private val sys: Sys) {
     }
 
     /** Current lid switch state through EVIOCGSW, or null if it can't be read. */
-    private fun lidClosedNow(fd: FileDescriptor): Boolean? = try {
-        ((IOCTL_INT.invoke(null, fd, EVIOCGSW_4) as Int) and (1 shl SW_LID)) != 0
-    } catch (e: Throwable) {
-        Timber.w(e, "reading the lid switch failed")
+    private fun lidClosedNow(fileDescriptor: FileDescriptor): Boolean? = try {
+        ((IOCTL_INT.invoke(null, fileDescriptor, EVIOCGSW_4) as Int) and (1 shl SW_LID)) != 0
+    } catch (error: Throwable) {
+        Timber.w(error, "reading the lid switch failed")
         null
     }
 
@@ -215,21 +215,21 @@ class InputWatcher(private val sys: Sys) {
             Timber.w("power button input node not found")
             return
         }
-        val s = try {
+        val stream = try {
             FileInputStream(node).also { IOCTL_INT.invoke(null, it.fd, EVIOCGRAB) }
-        } catch (e: Throwable) {
-            Timber.w(e, "grabbing the power button failed")
+        } catch (error: Throwable) {
+            Timber.w(error, "grabbing the power button failed")
             return
         }
-        powerGrab = s
+        powerGrab = stream
         Timber.i("power button grabbed ($node)")
         thread(name = "pwrkey", isDaemon = true) {
             try {
-                readEvents(s) { t, c, v ->
-                    if (t != EV_KEY || c != KEY_POWER || v == 2) return@readEvents
+                readEvents(stream) { type, code, value ->
+                    if (type != EV_KEY || code != KEY_POWER || value == 2) return@readEvents
                     when {
-                        lidClosed -> if (v == 1) Timber.i("power button pressed with the lid closed: ignored")
-                        else -> powerHandler?.let { h -> post { h(v == 1) } }
+                        lidClosed -> if (value == 1) Timber.i("power button pressed with the lid closed: ignored")
+                        else -> powerHandler?.let { handler -> post { handler(value == 1) } }
                     }
                 }
             } catch (_: Exception) {
@@ -245,14 +245,14 @@ class InputWatcher(private val sys: Sys) {
         var node: String? = null
         private val lock = Any()
         private val keys = HashSet<Int>()
-        private val abs = IntArray(ABS_CNT)
+        private val axisValues = IntArray(ABS_CNT)
 
         private var grab: FileInputStream? = null
         private var owner = Owner.NONE
         private var grabThread: Thread? = null
         private var grabTimeout: ScheduledFuture<*>? = null
         private var startKeys: Set<Int> = emptySet()
-        private var startAbs = IntArray(ABS_CNT)
+        private var startAxisValues = IntArray(ABS_CNT)
         private var hatX = 0
         private var hatY = 0
 
@@ -263,93 +263,93 @@ class InputWatcher(private val sys: Sys) {
 
         fun loop() {
             while (true) {
-                val n = findNode { it.name == CONTROLLER_NAME }
-                if (n == null) {
+                val controllerNode = findNode { it.name == CONTROLLER_NAME }
+                if (controllerNode == null) {
                     Thread.sleep(3000)
                     continue
                 }
-                node = n
-                Timber.i("watching controller on $n")
+                node = controllerNode
+                Timber.i("watching controller on $controllerNode")
                 try {
-                    FileInputStream(n).use { s ->
-                        readEvents(s) { t, c, v ->
-                            track(t, c, v)
-                            if (t == EV_KEY && c == KEY_HOME) onHome(v)
-                            if (t == EV_KEY && v == 1 && (c == BTN_TL || c == BTN_TR)) post { listener.onShoulder() }
+                    FileInputStream(controllerNode).use { stream ->
+                        readEvents(stream) { type, code, value ->
+                            track(type, code, value)
+                            if (type == EV_KEY && code == KEY_HOME) onHome(value)
+                            if (type == EV_KEY && value == 1 && (code == BTN_TL || code == BTN_TR)) post { listener.onShoulder() }
                         }
                     }
-                } catch (e: Exception) {
-                    Timber.w(e, "controller read failed")
+                } catch (error: Exception) {
+                    Timber.w(error, "controller read failed")
                 }
                 Thread.sleep(1000)
             }
         }
 
-        private fun track(t: Int, c: Int, v: Int) {
+        private fun track(type: Int, code: Int, value: Int) {
             synchronized(lock) {
-                when (t) {
-                    EV_KEY -> if (v != 0) keys += c else keys -= c
-                    EV_ABS -> if (c in 0 until ABS_CNT) abs[c] = v
+                when (type) {
+                    EV_KEY -> if (value != 0) keys += code else keys -= code
+                    EV_ABS -> if (code in 0 until ABS_CNT) axisValues[code] = value
                 }
             }
         }
 
         fun isDown(code: Int): Boolean = synchronized(lock) { code in keys }
 
-        fun snapshot(): Pair<Set<Int>, IntArray> = synchronized(lock) { HashSet(keys) to abs.copyOf() }
+        fun snapshot(): Pair<Set<Int>, IntArray> = synchronized(lock) { HashSet(keys) to axisValues.copyOf() }
 
         fun holds(who: Owner): Boolean = synchronized(lock) { owner == who && grabThread?.isAlive == true }
 
         /** Combo detection starts from what is held now: nothing already down counts as a press. */
         fun armCombos() {
             synchronized(lock) {
-                hatX = abs[ABS_HAT0X]
-                hatY = abs[ABS_HAT0Y]
-                trigKey[0] = BTN_TL2 in keys
-                trigKey[1] = BTN_TR2 in keys
-                trigAxis[0] = abs[ABS_Z] >= TRIGGER_ON
-                trigAxis[1] = abs[ABS_RZ] >= TRIGGER_ON
-                trigDown[0] = trigKey[0] || trigAxis[0]
-                trigDown[1] = trigKey[1] || trigAxis[1]
+                hatX = axisValues[ABS_HAT0X]
+                hatY = axisValues[ABS_HAT0Y]
+                triggerKey[0] = BTN_TL2 in keys
+                triggerKey[1] = BTN_TR2 in keys
+                triggerAxis[0] = axisValues[ABS_Z] >= TRIGGER_ON
+                triggerAxis[1] = axisValues[ABS_RZ] >= TRIGGER_ON
+                triggerDown[0] = triggerKey[0] || triggerAxis[0]
+                triggerDown[1] = triggerKey[1] || triggerAxis[1]
             }
         }
 
         /** Grabs the controller exclusively for [who]; false if it is already grabbed or absent. */
         fun beginGrab(who: Owner, handler: (Int, Int, Int) -> Unit, timeoutMs: Long): Boolean {
-            val n = node ?: return false
+            val controllerNode = node ?: return false
             synchronized(lock) { if (grab != null) return false }
-            val s = try {
-                FileInputStream(n)
-            } catch (e: Exception) {
+            val stream = try {
+                FileInputStream(controllerNode)
+            } catch (error: Exception) {
                 return false
             }
             try {
-                IOCTL_INT.invoke(null, s.fd, EVIOCGRAB)
-            } catch (e: Throwable) {
-                Timber.w(e, "EVIOCGRAB failed; combos will also reach apps")
-                s.close()
+                IOCTL_INT.invoke(null, stream.fd, EVIOCGRAB)
+            } catch (error: Throwable) {
+                Timber.w(error, "EVIOCGRAB failed; combos will also reach apps")
+                stream.close()
                 return false
             }
             synchronized(lock) {
-                grab = s
+                grab = stream
                 owner = who
                 startKeys = HashSet(keys)
-                startAbs = abs.copyOf()
-                hatX = startAbs[ABS_HAT0X]
-                hatY = startAbs[ABS_HAT0Y]
+                startAxisValues = axisValues.copyOf()
+                hatX = startAxisValues[ABS_HAT0X]
+                hatY = startAxisValues[ABS_HAT0Y]
                 // A trigger already held when AYN goes down doesn't count as a press.
-                trigKey[0] = BTN_TL2 in startKeys
-                trigKey[1] = BTN_TR2 in startKeys
-                trigAxis[0] = startAbs[ABS_Z] >= TRIGGER_ON
-                trigAxis[1] = startAbs[ABS_RZ] >= TRIGGER_ON
-                trigDown[0] = trigKey[0] || trigAxis[0]
-                trigDown[1] = trigKey[1] || trigAxis[1]
+                triggerKey[0] = BTN_TL2 in startKeys
+                triggerKey[1] = BTN_TR2 in startKeys
+                triggerAxis[0] = startAxisValues[ABS_Z] >= TRIGGER_ON
+                triggerAxis[1] = startAxisValues[ABS_RZ] >= TRIGGER_ON
+                triggerDown[0] = triggerKey[0] || triggerAxis[0]
+                triggerDown[1] = triggerKey[1] || triggerAxis[1]
             }
             grabThread = thread(name = "pad-grab", isDaemon = true) {
                 try {
-                    readEvents(s) { t, c, v ->
-                        track(t, c, v)
-                        handler(t, c, v)
+                    readEvents(stream) { type, code, value ->
+                        track(type, code, value)
+                        handler(type, code, value)
                     }
                 } catch (_: Exception) {
                     // closed by endGrab()
@@ -367,31 +367,31 @@ class InputWatcher(private val sys: Sys) {
 
         // L2 / R2 are analog (ABS_Z / ABS_RZ, 0..255) and also report a button when fully
         // pulled; either one counts, and a pull fires once until the trigger is let go again.
-        private val trigKey = BooleanArray(2)
-        private val trigAxis = BooleanArray(2)
-        private val trigDown = BooleanArray(2)
+        private val triggerKey = BooleanArray(2)
+        private val triggerAxis = BooleanArray(2)
+        private val triggerDown = BooleanArray(2)
 
-        private fun trigger(i: Int, key: Boolean? = null, axis: Int? = null) {
-            if (key != null) trigKey[i] = key
-            if (axis != null) trigAxis[i] = if (trigAxis[i]) axis >= TRIGGER_OFF else axis >= TRIGGER_ON
-            val down = trigKey[i] || trigAxis[i]
-            if (down && !trigDown[i]) combo(if (i == 0) Combo.L2 else Combo.R2)
-            trigDown[i] = down
+        private fun trigger(side: Int, key: Boolean? = null, axis: Int? = null) {
+            if (key != null) triggerKey[side] = key
+            if (axis != null) triggerAxis[side] = if (triggerAxis[side]) axis >= TRIGGER_OFF else axis >= TRIGGER_ON
+            val down = triggerKey[side] || triggerAxis[side]
+            if (down && !triggerDown[side]) combo(if (side == 0) Combo.L2 else Combo.R2)
+            triggerDown[side] = down
         }
 
-        fun detect(t: Int, c: Int, v: Int) {
-            when (t) {
-                EV_KEY -> when (c) {
-                    BTN_TL2 -> trigger(0, key = v != 0)
-                    BTN_TR2 -> trigger(1, key = v != 0)
+        fun detect(type: Int, code: Int, value: Int) {
+            when (type) {
+                EV_KEY -> when (code) {
+                    BTN_TL2 -> trigger(0, key = value != 0)
+                    BTN_TR2 -> trigger(1, key = value != 0)
                 }
-                EV_ABS -> when (c) {
-                    ABS_Z -> trigger(0, axis = v)
-                    ABS_RZ -> trigger(1, axis = v)
+                EV_ABS -> when (code) {
+                    ABS_Z -> trigger(0, axis = value)
+                    ABS_RZ -> trigger(1, axis = value)
                 }
             }
-            when (t) {
-                EV_KEY -> if (v == 1) when (c) {
+            when (type) {
+                EV_KEY -> if (value == 1) when (code) {
                     BTN_TL -> combo(Combo.L1)
                     BTN_TR -> combo(Combo.R1)
                     BTN_EAST -> combo(Combo.B)
@@ -402,38 +402,38 @@ class InputWatcher(private val sys: Sys) {
                     BTN_DPAD_LEFT, KEY_LEFT -> combo(Combo.LEFT)
                     BTN_DPAD_RIGHT, KEY_RIGHT -> combo(Combo.RIGHT)
                 }
-                EV_ABS -> when (c) {
+                EV_ABS -> when (code) {
                     ABS_HAT0Y -> {
-                        if (v < 0 && hatY >= 0) combo(Combo.UP)
-                        if (v > 0 && hatY <= 0) combo(Combo.DOWN)
-                        hatY = v
+                        if (value < 0 && hatY >= 0) combo(Combo.UP)
+                        if (value > 0 && hatY <= 0) combo(Combo.DOWN)
+                        hatY = value
                     }
                     ABS_HAT0X -> {
-                        if (v < 0 && hatX >= 0) combo(Combo.LEFT)
-                        if (v > 0 && hatX <= 0) combo(Combo.RIGHT)
-                        hatX = v
+                        if (value < 0 && hatX >= 0) combo(Combo.LEFT)
+                        if (value > 0 && hatX <= 0) combo(Combo.RIGHT)
+                        hatX = value
                     }
                 }
             }
         }
 
         fun endGrab(who: Owner) {
-            val s: FileInputStream
-            val t: Thread?
+            val stream: FileInputStream
+            val reader: Thread?
             synchronized(lock) {
                 if (owner != who) return
-                s = grab ?: return
+                stream = grab ?: return
                 grab = null
                 owner = Owner.NONE
-                t = grabThread
+                reader = grabThread
                 grabThread = null
             }
             grabTimeout?.cancel(false)
             try {
-                s.close() // wakes the blocked reader; the grab is released with the last file reference
+                stream.close() // wakes the blocked reader; the grab is released with the last file reference
             } catch (_: Exception) {
             }
-            t?.join(300)
+            reader?.join(300)
             resync()
             // A Home release that went to the grab never reaches our own reader (and the kernel
             // drops a re-injected one, since the key is already up): reset the Home state here.
@@ -454,26 +454,26 @@ class InputWatcher(private val sys: Sys) {
         private fun resync() {
             val events = ArrayList<IntArray>()
             synchronized(lock) {
-                for (c in startKeys) if (c !in keys) events += intArrayOf(EV_KEY, c, 0)
-                for (c in ANALOG_AXES) if (abs[c] != startAbs[c]) events += intArrayOf(EV_ABS, c, abs[c])
-                for (c in intArrayOf(ABS_HAT0X, ABS_HAT0Y)) if (startAbs[c] != 0 && abs[c] == 0) events += intArrayOf(EV_ABS, c, 0)
+                for (code in startKeys) if (code !in keys) events += intArrayOf(EV_KEY, code, 0)
+                for (axis in ANALOG_AXES) if (axisValues[axis] != startAxisValues[axis]) events += intArrayOf(EV_ABS, axis, axisValues[axis])
+                for (hat in intArrayOf(ABS_HAT0X, ABS_HAT0Y)) if (startAxisValues[hat] != 0 && axisValues[hat] == 0) events += intArrayOf(EV_ABS, hat, 0)
             }
-            val n = node ?: return
+            val controllerNode = node ?: return
             if (events.isEmpty()) return
             try {
-                val bb = ByteBuffer.allocate(EVENT_SIZE * (events.size + 1)).order(ByteOrder.LITTLE_ENDIAN)
-                for (e in events) putEvent(bb, e[0], e[1], e[2])
-                putEvent(bb, EV_SYN, 0, 0)
-                FileOutputStream(n).use { it.write(bb.array()) }
-            } catch (e: Exception) {
-                Timber.w(e, "controller resync failed")
+                val buffer = ByteBuffer.allocate(EVENT_SIZE * (events.size + 1)).order(ByteOrder.LITTLE_ENDIAN)
+                for (event in events) putEvent(buffer, event[0], event[1], event[2])
+                putEvent(buffer, EV_SYN, 0, 0)
+                FileOutputStream(controllerNode).use { it.write(buffer.array()) }
+            } catch (error: Exception) {
+                Timber.w(error, "controller resync failed")
             }
         }
 
         /** Short press = Home on release (like stock), long press = app switcher while still held. */
-        private fun onHome(v: Int) {
+        private fun onHome(value: Int) {
             synchronized(homeLock) {
-                when (v) {
+                when (value) {
                     1 -> {
                         if (homeDown) return
                         homeDown = true
@@ -504,8 +504,8 @@ class InputWatcher(private val sys: Sys) {
 
     class DevInfo(val name: String, val handler: String, private val keyBits: List<Long>) {
         fun hasKey(code: Int): Boolean {
-            val idx = code / 64
-            return idx < keyBits.size && (keyBits[idx] shr (code % 64)) and 1L == 1L
+            val wordIndex = code / 64
+            return wordIndex < keyBits.size && (keyBits[wordIndex] shr (code % 64)) and 1L == 1L
         }
     }
 
@@ -514,22 +514,22 @@ class InputWatcher(private val sys: Sys) {
     private fun findNode(match: (DevInfo) -> Boolean): String? =
         devices().firstOrNull(match)?.let { "/dev/input/${it.handler}" }
 
-    private inline fun readEvents(input: InputStream, cb: (Int, Int, Int) -> Unit) {
-        val buf = ByteArray(EVENT_SIZE * 64)
-        val bb = ByteBuffer.wrap(buf).order(ByteOrder.LITTLE_ENDIAN)
+    private inline fun readEvents(input: InputStream, onEvent: (Int, Int, Int) -> Unit) {
+        val bytes = ByteArray(EVENT_SIZE * 64)
+        val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         while (true) {
-            val n = input.read(buf)
-            if (n <= 0) return
-            var off = 0
-            while (off + EVENT_SIZE <= n) {
-                cb(bb.getShort(off + 16).toInt() and 0xFFFF, bb.getShort(off + 18).toInt() and 0xFFFF, bb.getInt(off + 20))
-                off += EVENT_SIZE
+            val bytesRead = input.read(bytes)
+            if (bytesRead <= 0) return
+            var offset = 0
+            while (offset + EVENT_SIZE <= bytesRead) {
+                onEvent(buffer.getShort(offset + 16).toInt() and 0xFFFF, buffer.getShort(offset + 18).toInt() and 0xFFFF, buffer.getInt(offset + 20))
+                offset += EVENT_SIZE
             }
         }
     }
 
-    private fun putEvent(bb: ByteBuffer, type: Int, code: Int, value: Int) {
-        bb.putLong(0L).putLong(0L).putShort(type.toShort()).putShort(code.toShort()).putInt(value)
+    private fun putEvent(buffer: ByteBuffer, type: Int, code: Int, value: Int) {
+        buffer.putLong(0L).putLong(0L).putShort(type.toShort()).putShort(code.toShort()).putInt(value)
     }
 
     companion object {
@@ -592,7 +592,7 @@ class InputWatcher(private val sys: Sys) {
         const val LONG_HOME_MS = 450L
 
         const val CONTROLLER_NAME = "Xbox Wireless Controller"
-        const val CONTROLLER_KL = "/vendor/usr/keylayout/Vendor_045e_Product_028e_Version_1234.kl"
+        const val CONTROLLER_KEY_LAYOUT = "/vendor/usr/keylayout/Vendor_045e_Product_028e_Version_1234.kl"
 
         /** android.system.Os.ioctlInt(fd, cmd) passes a non-null int*, which EVIOCGRAB treats as "grab". */
         private val IOCTL_INT by lazy {

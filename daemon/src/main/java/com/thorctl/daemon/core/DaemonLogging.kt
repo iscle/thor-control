@@ -11,7 +11,7 @@ import timber.log.Timber
 class DaemonLogTree : Timber.Tree() {
     override fun isLoggable(tag: String?, priority: Int): Boolean = priority >= Log.INFO
 
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+    override fun log(priority: Int, tag: String?, message: String, throwable: Throwable?) {
         Log.println(priority, TAG, message)
     }
 

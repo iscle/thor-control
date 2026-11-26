@@ -76,12 +76,12 @@ class ButtonHandler(
 
     /** The screen Home acts on: where the controller is routed, or the focused one when it follows focus. */
     private fun homeDisplay(): Int {
-        val d = when (router.target) {
+        val displayId = when (router.target) {
             ControllerTarget.TOP -> displays.topId
             ControllerTarget.BOTTOM -> displays.bottomId
             ControllerTarget.FREE -> system.focusedDisplayId()
         }
-        return if (d < 0 || (d == displays.bottomId && !displays.bottomOn)) displays.topId else d
+        return if (displayId < 0 || (displayId == displays.bottomId && !displays.bottomOn)) displays.topId else displayId
     }
 
     override fun onShoulder() {
@@ -93,10 +93,10 @@ class ButtonHandler(
     }
 
     override fun onHomeSingle() {
-        val d = homeDisplay()
+        val displayId = homeDisplay()
         // Inside an app: Thor Control animates to the home screen and sends Home itself.
-        if (recents.homeShort(d)) return
-        system.injectKey(KeyEvent.KEYCODE_HOME, d)
+        if (recents.homeShort(displayId)) return
+        system.injectKey(KeyEvent.KEYCODE_HOME, displayId)
         game.nudge()
     }
 
