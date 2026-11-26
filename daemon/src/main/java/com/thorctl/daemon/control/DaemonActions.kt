@@ -69,12 +69,13 @@ class DaemonActions(
         }
     }
 
+    /** Turns game mode on or off; the pill shows what it ended up as (turning on can fail). */
     fun setGame(on: Boolean, announce: Boolean) {
-        game.setEnabled(on)
+        val enabled = game.setEnabled(on)
         notifier.stateChanged()
-        if (announce) notifier.hud(HudEvent.Game(if (on) GameHudState.ON else GameHudState.OFF), displays.topId)
+        if (announce) notifier.hud(HudEvent.Game(if (enabled) GameHudState.ON else GameHudState.OFF), displays.topId)
         // Picking the game and closing other apps takes a moment; keep it off the caller's thread.
-        if (on) game.nudge(delayMs = 0)
+        if (enabled) game.nudge(delayMs = 0)
     }
 
     fun setBottomPower(on: Boolean) {
@@ -90,7 +91,7 @@ class DaemonActions(
         if (from < 0 || destination < 0) return
         val task = try {
             taskService.topAppTask(from)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "topAppTask failed")
             null
         }
@@ -105,7 +106,7 @@ class DaemonActions(
             if (router.target == ControllerTarget.FREE) taskService.focusTopTask(destination)
             Timber.i("moved task ${task.taskId} (${task.packageName}) to display $destination")
             notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), destination)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "move task failed")
         }
     }

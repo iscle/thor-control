@@ -20,7 +20,7 @@ class GamePicker(
         if (topDisplay < 0) return null
         val packageName = try {
             taskService.topAppTask(topDisplay)?.packageName
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
             null
         } ?: return null
         if (packageName == Proto.PACKAGE || packageName == packageService.homePackage()) return null

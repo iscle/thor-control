@@ -50,6 +50,17 @@ class ClockBoostTest {
     }
 
     @Test
+    fun doesNotBoostWhenTheOriginalsCantBeSaved() {
+        val unsaved = ClockBoost(sys, GameModeFiles(folder.newFile("not-a-directory")))
+        unsaved.apply(GameOptions())
+        assertFalse(unsaved.boosted)
+        assertTrue(sys.writes.isEmpty())
+        // Nothing to undo either.
+        unsaved.release()
+        assertTrue(sys.writes.isEmpty())
+    }
+
+    @Test
     fun boostsOnlyWhatIsAskedFor() {
         boost.apply(GameOptions(cpu = false))
         assertEquals(listOf("$GPU/min_pwrlevel" to "0"), sys.writes)

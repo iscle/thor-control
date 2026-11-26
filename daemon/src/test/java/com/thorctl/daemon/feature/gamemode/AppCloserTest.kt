@@ -2,13 +2,15 @@ package com.thorctl.daemon.feature.gamemode
 
 import android.app.ActivityManager.RunningAppProcessInfo
 import android.content.pm.ApplicationInfo
+import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
-import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.hardware.ThorDisplays
 import com.thorctl.daemon.system.AppProcess
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakePackageService
 import com.thorctl.daemon.system.FakeTaskService
+import com.thorctl.daemon.system.PackageService
 import com.thorctl.protocol.Proto
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,6 +21,8 @@ class AppCloserTest {
     private val taskService = FakeTaskService()
     private val packageService = FakePackageService().apply { home = "com.launcher" }
     private val displays = ThorDisplays.controller(FakeDisplayService(listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM)))
+    private val scheduler = FakeScheduledExecutor(FakeClock())
+    private val closer = AppCloser(displays, packageService, taskService, sys, scheduler)
 
     private fun process(uid: Int, vararg packageNames: String, importance: Int = RunningAppProcessInfo.IMPORTANCE_FOREGROUND) =
         AppProcess(pid = uid, uid = uid, name = packageNames.first(), packageNames = packageNames.toList(), importance = importance)
@@ -59,20 +63,44 @@ class AppCloserTest {
             }
         }
         sys["/proc/meminfo"] = "MemTotal:       11811188 kB\nMemAvailable:    2097152 kB\n"
-        // Memory comes back once compaction is asked for (i.e. after the apps were closed).
-        val freeingSys = object : Sys by sys {
-            override fun write(path: String, value: String): Boolean {
-                if (path == "/proc/sys/vm/compact_memory") sys["/proc/meminfo"] = "MemTotal:       11811188 kB\nMemAvailable:    3145728 kB\n"
-                return sys.write(path, value)
-            }
-        }
+        val measured = mutableListOf<Int>()
 
-        val freedMb = AppCloser(displays, packageService, taskService, freeingSys).closeOthers("com.game", running)
+        closer.closeOthers("com.game", running) { measured += it }
 
         assertEquals(listOf("com.user.app"), packageService.forceStopped)
         assertEquals(setOf("com.android.vending", "com.persistent", "com.launcher"), packageService.killedInBackground.toSet())
         assertEquals(listOf("/proc/sys/vm/compact_memory" to "1"), sys.writes)
-        assertEquals(1024, freedMb)
+
+        // Memory comes back as the closed processes die; it is measured once things settled.
+        sys["/proc/meminfo"] = "MemTotal:       11811188 kB\nMemAvailable:    3145728 kB\n"
+        scheduler.advanceBy(1199)
+        assertTrue(measured.isEmpty())
+        scheduler.advanceBy(1)
+        assertEquals(listOf(1024), measured)
+    }
+
+    @Test
+    fun keepsClosingWhenOneAppCantBeClosed() {
+        packageService.flags += mapOf("com.stuck" to 0, "com.other" to 0)
+        val failing = object : PackageService by packageService {
+            override fun forceStop(packageName: String) {
+                if (packageName == "com.stuck") throw ReflectiveOperationException("binder died")
+                packageService.forceStop(packageName)
+            }
+        }
+        AppCloser(displays, failing, taskService, sys, scheduler)
+            .closeOthers("com.game", listOf(process(10101, "com.stuck"), process(10102, "com.other"))) {}
+        assertEquals(listOf("com.other"), packageService.forceStopped)
+    }
+
+    @Test
+    fun lessMemoryThanBeforeCountsAsNothingFreed() {
+        sys["/proc/meminfo"] = "MemAvailable:    2097152 kB\n"
+        val measured = mutableListOf<Int>()
+        closer.closeOthers("com.game", emptyList()) { measured += it }
+        sys["/proc/meminfo"] = "MemAvailable:    1048576 kB\n"
+        scheduler.advanceBy(1200)
+        assertEquals(listOf(0), measured)
     }
 
     @Test
@@ -88,7 +116,7 @@ class AppCloserTest {
             process(1000, "com.system.uid", importance = cached),
         )
 
-        AppCloser(displays, packageService, taskService, sys).trimCached("com.game", running)
+        closer.trimCached("com.game", running)
 
         assertEquals(listOf("com.cached"), packageService.killedInBackground)
         assertTrue(packageService.forceStopped.isEmpty())

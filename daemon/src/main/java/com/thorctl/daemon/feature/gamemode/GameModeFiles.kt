@@ -2,7 +2,9 @@ package com.thorctl.daemon.feature.gamemode
 
 import com.thorctl.daemon.hardware.FanController
 import dev.zacsweers.metro.Inject
+import timber.log.Timber
 import java.io.File
+import java.io.IOException
 
 /**
  * Game mode's files in /dev/thorctl, a tmpfs: they outlive a daemon restart but not a reboot.
@@ -20,12 +22,16 @@ class GameModeFiles(directory: File) {
 
     fun isMarkedOn(): Boolean = onFlag.exists()
 
-    fun markOn(on: Boolean) {
-        if (on) {
-            onFlag.parentFile?.mkdirs()
+    /** Writes or deletes game.on. Returns false if the file couldn't be written or deleted. */
+    fun markOn(on: Boolean): Boolean {
+        if (!on) return onFlag.delete() || !onFlag.exists()
+        onFlag.parentFile?.mkdirs()
+        return try {
             onFlag.writeText("1")
-        } else {
-            onFlag.delete()
+            true
+        } catch (e: IOException) {
+            Timber.w(e, "writing ${onFlag.path} failed")
+            false
         }
     }
 
@@ -39,12 +45,20 @@ class GameModeFiles(directory: File) {
         }.toMap()
     }
 
-    /** Replaces the file in one step (write then rename), so the restore script never reads half of it. */
-    fun saveOriginals(originals: Map<String, String>) {
+    /**
+     * Replaces the file in one step (write then rename), so the restore script never reads half of
+     * it. Returns false if it couldn't be saved; the previous file, if any, is then left as it was.
+     */
+    fun saveOriginals(originals: Map<String, String>): Boolean {
         originalsFile.parentFile?.mkdirs()
         val tempFile = File(originalsFile.path + ".tmp")
-        tempFile.writeText(originals.entries.joinToString("") { "${it.key} ${it.value}\n" })
-        tempFile.renameTo(originalsFile)
+        return try {
+            tempFile.writeText(originals.entries.joinToString("") { "${it.key} ${it.value}\n" })
+            tempFile.renameTo(originalsFile).also { renamed -> if (!renamed) Timber.w("renaming ${tempFile.path} failed") }
+        } catch (e: IOException) {
+            Timber.w(e, "writing ${tempFile.path} failed")
+            false
+        }
     }
 
     fun deleteOriginals() {

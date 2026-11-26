@@ -54,7 +54,7 @@ class DisplayController(
     fun refresh() {
         val internal = try {
             displayService.displays().filter { it.type == TYPE_INTERNAL }
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "display refresh failed")
             return
         }
@@ -89,7 +89,7 @@ class DisplayController(
         if (id < 0) return 0f
         return try {
             displayService.brightness(id)
-        } catch (e: Throwable) {
+        } catch (_: ReflectiveOperationException) {
             0f
         }
     }
@@ -99,7 +99,7 @@ class DisplayController(
         if (id < 0) return
         try {
             displayService.setBrightness(id, value.coerceIn(MIN_BRIGHTNESS, 1f))
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "setBrightness($screen) failed")
         }
     }
@@ -114,7 +114,7 @@ class DisplayController(
         }
         val succeeded = try {
             displayService.requestDisplayPower(id, if (on) STATE_UNKNOWN else STATE_OFF)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "requestDisplayPower failed")
             false
         }
@@ -134,7 +134,7 @@ class DisplayController(
             } else if (bottomForcedOff && bottomId >= 0) {
                 displayService.requestDisplayPower(bottomId, STATE_OFF)
             }
-        } catch (_: Throwable) {
+        } catch (_: ReflectiveOperationException) {
         }
     }
 
@@ -151,7 +151,7 @@ class DisplayController(
             if (topId >= 0) displayService.requestDisplayPower(topId, if (dark) STATE_OFF else STATE_UNKNOWN)
             // A bottom screen the user switched off has to be on while dark, and off again after.
             if (bottomForcedOff && bottomId >= 0) displayService.requestDisplayPower(bottomId, if (dark) STATE_UNKNOWN else STATE_OFF)
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
         }
         setTouch(TOP_TOUCH_NAME, !dark)
@@ -173,7 +173,7 @@ class DisplayController(
             inputService.devices()
                 .filter { it.name == name }
                 .forEach { inputService.setDeviceEnabled(it.id, enabled) }
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "toggle touch ($name) failed")
         }
     }

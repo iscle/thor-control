@@ -1,7 +1,9 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
+import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
 import kotlin.test.Test
@@ -15,8 +17,9 @@ class BottomPanelHealerTest {
         this["$DRM/card0-DP-1/enabled"] = "disabled"
     }
     private val clock = FakeClock()
+    private val scheduler = FakeScheduledExecutor(clock)
     private val displayService = FakeDisplayService(listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM))
-    private val healer by lazy { BottomPanelHealer(sys, clock, displayService) }
+    private val healer by lazy { BottomPanelHealer(sys, clock, displayService, scheduler) }
     private val bottom = ThorDisplays.BOTTOM.id
 
     private val powerCycles get() = displayService.powerRequests.count { it == bottom to DisplayController.STATE_OFF }
@@ -26,10 +29,26 @@ class BottomPanelHealerTest {
         healer.heal(bottom, bottomForcedOff = false)
         assertEquals(0, powerCycles)
         healer.heal(bottom, bottomForcedOff = false)
+        assertEquals(listOf(bottom to DisplayController.STATE_OFF), displayService.powerRequests)
+
+        // The panel's power is handed back half a second later, without blocking the caller.
+        scheduler.advanceBy(499)
+        assertEquals(1, displayService.powerRequests.size)
+        scheduler.advanceBy(1)
         assertEquals(
             listOf(bottom to DisplayController.STATE_OFF, bottom to DisplayController.STATE_UNKNOWN),
             displayService.powerRequests,
         )
+    }
+
+    @Test
+    fun noHandBackWhenTurningThePanelOffFails() {
+        val failing = object : DisplayService by displayService {
+            override fun requestDisplayPower(displayId: Int, state: Int): Boolean = throw ReflectiveOperationException("binder died")
+        }
+        val healer = BottomPanelHealer(sys, clock, failing, scheduler)
+        repeat(2) { healer.heal(bottom, bottomForcedOff = false) }
+        assertEquals(0, scheduler.pending)
     }
 
     @Test

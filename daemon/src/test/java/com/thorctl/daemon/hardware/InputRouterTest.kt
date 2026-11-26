@@ -1,11 +1,13 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
 import com.thorctl.daemon.system.InputDeviceInfo
+import com.thorctl.daemon.system.InputService
 import com.thorctl.protocol.model.ControllerTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,7 +21,7 @@ class InputRouterTest {
         ),
     )
     private val inputService = FakeInputService()
-    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService)).apply { refresh() }
+    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService, FakeScheduledExecutor(FakeClock()))).apply { refresh() }
     private val router = InputRouter(displays, inputService)
 
     @Test
@@ -41,5 +43,18 @@ class InputRouterTest {
     fun fallsBackToTheKnownDescriptor() {
         router.apply(ControllerTarget.TOP)
         assertEquals(mapOf(InputRouter.KNOWN_DESCRIPTOR to displays.topUniqueId), inputService.associations)
+    }
+
+    @Test
+    fun aDeadInputManagerLeavesTheTargetAsItWas() {
+        val dead = object : InputService by inputService {
+            override fun devices(): List<InputDeviceInfo> = throw ReflectiveOperationException("input manager died")
+
+            override fun associate(descriptor: String, displayUniqueId: String) = throw ReflectiveOperationException("input manager died")
+        }
+        val router = InputRouter(displays, dead)
+        router.apply(ControllerTarget.BOTTOM)
+        assertEquals(ControllerTarget.FREE, router.target)
+        assertTrue(inputService.associations.isEmpty())
     }
 }

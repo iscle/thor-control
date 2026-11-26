@@ -1,9 +1,11 @@
 package com.thorctl.daemon.feature.gamemode
 
 import android.app.ActivityManager.RunningAppProcessInfo
+import com.thorctl.daemon.FakeClock
+import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.hardware.ThorDisplays
-import com.thorctl.daemon.ipc.DaemonNotifier
+import com.thorctl.daemon.ipc.FakeDaemonNotifier
 import com.thorctl.daemon.system.AppProcess
 import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.FakeDisplayService
@@ -13,10 +15,9 @@ import com.thorctl.daemon.system.FakeTaskService
 import com.thorctl.protocol.model.GameHudState
 import com.thorctl.protocol.model.GameOptions
 import com.thorctl.protocol.model.HudEvent
-import org.junit.After
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
-import java.util.concurrent.Executors
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,6 +31,7 @@ class GameModeTest {
     private val sys = FakeSys().apply {
         this["$GPU/min_pwrlevel"] = "8"
         this["$GPU/max_pwrlevel"] = "0"
+        this[MEMINFO] = "MemAvailable:    2097152 kB\n"
     }
     private val displayService = FakeDisplayService(listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM))
     private val displays = ThorDisplays.controller(displayService)
@@ -37,20 +39,14 @@ class GameModeTest {
     private val packageService = FakePackageService().apply {
         flags[GAME] = 0
         flags["com.cached"] = 0
+        flags["com.other"] = 0
     }
-    private val scheduler = Executors.newSingleThreadScheduledExecutor()
-    private val huds = mutableListOf<HudEvent>()
-    private var stateChanges = 0
-    private val notifier = object : DaemonNotifier {
-        override fun stateChanged() {
-            stateChanges++
-        }
+    private val scheduler = FakeScheduledExecutor(FakeClock())
+    private val notifier = FakeDaemonNotifier()
 
-        override fun hud(event: HudEvent, displayId: Int) {
-            huds += event
-        }
-    }
-    private val files by lazy { GameModeFiles(folder.root) }
+    /** Where game mode keeps its files; a test can point it somewhere unwritable before first use. */
+    private var filesDirectory: () -> File = { folder.root }
+    private val files by lazy { GameModeFiles(filesDirectory()) }
     private val gameMode by lazy {
         GameMode(
             displays = displays,
@@ -60,16 +56,14 @@ class GameModeTest {
             scheduler = scheduler,
             files = files,
             picker = GamePicker(displays, taskService, packageService),
-            closer = AppCloser(displays, packageService, taskService, sys),
+            closer = AppCloser(displays, packageService, taskService, sys, scheduler),
             boost = ClockBoost(sys, files),
             bottomScreen = BottomScreenPolicy(displays, taskService, sys),
         )
     }
 
-    @After
-    fun stopScheduler() {
-        scheduler.shutdownNow()
-    }
+    private val huds get() = notifier.huds.map { it.first }
+    private val stateChanges get() = notifier.stateChanges.get()
 
     private fun playing() {
         packageService.running = listOf(AppProcess(100, 10234, GAME, listOf(GAME), RunningAppProcessInfo.IMPORTANCE_FOREGROUND))
@@ -78,7 +72,7 @@ class GameModeTest {
 
     private fun turnOn(options: GameOptions = GameOptions(closeApps = false)) {
         gameMode.init(options)
-        gameMode.setEnabled(true)
+        assertTrue(gameMode.setEnabled(true))
     }
 
     @Test
@@ -96,6 +90,49 @@ class GameModeTest {
     }
 
     @Test
+    fun closesTheOtherAppsAndAnnouncesWhatThatFreedOnceItSettled() {
+        playing()
+        packageService.running += AppProcess(101, 10300, "com.other", listOf("com.other"), RunningAppProcessInfo.IMPORTANCE_SERVICE)
+        turnOn(GameOptions())
+        gameMode.tick(interactive = true)
+
+        // Nothing waits for the memory to settle: the game is picked and boosted straight away.
+        assertEquals(listOf("com.other"), packageService.forceStopped)
+        assertEquals(GAME, gameMode.game)
+        assertTrue(gameMode.boosted)
+        assertTrue(huds.isEmpty())
+
+        sys[MEMINFO] = "MemAvailable:    3145728 kB\n"
+        scheduler.advanceBy(1200)
+        assertEquals(listOf<HudEvent>(HudEvent.Game(GameHudState.STARTED, GAME, 1024)), huds)
+        assertEquals(1024, gameMode.freedMb)
+        assertEquals(2, stateChanges)
+    }
+
+    @Test
+    fun announcesNothingWhenTurnedOffWhileMemorySettles() {
+        playing()
+        turnOn(GameOptions())
+        gameMode.tick(interactive = true)
+        gameMode.setEnabled(false)
+        scheduler.advanceBy(1200)
+        assertTrue(huds.isEmpty())
+        assertEquals(0, gameMode.freedMb)
+    }
+
+    @Test
+    fun staysOffWhenItCantBeMarkedOn() {
+        filesDirectory = { folder.newFile("not-a-directory") }
+        playing()
+        gameMode.init(GameOptions(closeApps = false))
+        assertFalse(gameMode.setEnabled(true))
+        assertFalse(gameMode.enabled)
+        gameMode.tick(interactive = true)
+        assertNull(gameMode.game)
+        assertFalse(gameMode.boosted)
+    }
+
+    @Test
     fun turnsTheBottomScreenOffOnTheSecondTick() {
         playing()
         turnOn()
@@ -105,8 +142,28 @@ class GameModeTest {
         assertEquals(HudEvent.Game(GameHudState.BOTTOM_OFF), huds.last())
         assertEquals(2, stateChanges)
 
-        gameMode.setEnabled(false)
+        assertFalse(gameMode.setEnabled(false))
         assertFalse(displays.bottomForcedOff)
+    }
+
+    @Test
+    fun turnsTheBottomScreenBackOnOnceItCanEvenAfterTurningOff() {
+        playing()
+        turnOn()
+        gameMode.tick(interactive = true)
+        gameMode.tick(interactive = true)
+        // The bottom panel can disappear while it is off; then it can't be turned back on yet.
+        displayService.displays = listOf(ThorDisplays.TOP)
+        displays.refresh()
+        gameMode.setEnabled(false)
+        assertTrue(displays.bottomForcedOff)
+
+        displayService.displays = listOf(ThorDisplays.TOP, ThorDisplays.BOTTOM)
+        displays.refresh()
+        val before = stateChanges
+        gameMode.tick(interactive = true)
+        assertFalse(displays.bottomForcedOff)
+        assertEquals(before + 1, stateChanges)
     }
 
     @Test
@@ -188,8 +245,19 @@ class GameModeTest {
         assertEquals("8", sys["$GPU/min_pwrlevel"])
     }
 
+    @Test
+    fun nudgeTicksSoonOnTheScheduler() {
+        playing()
+        turnOn()
+        gameMode.nudge()
+        assertNull(gameMode.game)
+        scheduler.advanceBy(500)
+        assertEquals(GAME, gameMode.game)
+    }
+
     private companion object {
         const val GAME = "com.game"
         const val GPU = "/sys/class/kgsl/kgsl-3d0"
+        const val MEMINFO = "/proc/meminfo"
     }
 }
