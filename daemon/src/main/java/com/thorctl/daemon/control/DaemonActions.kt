@@ -7,7 +7,8 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.FanController
 import com.thorctl.daemon.hardware.InputRouter
 import com.thorctl.daemon.ipc.DaemonNotifier
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.BrightnessCurve
 import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.FanProfile
@@ -31,7 +32,8 @@ class DaemonActions(
     private val router: InputRouter,
     private val fan: FanController,
     private val game: GameMode,
-    private val system: SystemServices,
+    private val powerService: PowerService,
+    private val taskService: TaskService,
     private val notifier: DaemonNotifier,
     private val lock: DaemonLock,
     private val scheduler: ScheduledExecutorService,
@@ -50,7 +52,7 @@ class DaemonActions(
     fun fanTick() {
         synchronized(lock) {
             val override = game.fanOverride?.let { config.profile(it) }
-            fan.tick(override ?: config.profile(config.fanProfile) ?: FanProfile.BUILTINS.first(), screenOn = system.isInteractive())
+            fan.tick(override ?: config.profile(config.fanProfile) ?: FanProfile.BUILTINS.first(), screenOn = powerService.isInteractive())
         }
     }
 
@@ -87,7 +89,7 @@ class DaemonActions(
         val destination = if (toBottom) displays.bottomId else displays.topId
         if (from < 0 || destination < 0) return
         val task = try {
-            system.topAppTask(from)
+            taskService.topAppTask(from)
         } catch (e: Throwable) {
             Timber.w(e, "topAppTask failed")
             null
@@ -98,9 +100,9 @@ class DaemonActions(
         }
         if (toBottom && displays.bottomForcedOff) setBottomPower(true)
         try {
-            system.moveTaskToDisplay(task.taskId, destination)
+            taskService.moveTaskToDisplay(task.taskId, destination)
             // With "follow focus" routing, input should follow the app to its new screen.
-            if (router.target == ControllerTarget.FREE) system.focusTopTask(destination)
+            if (router.target == ControllerTarget.FREE) taskService.focusTopTask(destination)
             Timber.i("moved task ${task.taskId} (${task.packageName}) to display $destination")
             notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), destination)
         } catch (e: Throwable) {

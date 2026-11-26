@@ -7,7 +7,10 @@ import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.AppTask
+import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.RecentTaskEntry
+import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.ipc.BytesJpeg
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
@@ -50,7 +53,8 @@ class Recents(
     private val displays: DisplayController,
     private val input: InputWatcher,
     private val link: ClientLink,
-    private val system: SystemServices,
+    private val inputService: InputService,
+    private val taskService: TaskService,
     private val sys: Sys,
     /** Told when something else came to front, so it reacts straight away. */
     private val game: Lazy<GameMode>,
@@ -72,7 +76,7 @@ class Recents(
 
     val isOpen: Boolean get() = openOn >= 0
 
-    private var tasks: List<SystemServices.RecentTask> = emptyList()
+    private var tasks: List<RecentTaskEntry> = emptyList()
     private var idle: ScheduledFuture<*>? = null
 
     /** One of our full-screen animations is (or may still be) on screen: don't capture. */
@@ -84,7 +88,7 @@ class Recents(
 
     // ---- Home button ------------------------------------------------------------------------
 
-    private class Press(val display: Int, val origin: SystemServices.TaskInfo?, val file: File, val shot: Future<Boolean>)
+    private class Press(val display: Int, val origin: AppTask?, val file: File, val shot: Future<Boolean>)
 
     @Volatile
     private var press: Press? = null
@@ -96,7 +100,7 @@ class Recents(
         press = null
         if (display < 0 || isOpen || busy()) return
         val origin = try {
-            system.topAppTask(display)
+            taskService.topAppTask(display)
         } catch (_: Throwable) {
             null
         }
@@ -147,7 +151,7 @@ class Recents(
         val homePress = press?.takeIf { it.display == display }
         press = null
         val origin = homePress?.origin ?: try {
-            system.topAppTask(display)
+            taskService.topAppTask(display)
         } catch (_: Throwable) {
             null
         }
@@ -164,7 +168,7 @@ class Recents(
         val (pendingSequence, display) = pendingHome ?: return
         if (pendingSequence != sequence) return
         pendingHome = null
-        system.injectKey(KeyEvent.KEYCODE_HOME, display)
+        inputService.injectKey(KeyEvent.KEYCODE_HOME, display)
         onHomeShown()
         captureHomeLater(display)
     }
@@ -203,7 +207,7 @@ class Recents(
         captureExecutor.execute {
             try {
                 if (busy() || SystemClock.elapsedRealtime() - lastHud < 3000) return@execute
-                if (system.topAppTask(display) != null) return@execute
+                if (taskService.topAppTask(display) != null) return@execute
                 if (capture(display, homeFile(display))) Timber.i("recents: home screen of display $display captured")
             } catch (e: Throwable) {
                 Timber.w(e, "home capture failed")
@@ -262,20 +266,20 @@ class Recents(
             }
             DaemonCommand.RecentsHome -> {
                 close(notifyApp = false)
-                system.injectKey(KeyEvent.KEYCODE_HOME, display)
+                inputService.injectKey(KeyEvent.KEYCODE_HOME, display)
                 onHomeShown()
                 captureHomeLater(display)
             }
             is DaemonCommand.RecentsRemove -> {
                 val id = command.taskId
-                system.removeTask(id)
+                taskService.removeTask(id)
                 tasks = tasks.filter { it.taskId != id }
                 Timber.i("recents: closed task $id")
             }
             is DaemonCommand.RecentsClear -> {
                 // No ids (the debug CLI): everything in the list.
                 val ids = command.taskIds.ifEmpty { tasks.map { it.taskId } }
-                ids.forEach { system.removeTask(it) }
+                ids.forEach { taskService.removeTask(it) }
                 tasks = emptyList()
                 Timber.i("recents: closed all (${ids.size})")
             }
@@ -294,8 +298,8 @@ class Recents(
         }
     }
 
-    private fun open(displayId: Int, origin: SystemServices.TaskInfo?, hero: File?) {
-        val list = system.recentTasks(MAX_TASKS).toMutableList()
+    private fun open(displayId: Int, origin: AppTask?, hero: File?) {
+        val list = taskService.recentTasks(MAX_TASKS).toMutableList()
         // The app you came from is "the most recent" one, right next to the home screen.
         if (origin != null) {
             val index = list.indexOfFirst { it.taskId == origin.taskId }
@@ -306,7 +310,7 @@ class Recents(
         val others = list.filter { it.visible && it.taskId != origin?.taskId }
         others.forEach {
             try {
-                system.takeSnapshot(it.taskId)
+                taskService.takeSnapshot(it.taskId)
             } catch (e: Throwable) {
                 Timber.w(e, "snapshot of task ${it.taskId} failed")
             }
@@ -344,7 +348,7 @@ class Recents(
         executor.schedule({
             if (!isOpen) return@schedule
             val pending = ids.filter { id ->
-                val snapshot = system.snapshotFile(id)
+                val snapshot = taskService.snapshotFile(id)
                 if (snapshot != null && snapshot.lastModified() >= since - 50) {
                     thumb(id)?.let { send(DaemonEvent.RecentsThumb(id, it)) }
                     false
@@ -356,15 +360,15 @@ class Recents(
         }, 200L + attempt * 250L, TimeUnit.MILLISECONDS)
     }
 
-    private fun thumb(taskId: Int): Jpeg? = jpeg(system.snapshotFile(taskId))
+    private fun thumb(taskId: Int): Jpeg? = jpeg(taskService.snapshotFile(taskId))
 
-    private fun openTask(id: Int, task: SystemServices.RecentTask?, display: Int) {
+    private fun openTask(id: Int, task: RecentTaskEntry?, display: Int) {
         try {
             if (task != null && task.displayId >= 0 && task.displayId != display) {
                 // Running on the other screen: bring it over to where the user is looking.
-                system.moveTaskToDisplay(id, display)
+                taskService.moveTaskToDisplay(id, display)
             } else {
-                system.startFromRecents(id, display)
+                taskService.startFromRecents(id, display)
             }
             Timber.i("recents: opened task $id (${task?.packageName}) on display $display")
         } catch (e: Throwable) {

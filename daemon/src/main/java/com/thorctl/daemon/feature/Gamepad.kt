@@ -11,7 +11,8 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.ipc.DaemonNotifier
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.PowerService
 import com.thorctl.protocol.GamepadHid
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.GamepadState
@@ -56,7 +57,8 @@ class Gamepad(
     private val link: ClientLink,
     private val notifier: DaemonNotifier,
     private val displays: DisplayController,
-    private val system: SystemServices,
+    private val inputService: InputService,
+    private val powerService: PowerService,
     private val sys: Sys,
 ) {
     private fun onChanged() = notifier.stateChanged()
@@ -69,7 +71,7 @@ class Gamepad(
         for (id in intArrayOf(displays.topId, displays.bottomId)) {
             if (id < 0) continue
             try {
-                system.userActivity(id)
+                powerService.userActivity(id)
             } catch (e: Throwable) {
                 Timber.w(e, "gamepad: user activity on display $id failed")
             }
@@ -77,9 +79,9 @@ class Gamepad(
     }
 
     /** Android went to sleep anyway (not the lid): wake it. */
-    private fun wakeUp() = system.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
+    private fun wakeUp() = inputService.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
 
-    private fun isInteractive() = system.isInteractive()
+    private fun isInteractive() = powerService.isInteractive()
 
     @Volatile
     var state = GamepadState()

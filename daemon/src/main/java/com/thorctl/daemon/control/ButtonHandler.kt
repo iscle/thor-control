@@ -10,7 +10,9 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputRouter
 import com.thorctl.daemon.hardware.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.Proto
 import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.DaemonEvent
@@ -31,15 +33,17 @@ class ButtonHandler(
     private val recents: Recents,
     private val keyboard: KeyboardPresence,
     private val link: ClientLink,
-    private val system: SystemServices,
+    private val inputService: InputService,
+    private val powerService: PowerService,
+    private val taskService: TaskService,
     private val sys: Sys,
 ) : InputWatcher.Listener {
     override fun onAynTap() {
         // Gamepad mode with the screens dark (or asleep after all): AYN brings them back (the
         // controller stays on the other device).
         if (gamepad.lightUp()) return
-        if (gamepad.state.on && !system.isInteractive()) {
-            system.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
+        if (gamepad.state.on && !powerService.isInteractive()) {
+            inputService.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
             return
         }
         if (recents.isOpen) {
@@ -79,7 +83,7 @@ class ButtonHandler(
         val displayId = when (router.target) {
             ControllerTarget.TOP -> displays.topId
             ControllerTarget.BOTTOM -> displays.bottomId
-            ControllerTarget.FREE -> system.focusedDisplayId()
+            ControllerTarget.FREE -> taskService.focusedDisplayId()
         }
         return if (displayId < 0 || (displayId == displays.bottomId && !displays.bottomOn)) displays.topId else displayId
     }
@@ -96,7 +100,7 @@ class ButtonHandler(
         val displayId = homeDisplay()
         // Inside an app: Thor Control animates to the home screen and sends Home itself.
         if (recents.homeShort(displayId)) return
-        system.injectKey(KeyEvent.KEYCODE_HOME, displayId)
+        inputService.injectKey(KeyEvent.KEYCODE_HOME, displayId)
         game.nudge()
     }
 
@@ -104,7 +108,7 @@ class ButtonHandler(
         link.broadcast(DaemonEvent.Haptic)
         if (!link.appConnected) {
             // App not connected: fall back to the system's switcher (Trebuchet, if enabled).
-            system.injectKey(KeyEvent.KEYCODE_APP_SWITCH, displays.topId)
+            inputService.injectKey(KeyEvent.KEYCODE_APP_SWITCH, displays.topId)
             return
         }
         recents.homeLong(homeDisplay())

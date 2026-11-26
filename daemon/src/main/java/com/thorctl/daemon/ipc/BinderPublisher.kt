@@ -2,7 +2,7 @@ package com.thorctl.daemon.ipc
 
 import android.os.Bundle
 import com.thorctl.daemon.di.DaemonScope
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.AppProviderClient
 import com.thorctl.protocol.ipc.DaemonBinder
 import com.thorctl.protocol.ipc.ThorIpc
 import dev.zacsweers.metro.Inject
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Inject
 @SingleIn(DaemonScope::class)
 class BinderPublisher(
-    private val system: SystemServices,
+    private val appProvider: AppProviderClient,
     private val clients: ClientLink,
     private val binder: Lazy<DaemonBinder>,
 ) {
@@ -49,7 +49,7 @@ class BinderPublisher(
 
     private fun offerNow() {
         try {
-            system.callAppProvider(ThorIpc.METHOD_OFFER, Bundle().apply { putBinder(ThorIpc.KEY_BINDER, binder.value) })
+            appProvider.call(ThorIpc.METHOD_OFFER, Bundle().apply { putBinder(ThorIpc.KEY_BINDER, binder.value) })
             if (lastFailure != null) Timber.i("binder offered to the app again")
             lastFailure = null
         } catch (e: Throwable) {

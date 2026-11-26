@@ -1,5 +1,6 @@
 package com.thorctl.daemon
 
+import android.os.Process
 import com.thorctl.daemon.core.DaemonLogTree
 import com.thorctl.daemon.di.DaemonGraph
 import dev.zacsweers.metro.createGraph
@@ -18,22 +19,32 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         DaemonLogTree.plant()
+        exitWhenMainThreadDies()
+        protectFromOomKiller()
+        Timber.i("thorctld starting, pid=${Process.myPid()} uid=${Process.myUid()}")
+        createGraph<DaemonGraph>().daemon.run()
+    }
+
+    /**
+     * A crash on a worker thread is logged and survived; one on the main thread (the daemon's
+     * startup) ends the process, and the supervisor starts a fresh one.
+     */
+    private fun exitWhenMainThreadDies() {
+        val mainThread = Thread.currentThread()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             Timber.w(e, "uncaught exception in ${thread.name}")
-            if (thread.name == "main") exitProcess(1)
+            if (thread == mainThread) exitProcess(1)
         }
+    }
+
+    /** Out of the kernel OOM killer's reach (lmkd only manages app processes anyway). */
+    private fun protectFromOomKiller() {
         try {
-            // Immune to the kernel OOM killer; lmkd only manages app processes anyway.
-            File("/proc/self/oom_score_adj").writeText("-1000")
+            File("/proc/self/oom_score_adj").writeText(OOM_SCORE_ADJ_NEVER_KILL)
         } catch (e: Exception) {
             Timber.w(e, "could not set oom_score_adj")
         }
-        Timber.i("thorctld starting, pid=${android.os.Process.myPid()} uid=${android.os.Process.myUid()}")
-        try {
-            createGraph<DaemonGraph>().daemon.run()
-        } catch (e: Throwable) {
-            Timber.w(e, "daemon died")
-            exitProcess(1)
-        }
     }
+
+    private const val OOM_SCORE_ADJ_NEVER_KILL = "-1000"
 }

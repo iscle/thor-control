@@ -7,7 +7,10 @@ import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.FanController
 import com.thorctl.daemon.ipc.DaemonNotifier
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.AppProcess
+import com.thorctl.daemon.system.PackageService
+import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.Proto
 import com.thorctl.protocol.model.GameHudState
 import com.thorctl.protocol.model.GameOptions
@@ -49,7 +52,9 @@ import java.util.concurrent.TimeUnit
 @SingleIn(DaemonScope::class)
 class GameMode(
     private val displays: DisplayController,
-    private val system: SystemServices,
+    private val packageService: PackageService,
+    private val powerService: PowerService,
+    private val taskService: TaskService,
     private val sys: Sys,
     private val notifier: DaemonNotifier,
     private val scheduler: ScheduledExecutorService,
@@ -66,7 +71,7 @@ class GameMode(
         if (!enabled) return
         scheduler.schedule({
             try {
-                tick(system.isInteractive())
+                tick(powerService.isInteractive())
             } catch (e: Throwable) {
                 Timber.w(e, "game mode tick failed")
             }
@@ -160,7 +165,7 @@ class GameMode(
         if (!enabled) return
         val before = state()
         val running = try {
-            system.runningApps()
+            packageService.runningApps()
         } catch (e: Throwable) {
             Timber.w(e, "game mode: listing processes failed")
             return
@@ -193,7 +198,7 @@ class GameMode(
     // ---- Bottom screen --------------------------------------------------------------------
 
     /** Returns true when the bottom screen's power changed. */
-    private fun updateBottom(running: List<SystemServices.AppProcess>): Boolean {
+    private fun updateBottom(running: List<AppProcess>): Boolean {
         // Asleep: leave everything as is (waking re-applies a forced-off bottom screen).
         if (!interactive) return false
         if (bottomOffByUs && displays.bottomOn) {
@@ -203,7 +208,7 @@ class GameMode(
         }
         val currentGame = game
         val inFront = currentGame != null && options.bottomOff && !keepBottomOn && displays.bottomId >= 0 &&
-            (try { system.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == currentGame
+            (try { taskService.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == currentGame
         if (!inFront) {
             frontTicks = 0
             return bottomOn()
@@ -233,10 +238,10 @@ class GameMode(
      * layer tree for layers owned by the game's uid under the bottom display. Only runs when the
      * bottom screen is about to be turned off.
      */
-    private fun gameOnBottom(gamePackage: String, running: List<SystemServices.AppProcess>): Boolean {
+    private fun gameOnBottom(gamePackage: String, running: List<AppProcess>): Boolean {
         val bottomDisplay = displays.bottomId
         try {
-            if (gamePackage in system.visiblePackages(bottomDisplay)) return true
+            if (gamePackage in taskService.visiblePackages(bottomDisplay)) return true
         } catch (_: Throwable) {
         }
         val uids = running.filter { gamePackage in it.packageNames }.map { it.uid }.toSet()
@@ -261,12 +266,12 @@ class GameMode(
         val topDisplay = displays.topId
         if (topDisplay < 0) return null
         val packageName = try {
-            system.topAppTask(topDisplay)?.packageName
+            taskService.topAppTask(topDisplay)?.packageName
         } catch (_: Throwable) {
             null
         } ?: return null
-        if (packageName == Proto.PACKAGE || packageName == system.homePackage()) return null
-        val flags = system.appFlags(packageName) ?: return null
+        if (packageName == Proto.PACKAGE || packageName == packageService.homePackage()) return null
+        val flags = packageService.appFlags(packageName) ?: return null
         // Settings, the browser, ... are not games; wait for a user-installed app.
         return if (flags and ApplicationInfo.FLAG_SYSTEM != 0) null else packageName
     }
@@ -274,22 +279,22 @@ class GameMode(
     // ---- Memory ---------------------------------------------------------------------------
 
     /** Closes everything but the game and what keeps the device usable. Returns MB freed. */
-    private fun closeOthers(game: String, running: List<SystemServices.AppProcess>): Int {
+    private fun closeOthers(game: String, running: List<AppProcess>): Int {
         val before = memAvailableMb()
         val keep = keepSet(game)
-        val home = system.homePackage()
+        val home = packageService.homePackage()
         var stopped = 0
         var trimmed = 0
         val packageNames = running.filter { it.uid >= FIRST_APP_UID }.flatMap { it.packageNames }.toSet() - keep
         for (packageName in packageNames) {
             try {
-                val flags = system.appFlags(packageName) ?: continue
+                val flags = packageService.appFlags(packageName) ?: continue
                 if (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_PERSISTENT) != 0 || packageName == home) {
                     // System apps: only their background processes, never the app itself.
-                    system.killBackground(packageName)
+                    packageService.killBackground(packageName)
                     trimmed++
                 } else {
-                    system.forceStop(packageName)
+                    packageService.forceStop(packageName)
                     stopped++
                 }
             } catch (e: Throwable) {
@@ -304,7 +309,7 @@ class GameMode(
     }
 
     /** Clears background processes that came back (or were opened and left) while playing. */
-    private fun trimCached(running: List<SystemServices.AppProcess>) {
+    private fun trimCached(running: List<AppProcess>) {
         val currentGame = game ?: return
         val packageNames = running
             .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && currentGame !in it.packageNames }
@@ -313,7 +318,7 @@ class GameMode(
         if (packageNames.isEmpty()) return
         for (packageName in packageNames) {
             try {
-                system.killBackground(packageName)
+                packageService.killBackground(packageName)
             } catch (_: Throwable) {
             }
         }
@@ -327,7 +332,7 @@ class GameMode(
         for (displayId in intArrayOf(displays.topId, displays.bottomId)) {
             if (displayId < 0) continue
             try {
-                keep += system.visiblePackages(displayId) // e.g. a guide open on the other screen
+                keep += taskService.visiblePackages(displayId) // e.g. a guide open on the other screen
             } catch (_: Throwable) {
             }
         }

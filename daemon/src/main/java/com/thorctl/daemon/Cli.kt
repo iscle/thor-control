@@ -3,7 +3,7 @@ package com.thorctl.daemon
 import android.os.Bundle
 import com.thorctl.daemon.cli.CliCommands
 import com.thorctl.daemon.cli.CliRequest
-import com.thorctl.daemon.system.SystemServices
+import com.thorctl.daemon.system.HiddenApiAppProviderClient
 import com.thorctl.protocol.ipc.ClientBinder
 import com.thorctl.protocol.ipc.IThorDaemon
 import com.thorctl.protocol.ipc.ThorIpc
@@ -33,7 +33,7 @@ object Cli {
         if (args.isEmpty()) usage()
         val waitMs = System.getenv("WAIT_MS")?.toLongOrNull() ?: 1500L
         val reply = try {
-            SystemServices().callAppProvider(ThorIpc.METHOD_GET, Bundle())
+            HiddenApiAppProviderClient().call(ThorIpc.METHOD_GET, Bundle())
         } catch (e: Exception) {
             System.err.println("can't reach the app's provider ${ThorIpc.AUTHORITY}: $e")
             exitProcess(1)
