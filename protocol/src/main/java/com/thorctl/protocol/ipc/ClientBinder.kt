@@ -3,6 +3,7 @@ package com.thorctl.protocol.ipc
 import android.os.ParcelFileDescriptor
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.RecentTask
+import com.thorctl.protocol.model.RecentsAction
 
 /** The app's side of [IThorClient]: every call becomes a [DaemonEvent] for [onEvent], on a binder thread. */
 class ClientBinder(
@@ -49,14 +50,16 @@ class ClientBinder(
         jpegs.import(thumb)?.let { onEvent(DaemonEvent.RecentsThumb(taskId, it)) }
     }
 
-    override fun onRecentsKey(key: String?) = onEvent(DaemonEvent.RecentsKey(key.orEmpty()))
+    override fun onRecentsButton(action: String?) {
+        RecentsAction.fromWire(action)?.let { onEvent(DaemonEvent.RecentsButton(it)) }
+    }
 
     override fun onRecentsClosed() = onEvent(DaemonEvent.RecentsClosed)
 
     override fun onHomeAnimation(seq: Int, displayId: Int, appScreen: ParcelFileDescriptor?, homeScreen: ParcelFileDescriptor?) =
         onEvent(DaemonEvent.HomeAnimation(seq, displayId, jpegs.import(appScreen), jpegs.import(homeScreen)))
 
-    override fun onKeyboardKey(key: String?) = onEvent(DaemonEvent.KeyboardKey(key.orEmpty()))
+    override fun onKeyboardShift() = onEvent(DaemonEvent.KeyboardShift)
 
     override fun onGamepadReport(report: ByteArray?) {
         report?.let { onEvent(DaemonEvent.GamepadReport(it)) }

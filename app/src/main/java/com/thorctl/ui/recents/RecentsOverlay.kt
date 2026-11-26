@@ -29,6 +29,7 @@ import com.thorctl.platform.overlay.OverlayWindows
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.Jpeg
+import com.thorctl.protocol.model.RecentsAction
 import com.thorctl.protocol.model.closeImages
 import com.thorctl.ui.theme.ThorTheme
 import dev.zacsweers.metro.AppScope
@@ -61,7 +62,7 @@ class RecentsOverlay(
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val cards = MutableStateFlow<List<Card>>(emptyList())
-    private val keys = MutableSharedFlow<String>(extraBufferCapacity = 32)
+    private val buttons = MutableSharedFlow<RecentsAction>(extraBufferCapacity = 32)
 
     private val main = Handler(Looper.getMainLooper())
     private var dialog: Dialog? = null
@@ -173,8 +174,8 @@ class RecentsOverlay(
     fun updateThumb(event: DaemonEvent.RecentsThumb) = updateThumb(event.taskId, event.thumb)
 
     /** A controller button while recents is open. */
-    fun onKey(key: String) {
-        keys.tryEmit(key)
+    fun onButton(action: RecentsAction) {
+        buttons.tryEmit(action)
     }
 
     /** The daemon closed recents. */
@@ -244,7 +245,7 @@ class RecentsOverlay(
                 RecentsStage(
                     session = stageSession,
                     cards = cards,
-                    keys = keys,
+                    buttons = buttons,
                     actions = Actions(stageSession.id)
                 )
             }

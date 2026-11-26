@@ -29,9 +29,9 @@ class DaemonEventDispatcher(
             is DaemonEvent.RecentsOpened -> recents.open(event)
             is DaemonEvent.HomeAnimation -> recents.openHomePress(event)
             is DaemonEvent.RecentsThumb -> recents.updateThumb(event)
-            is DaemonEvent.RecentsKey -> recents.onKey(event.key)
+            is DaemonEvent.RecentsButton -> recents.onButton(event.action)
             DaemonEvent.RecentsClosed -> recents.close()
-            is DaemonEvent.KeyboardKey -> keyboard.onControllerKey(event.key)
+            DaemonEvent.KeyboardShift -> keyboard.onControllerShift()
             // These reach the app through DaemonStatus and DaemonRepository.gamepadReports instead.
             is DaemonEvent.StateChanged, is DaemonEvent.StatsUpdated, is DaemonEvent.GamepadReport -> Unit
         }

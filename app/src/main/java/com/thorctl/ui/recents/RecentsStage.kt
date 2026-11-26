@@ -57,13 +57,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.thorctl.protocol.model.RecentsAction
 import com.thorctl.ui.theme.qsColors
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 private val Lift = CubicBezierEasing(0.4f, 0f, 1f, 1f)
 
@@ -120,7 +121,7 @@ private fun recentsColors(): RecentsColors = if (isSystemInDarkTheme()) DarkColo
 fun RecentsStage(
     session: Session,
     cards: StateFlow<List<Card>>,
-    keys: SharedFlow<String>,
+    buttons: SharedFlow<RecentsAction>,
     actions: RecentsActions,
 ) {
     val all by cards.collectAsState()
@@ -306,17 +307,17 @@ fun RecentsStage(
     }
 
     LaunchedEffect(Unit) {
-        keys.collect { button ->
+        buttons.collect { action ->
             // Presses during an animation wait for it (a quick ◀ after opening still counts).
             if (locked) snapshotFlow { locked }.first { !it }
-            when (button) {
-                "left" -> move(-1)
-                "right" -> move(1)
-                "a" -> open(target)
-                "b" -> back()
-                "x" -> closeCurrent()
-                "y" -> closeAll()
-                "home" -> openHome()
+            when (action) {
+                RecentsAction.PREVIOUS -> move(-1)
+                RecentsAction.NEXT -> move(1)
+                RecentsAction.OPEN -> open(target)
+                RecentsAction.BACK -> back()
+                RecentsAction.CLOSE -> closeCurrent()
+                RecentsAction.CLOSE_ALL -> closeAll()
+                RecentsAction.HOME -> openHome()
             }
         }
     }

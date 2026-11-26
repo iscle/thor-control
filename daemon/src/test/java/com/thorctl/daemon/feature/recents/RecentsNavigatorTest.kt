@@ -4,14 +4,22 @@ import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeScheduledExecutor
 import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.daemon.hardware.input.EventHandler
+import com.thorctl.protocol.model.RecentsAction
+import com.thorctl.protocol.model.RecentsAction.BACK
+import com.thorctl.protocol.model.RecentsAction.CLOSE
+import com.thorctl.protocol.model.RecentsAction.CLOSE_ALL
+import com.thorctl.protocol.model.RecentsAction.HOME
+import com.thorctl.protocol.model.RecentsAction.NEXT
+import com.thorctl.protocol.model.RecentsAction.OPEN
+import com.thorctl.protocol.model.RecentsAction.PREVIOUS
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RecentsNavigatorTest {
     private val clock = FakeClock()
     private val executor = FakeScheduledExecutor(clock)
-    private val keys = mutableListOf<String>()
-    private val navigator = RecentsNavigator(RecentsThread(executor)) { keys += it }
+    private val sent = mutableListOf<RecentsAction>()
+    private val navigator = RecentsNavigator(RecentsThread(executor)) { sent += it }
     private var handler: EventHandler = navigator.start(homeHeld = false)
 
     /** An event from the grab reader thread, then the recents thread catching up. */
@@ -39,15 +47,15 @@ class RecentsNavigatorTest {
         tap(EvdevCodes.KEY_BACK)
         tap(EvdevCodes.BTN_NORTH)
         tap(EvdevCodes.BTN_WEST)
-        assertEquals(listOf("a", "a", "b", "b", "x", "y"), keys)
+        assertEquals(listOf(OPEN, OPEN, BACK, BACK, CLOSE, CLOSE_ALL), sent)
     }
 
     @Test
     fun eventsAreHandledOnTheRecentsThread() {
         handler(EvdevCodes.EV_KEY, EvdevCodes.BTN_SOUTH, 1)
-        assertEquals(emptyList(), keys)
+        assertEquals(emptyList(), sent)
         executor.runDue()
-        assertEquals(listOf("a"), keys)
+        assertEquals(listOf(OPEN), sent)
     }
 
     @Test
@@ -55,7 +63,7 @@ class RecentsNavigatorTest {
         handler(EvdevCodes.EV_KEY, EvdevCodes.BTN_SOUTH, 1)
         navigator.stop()
         executor.runDue()
-        assertEquals(emptyList(), keys)
+        assertEquals(emptyList(), sent)
     }
 
     @Test
@@ -65,23 +73,23 @@ class RecentsNavigatorTest {
         handler = navigator.start(homeHeld = false)
         old(EvdevCodes.EV_KEY, EvdevCodes.BTN_SOUTH, 1)
         key(EvdevCodes.BTN_WEST, 1)
-        assertEquals(listOf("y"), keys)
+        assertEquals(listOf(CLOSE_ALL), sent)
     }
 
     @Test
     fun aHeldDirectionRepeatsAfterAPause() {
         key(EvdevCodes.BTN_DPAD_LEFT, 1)
-        assertEquals(listOf("left"), keys)
+        assertEquals(listOf(PREVIOUS), sent)
         executor.advanceBy(RecentsNavigator.REPEAT_DELAY_MS - 1)
-        assertEquals(1, keys.size)
+        assertEquals(1, sent.size)
         executor.advanceBy(1)
-        assertEquals(2, keys.size)
+        assertEquals(2, sent.size)
         executor.advanceBy(RecentsNavigator.REPEAT_EVERY_MS)
-        assertEquals(listOf("left", "left", "left"), keys)
+        assertEquals(listOf(PREVIOUS, PREVIOUS, PREVIOUS), sent)
 
         key(EvdevCodes.BTN_DPAD_LEFT, 0)
         executor.advanceBy(1000)
-        assertEquals(3, keys.size)
+        assertEquals(3, sent.size)
         assertEquals(0, executor.pending)
     }
 
@@ -92,7 +100,7 @@ class RecentsNavigatorTest {
         tap(EvdevCodes.KEY_LEFT)
         tap(EvdevCodes.KEY_RIGHT)
         tap(EvdevCodes.BTN_DPAD_RIGHT)
-        assertEquals(listOf("left", "right", "left", "right", "right"), keys)
+        assertEquals(listOf(PREVIOUS, NEXT, PREVIOUS, NEXT, NEXT), sent)
     }
 
     @Test
@@ -101,24 +109,24 @@ class RecentsNavigatorTest {
         axis(EvdevCodes.ABS_HAT0X, 1)
         axis(EvdevCodes.ABS_HAT0X, 0)
         axis(EvdevCodes.ABS_HAT0X, -1)
-        assertEquals(listOf("right", "left"), keys)
+        assertEquals(listOf(NEXT, PREVIOUS), sent)
     }
 
     @Test
     fun theStickNeedsAFirmPushAndLetsGoNearTheMiddle() {
         axis(EvdevCodes.ABS_X, 15000)
-        assertEquals(emptyList(), keys)
+        assertEquals(emptyList(), sent)
         axis(EvdevCodes.ABS_X, RecentsNavigator.STICK_ON)
         axis(EvdevCodes.ABS_X, 10000) // still held
         executor.advanceBy(RecentsNavigator.REPEAT_DELAY_MS)
-        assertEquals(listOf("right", "right"), keys)
+        assertEquals(listOf(NEXT, NEXT), sent)
 
         axis(EvdevCodes.ABS_X, RecentsNavigator.STICK_OFF - 1)
         executor.advanceBy(1000)
-        assertEquals(2, keys.size)
+        assertEquals(2, sent.size)
 
         axis(EvdevCodes.ABS_X, -RecentsNavigator.STICK_ON)
-        assertEquals("left", keys.last())
+        assertEquals(PREVIOUS, sent.last())
     }
 
     @Test
@@ -137,16 +145,16 @@ class RecentsNavigatorTest {
         navigator.stop()
         handler = navigator.start(homeHeld = true)
         key(EvdevCodes.KEY_HOME, 0)
-        assertEquals(emptyList(), keys)
+        assertEquals(emptyList(), sent)
         key(EvdevCodes.KEY_HOME, 1)
         key(EvdevCodes.KEY_HOME, 0)
-        assertEquals(listOf("home"), keys)
+        assertEquals(listOf(HOME), sent)
     }
 
     @Test
     fun aHomeReleaseWithoutPressIsIgnored() {
         key(EvdevCodes.KEY_HOME, 0)
-        assertEquals(emptyList(), keys)
+        assertEquals(emptyList(), sent)
     }
 
     @Test
@@ -154,7 +162,7 @@ class RecentsNavigatorTest {
         key(EvdevCodes.KEY_RIGHT, 1)
         navigator.stop()
         executor.advanceBy(2000)
-        assertEquals(listOf("right"), keys)
+        assertEquals(listOf(NEXT), sent)
         assertEquals(0, executor.pending)
     }
 }

@@ -2,19 +2,20 @@ package com.thorctl.daemon.feature.recents
 
 import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.daemon.hardware.input.EventHandler
+import com.thorctl.protocol.model.RecentsAction
 import java.util.concurrent.ScheduledFuture
 import kotlin.math.abs
 
 /**
  * Drives the recents screen with the grabbed controller: turns its raw evdev events into the key
  * names the app understands ("left", "right", "a", "b", "x", "y", "home") and hands them to
- * [sendKey]. Held left/right moves one card, then keeps moving after a short pause, like a key
+ * [send]. Held left/right moves one card, then keeps moving after a short pause, like a key
  * repeat; the stick needs a firm push and lets go only near the middle, so it never drifts.
  *
  * Lives on [thread]: the controller's events are handed over to it by the handler [start] returns,
  * so none of this state is shared with the grab reader thread.
  */
-class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (String) -> Unit) {
+class RecentsNavigator(private val thread: RecentsThread, private val send: (RecentsAction) -> Unit) {
     /** Counts sessions, so events still queued from an ended one are dropped. */
     private var session = 0
     private var ignoreHomeUp = false
@@ -66,7 +67,7 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
                 if (value == 1) homeDown = true
                 if (value == 0 && homeDown) {
                     homeDown = false
-                    sendKey("home")
+                    send(RecentsAction.HOME)
                 }
                 return
             }
@@ -75,10 +76,10 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
         }
         if (value != 1) return
         when (code) {
-            EvdevCodes.BTN_SOUTH, EvdevCodes.BTN_START -> sendKey("a")
-            EvdevCodes.BTN_EAST, EvdevCodes.KEY_BACK -> sendKey("b")
-            EvdevCodes.BTN_NORTH -> sendKey("x")
-            EvdevCodes.BTN_WEST -> sendKey("y")
+            EvdevCodes.BTN_SOUTH, EvdevCodes.BTN_START -> send(RecentsAction.OPEN)
+            EvdevCodes.BTN_EAST, EvdevCodes.KEY_BACK -> send(RecentsAction.BACK)
+            EvdevCodes.BTN_NORTH -> send(RecentsAction.CLOSE)
+            EvdevCodes.BTN_WEST -> send(RecentsAction.CLOSE_ALL)
         }
     }
 
@@ -101,9 +102,9 @@ class RecentsNavigator(private val thread: RecentsThread, private val sendKey: (
         repeat?.cancel(false)
         repeat = null
         if (now == null) return
-        val keyName = if (now < 0) "left" else "right"
-        sendKey(keyName)
-        repeat = thread.repeat(REPEAT_DELAY_MS, REPEAT_EVERY_MS) { if (held == now) sendKey(keyName) }
+        val action = if (now < 0) RecentsAction.PREVIOUS else RecentsAction.NEXT
+        send(action)
+        repeat = thread.repeat(REPEAT_DELAY_MS, REPEAT_EVERY_MS) { if (held == now) send(action) }
     }
 
     companion object {

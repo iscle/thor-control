@@ -34,7 +34,7 @@ sealed interface DaemonEvent {
     data class RecentsThumb(val taskId: Int, val thumb: Jpeg) : DaemonEvent
 
     /** A controller button while recents is open (the daemon holds the controller). */
-    data class RecentsKey(val key: String) : DaemonEvent
+    data class RecentsButton(val action: RecentsAction) : DaemonEvent
 
     data object RecentsClosed : DaemonEvent
 
@@ -42,7 +42,7 @@ sealed interface DaemonEvent {
     data class HomeAnimation(val seq: Int, val displayId: Int, val appScreen: Jpeg?, val homeScreen: Jpeg?) : DaemonEvent
 
     /** A controller key for Thor Keyboard ("shift" for L1 / R1). */
-    data class KeyboardKey(val key: String) : DaemonEvent
+    data object KeyboardShift : DaemonEvent
 
     /** One gamepad report ([GamepadHid] payload, no report ID) for the Bluetooth link. */
     class GamepadReport(val report: ByteArray) : DaemonEvent

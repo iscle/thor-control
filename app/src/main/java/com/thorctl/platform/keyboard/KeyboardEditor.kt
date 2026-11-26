@@ -76,9 +76,9 @@ class KeyboardEditor(
 
     val isShown: Boolean get() = _visible.value || inlineShown
 
-    /** A controller key the daemon forwards while the keyboard is up (L1 / R1 = shift). */
-    fun onControllerKey(key: String) {
-        if (key == "shift" && isShown) shift()
+    /** L1 / R1 while the keyboard is up (the daemon forwards it): shift. */
+    fun onControllerShift() {
+        if (isShown) shift()
     }
 
     // ---- From the keyboard service ------------------------------------------------------------

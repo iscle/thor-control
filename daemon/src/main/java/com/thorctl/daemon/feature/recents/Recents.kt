@@ -10,11 +10,12 @@ import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
+import com.thorctl.protocol.model.RecentsAction
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
+import timber.log.Timber
 
 /**
  * The Home button's screens, replacing Trebuchet: recent apps (hold) and the animated way home
@@ -31,7 +32,7 @@ import java.util.concurrent.ScheduledFuture
  *    on disk (one per display), so it is ready when Home is pressed inside an app;
  *  - other apps use the previews the system persists in /data/system_ce/0/snapshots/.
  *
- * Events to the app:   RecentsOpened, RecentsThumb, RecentsKey, RecentsClosed, HomeAnimation
+ * Events to the app:   RecentsOpened, RecentsThumb, RecentsButton, RecentsClosed, HomeAnimation
  * Commands from it:    RecentsOpen, RecentsHome, RecentsClose, RecentsRemove, RecentsClear,
  *                      HomeGo, OverlayDone
  */
@@ -57,7 +58,7 @@ class Recents(
         isRecentsOpen = { isOpen },
         onHomeShown = ::onHomeShown,
     )
-    private val navigator = RecentsNavigator(thread, ::key)
+    private val navigator = RecentsNavigator(thread, ::send)
 
     /** Recents thread only (controller events are handed over to it, see [RecentsNavigator]). */
     private var idle: ScheduledFuture<*>? = null
@@ -100,7 +101,7 @@ class Recents(
     fun close() = thread.run { close(notifyApp = true) }
 
     /** AYN while open: same as B (back to where recents was opened from). */
-    fun back() = thread.run { if (isOpen) key("b") }
+    fun back() = thread.run { if (isOpen) send(RecentsAction.BACK) }
 
     fun handle(command: DaemonCommand) = thread.run {
         when (command) {
@@ -192,9 +193,9 @@ class Recents(
         }
     }
 
-    private fun key(name: String) {
+    private fun send(action: RecentsAction) {
         bumpIdle()
-        link.broadcast(DaemonEvent.RecentsKey(name))
+        link.broadcast(DaemonEvent.RecentsButton(action))
     }
 
     companion object {

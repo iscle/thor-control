@@ -6,7 +6,7 @@ import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakePackageService
 import com.thorctl.daemon.system.FakeTaskService
-import com.thorctl.protocol.Proto
+import com.thorctl.protocol.AppContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -20,7 +20,7 @@ class GamePickerTest {
         flags["com.game"] = 0
         flags["com.android.settings"] = ApplicationInfo.FLAG_SYSTEM
         flags["com.launcher"] = 0
-        flags[Proto.PACKAGE] = 0
+        flags[AppContract.PACKAGE] = 0
     }
     private val picker = GamePicker(displays, taskService, packageService)
 
@@ -42,7 +42,7 @@ class GamePickerTest {
 
     @Test
     fun ignoresSystemAppsHomeThisAppAndUnknownPackages() {
-        for (packageName in listOf("com.android.settings", "com.launcher", Proto.PACKAGE, "com.unknown", null)) {
+        for (packageName in listOf("com.android.settings", "com.launcher", AppContract.PACKAGE, "com.unknown", null)) {
             inFront(packageName)
             assertNull(picker.pick(), "picked $packageName")
         }

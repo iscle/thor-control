@@ -28,13 +28,15 @@ oneway interface IThorClient {
 
     void onRecentsThumb(int taskId, in ParcelFileDescriptor thumb);
 
-    void onRecentsKey(String key);
+    /** RecentsAction.wire: a controller button while recents is open. */
+    void onRecentsButton(String action);
 
     void onRecentsClosed();
 
     void onHomeAnimation(int seq, int displayId, in @nullable ParcelFileDescriptor appScreen, in @nullable ParcelFileDescriptor homeScreen);
 
-    void onKeyboardKey(String key);
+    /** L1 / R1 while Thor Keyboard is up: shift. */
+    void onKeyboardShift();
 
     /** GamepadHid payload without the report ID. */
     void onGamepadReport(in byte[] report);

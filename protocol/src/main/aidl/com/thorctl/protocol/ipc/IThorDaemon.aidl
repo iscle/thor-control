@@ -12,7 +12,7 @@ import com.thorctl.protocol.ipc.LedStateParcel;
  */
 interface IThorDaemon {
     /** Bumped whenever this interface or a parcelable changes. Clients check it before registering. */
-    const int VERSION = 1;
+    const int VERSION = 2;
 
     int getVersion();
 

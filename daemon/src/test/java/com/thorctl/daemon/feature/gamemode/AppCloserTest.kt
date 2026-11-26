@@ -11,7 +11,7 @@ import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakePackageService
 import com.thorctl.daemon.system.FakeTaskService
 import com.thorctl.daemon.system.PackageService
-import com.thorctl.protocol.Proto
+import com.thorctl.protocol.AppContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -38,7 +38,7 @@ class AppCloserTest {
             process(10105, "com.guide"),
             process(10106, "com.keyboard"),
             process(10107, "com.a11y.one", "com.a11y.two"),
-            process(10108, Proto.PACKAGE),
+            process(10108, AppContract.PACKAGE),
             process(10109, "com.android.systemui"),
             process(10110, "com.unknown"),
             process(1000, "com.below.app.uids"),
@@ -111,7 +111,7 @@ class AppCloserTest {
             process(10101, "com.cached", importance = cached),
             process(10102, "com.shared", "com.game", importance = cached),
             process(10103, "com.service", importance = RunningAppProcessInfo.IMPORTANCE_SERVICE),
-            process(10104, Proto.PACKAGE, importance = cached),
+            process(10104, AppContract.PACKAGE, importance = cached),
             process(10105, "com.android.systemui", importance = cached),
             process(1000, "com.system.uid", importance = cached),
         )

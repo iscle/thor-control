@@ -41,10 +41,10 @@ class ClientEventSender(private val client: IThorClient, private val jpegs: Jpeg
                     }.toTypedArray(),
                 )
                 is DaemonEvent.RecentsThumb -> export(event.thumb)?.let { client.onRecentsThumb(event.taskId, it) }
-                is DaemonEvent.RecentsKey -> client.onRecentsKey(event.key)
+                is DaemonEvent.RecentsButton -> client.onRecentsButton(event.action.wire)
                 DaemonEvent.RecentsClosed -> client.onRecentsClosed()
                 is DaemonEvent.HomeAnimation -> client.onHomeAnimation(event.seq, event.displayId, export(event.appScreen), export(event.homeScreen))
-                is DaemonEvent.KeyboardKey -> client.onKeyboardKey(event.key)
+                DaemonEvent.KeyboardShift -> client.onKeyboardShift()
                 is DaemonEvent.GamepadReport -> client.onGamepadReport(event.report)
             }
         } finally {

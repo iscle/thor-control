@@ -7,11 +7,11 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.system.AppProcess
 import com.thorctl.daemon.system.PackageService
 import com.thorctl.daemon.system.TaskService
-import com.thorctl.protocol.Proto
+import com.thorctl.protocol.AppContract
 import dev.zacsweers.metro.Inject
-import timber.log.Timber
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import timber.log.Timber
 
 /**
  * Frees memory for the game: closes every other app when the game is picked (user apps are
@@ -67,7 +67,7 @@ class AppCloser(
         val packageNames = running
             .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && game !in it.packageNames }
             .flatMap { it.packageNames }
-            .toSet() - ALWAYS_KEEP - Proto.PACKAGE - game
+            .toSet() - ALWAYS_KEEP - AppContract.PACKAGE - game
         if (packageNames.isEmpty()) return
         for (packageName in packageNames) {
             try {
@@ -81,7 +81,7 @@ class AppCloser(
     private fun keepSet(game: String): Set<String> {
         val keep = HashSet(ALWAYS_KEEP)
         keep += game
-        keep += Proto.PACKAGE
+        keep += AppContract.PACKAGE
         for (displayId in intArrayOf(displays.topId, displays.bottomId)) {
             if (displayId < 0) continue
             try {

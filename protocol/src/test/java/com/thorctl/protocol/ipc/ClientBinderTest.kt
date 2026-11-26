@@ -6,6 +6,7 @@ import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.HudEvent
 import com.thorctl.protocol.model.Jpeg
 import com.thorctl.protocol.model.RecentTask
+import com.thorctl.protocol.model.RecentsAction
 import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -49,9 +50,9 @@ class ClientBinderTest {
             DaemonEvent.MenuButton,
             DaemonEvent.Haptic,
             DaemonEvent.Hud(HudEvent.Controller(ControllerTarget.BOTTOM), 2),
-            DaemonEvent.RecentsKey("a"),
+            DaemonEvent.RecentsButton(RecentsAction.OPEN),
             DaemonEvent.RecentsClosed,
-            DaemonEvent.KeyboardKey("shift"),
+            DaemonEvent.KeyboardShift,
         )
         events.forEach { assertEquals(it, roundTrip(it)) }
     }

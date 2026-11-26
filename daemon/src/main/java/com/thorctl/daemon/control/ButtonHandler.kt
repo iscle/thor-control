@@ -14,7 +14,7 @@ import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.PowerService
 import com.thorctl.daemon.system.TaskService
-import com.thorctl.protocol.Proto
+import com.thorctl.protocol.AppContract
 import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.Screen
@@ -59,7 +59,7 @@ class ButtonHandler(
             link.broadcast(DaemonEvent.MenuButton)
         } else {
             // App not connected (still starting, or crashed): wake it through an explicit broadcast.
-            sys.sh("am broadcast -a ${Proto.ACTION_TOGGLE_MENU} -n ${Proto.COMMAND_RECEIVER} --receiver-foreground")
+            sys.sh("am broadcast -a ${AppContract.ACTION_TOGGLE_MENU} -n ${AppContract.COMMAND_RECEIVER} --receiver-foreground")
         }
     }
 
@@ -90,7 +90,7 @@ class ButtonHandler(
     }
 
     override fun onShoulder() {
-        if (keyboard.visible) link.broadcast(DaemonEvent.KeyboardKey("shift"))
+        if (keyboard.visible) link.broadcast(DaemonEvent.KeyboardShift)
     }
 
     override fun onHomeDown() {

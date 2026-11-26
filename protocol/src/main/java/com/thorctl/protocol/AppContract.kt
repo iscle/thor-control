@@ -5,10 +5,9 @@ package com.thorctl.protocol
  * names across versions: Android stores them in settings (the chosen keyboard, the enabled
  * accessibility services) and the scripts address them directly.
  */
-object Proto {
-    const val SOCKET_NAME = "thorctl"
+object AppContract {
     const val PACKAGE = "com.thorctl"
-    const val A11Y_SERVICE = "com.thorctl/com.thorctl.app.ThorAccessibilityService"
+    const val ACCESSIBILITY_SERVICE = "com.thorctl/com.thorctl.app.ThorAccessibilityService"
     const val COMMAND_RECEIVER = "com.thorctl/.app.CommandReceiver"
     const val ACTION_TOGGLE_MENU = "com.thorctl.action.TOGGLE_MENU"
     const val ACTION_HIDE_MENU = "com.thorctl.action.HIDE_MENU"
