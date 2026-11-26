@@ -5,7 +5,7 @@ import android.view.KeyEvent
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
-import com.thorctl.daemon.hardware.InputWatcher
+import com.thorctl.daemon.hardware.input.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.InputService

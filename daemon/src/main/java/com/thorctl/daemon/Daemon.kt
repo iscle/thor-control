@@ -9,8 +9,8 @@ import com.thorctl.daemon.feature.GameMode
 import com.thorctl.daemon.feature.Gamepad
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputRouter
-import com.thorctl.daemon.hardware.InputWatcher
 import com.thorctl.daemon.hardware.LedController
+import com.thorctl.daemon.hardware.input.InputWatcher
 import com.thorctl.daemon.ipc.BinderPublisher
 import com.thorctl.daemon.system.SystemReadiness
 import dev.zacsweers.metro.Inject
