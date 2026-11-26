@@ -1,7 +1,7 @@
 package com.thorctl.daemon.control
 
 import com.thorctl.daemon.di.DaemonScope
-import com.thorctl.daemon.feature.Recents
+import com.thorctl.daemon.feature.recents.Recents
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.ipc.DaemonNotifier
 import com.thorctl.protocol.model.DaemonEvent

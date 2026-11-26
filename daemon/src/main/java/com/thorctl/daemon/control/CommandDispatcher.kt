@@ -2,9 +2,9 @@ package com.thorctl.daemon.control
 
 import com.thorctl.daemon.config.ConfigStore
 import com.thorctl.daemon.di.DaemonScope
-import com.thorctl.daemon.feature.Recents
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.feature.gamepad.Gamepad
+import com.thorctl.daemon.feature.recents.Recents
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.LedController
 import com.thorctl.daemon.ipc.DaemonNotifier
