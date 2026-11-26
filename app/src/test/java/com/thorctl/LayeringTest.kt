@@ -14,7 +14,8 @@ import kotlin.test.assertTrue
 class LayeringTest {
     private val root = File(System.getProperty("sources.path") ?: "src/main/java", "com/thorctl")
 
-    private fun files(packageName: String) = File(root, packageName).walkTopDown().filter { it.extension == "kt" }.toList()
+    private fun files(packageName: String) =
+        File(root, packageName).walkTopDown().filter { it.extension == "kt" }.toList()
 
     /** Imports, and fully qualified class names in code (comments, strings and the package line removed). */
     private fun references(file: File): List<String> {
@@ -23,38 +24,86 @@ class LayeringTest {
             .replace(Regex("//.*"), "")
             .replace(Regex("\"(\\\\.|[^\"\\\\])*\""), "\"\"")
             .replace(Regex("^package .*$", RegexOption.MULTILINE), "")
-        val imports = Regex("^import ([\\w.]+)", RegexOption.MULTILINE).findAll(code).map { it.groupValues[1] }.toList()
+        val imports = Regex("^import ([\\w.]+)", RegexOption.MULTILINE).findAll(code)
+            .map { it.groupValues[1] }.toList()
         val body = code.replace(Regex("^import .*$", RegexOption.MULTILINE), "")
-        val qualified = Regex("\\b([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+)\\.[A-Z]").findAll(body).map { it.groupValues[1] }.toList()
+        val qualified = Regex("\\b([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+)\\.[A-Z]").findAll(body)
+            .map { it.groupValues[1] }.toList()
         return imports + qualified
     }
 
-    private fun violations(packageName: String, forbidden: List<String>): List<String> = files(packageName).flatMap { file ->
-        references(file).filter { reference -> forbidden.any { reference == it || reference.startsWith("$it.") } }.map { "${file.name}: $it" }
-    }.distinct()
+    private fun violations(packageName: String, forbidden: List<String>): List<String> =
+        files(packageName).flatMap { file ->
+            references(file).filter { reference ->
+                forbidden.any {
+                    reference == it || reference.startsWith(
+                        "$it."
+                    )
+                }
+            }.map { "${file.name}: $it" }
+        }.distinct()
 
     @Test
     fun domainIsPlainKotlin() {
         assertTrue(files("domain").size >= 4)
-        assertEquals(emptyList(), violations("domain", listOf("android", "androidx", "timber", "com.thorctl.data", "com.thorctl.platform", "com.thorctl.ui", "com.thorctl.app")))
+        assertEquals(
+            emptyList(),
+            violations(
+                "domain",
+                listOf(
+                    "android",
+                    "androidx",
+                    "timber",
+                    "com.thorctl.data",
+                    "com.thorctl.platform",
+                    "com.thorctl.ui",
+                    "com.thorctl.app"
+                )
+            )
+        )
     }
 
     @Test
     fun dataKnowsNoUiOrPlatform() {
         assertTrue(files("data").size >= 3)
-        assertEquals(emptyList(), violations("data", listOf("com.thorctl.ui", "com.thorctl.platform", "com.thorctl.app", "androidx.compose")))
+        assertEquals(
+            emptyList(),
+            violations(
+                "data",
+                listOf(
+                    "com.thorctl.ui",
+                    "com.thorctl.platform",
+                    "com.thorctl.app",
+                    "androidx.compose"
+                )
+            )
+        )
     }
 
     @Test
     fun platformKnowsNoUiOrData() {
         assertTrue(files("platform").size >= 5)
-        assertEquals(emptyList(), violations("platform", listOf("com.thorctl.ui", "com.thorctl.data", "com.thorctl.app")))
+        assertEquals(
+            emptyList(),
+            violations("platform", listOf("com.thorctl.ui", "com.thorctl.data", "com.thorctl.app"))
+        )
     }
 
     @Test
     fun uiReachesTheDaemonOnlyThroughTheDomain() {
         assertTrue(files("ui").size >= 10)
-        assertEquals(emptyList(), violations("ui", listOf("com.thorctl.data", "com.thorctl.app", "com.thorctl.protocol.ipc", "androidx.datastore")))
+        assertEquals(
+            emptyList(),
+            violations(
+                "ui",
+                listOf(
+                    "com.thorctl.data",
+                    "com.thorctl.app",
+                    "com.thorctl.protocol.ipc",
+                    "androidx.datastore"
+                )
+            )
+        )
     }
 
     @Test

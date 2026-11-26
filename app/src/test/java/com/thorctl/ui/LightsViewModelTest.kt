@@ -17,7 +17,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class LightsViewModelTest {
-    @get:Rule val main = MainDispatcherRule()
+    @get:Rule
+    val main = MainDispatcherRule()
 
     private val leds = LedState(left = 0x111111, right = 0x222222, sync = false)
     private val daemon = FakeDaemonRepository(sampleState.copy(leds = leds))

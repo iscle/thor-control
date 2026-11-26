@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,20 +31,52 @@ import com.thorctl.ui.theme.qsColors
 fun StatusTile(icon: ImageVector, title: String, description: String, active: Boolean) {
     val shade = qsColors()
     val motion = MaterialTheme.motionScheme
-    val corner by animateFloatAsState(if (active) 29f else 50f, motion.defaultSpatialSpec(), label = "gameCorner")
-    val iconBackground by animateColorAsState(if (active) shade.iconActive else shade.iconInactive, motion.defaultEffectsSpec(), label = "gameBg")
-    val iconForeground by animateColorAsState(if (active) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "gameFg")
+    val corner by animateFloatAsState(
+        if (active) 29f else 50f,
+        motion.defaultSpatialSpec(),
+        label = "gameCorner"
+    )
+    val iconBackground by animateColorAsState(
+        if (active) shade.iconActive else shade.iconInactive,
+        motion.defaultEffectsSpec(),
+        label = "gameBg"
+    )
+    val iconForeground by animateColorAsState(
+        if (active) shade.onIconActive else shade.onIconInactive,
+        motion.defaultEffectsSpec(),
+        label = "gameFg"
+    )
     Row(
-        Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(24.dp)).background(shade.container).padding(horizontal = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(shade.container)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBackground), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(CornerSize(corner)))
+                .background(iconBackground), contentAlignment = Alignment.Center
+        ) {
             Icon(icon, null, tint = iconForeground)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text, maxLines = 1)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary, maxLines = 2)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                color = shade.text,
+                maxLines = 1
+            )
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = shade.textSecondary,
+                maxLines = 2
+            )
         }
     }
 }

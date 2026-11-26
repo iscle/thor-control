@@ -17,7 +17,11 @@ class ThorContent(private val viewModels: MetroViewModelFactory, private val hap
     @Composable
     operator fun invoke(content: @Composable () -> Unit) {
         ThorTheme {
-            CompositionLocalProvider(LocalMetroViewModelFactory provides viewModels, LocalHaptics provides haptics, content = content)
+            CompositionLocalProvider(
+                LocalMetroViewModelFactory provides viewModels,
+                LocalHaptics provides haptics,
+                content = content
+            )
         }
     }
 }

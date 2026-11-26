@@ -1,11 +1,5 @@
 package com.thorctl.ui.fan
 
-import com.thorctl.protocol.model.DaemonState
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStatesWithStats
-import com.thorctl.ui.state.currentUiStateWithStats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thorctl.domain.model.TemperatureUnit
@@ -13,15 +7,21 @@ import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.domain.repository.DisplayPreferencesRepository
 import com.thorctl.domain.usecase.CreateCustomFanProfileUseCase
 import com.thorctl.protocol.model.DaemonCommand
+import com.thorctl.protocol.model.DaemonState
 import com.thorctl.protocol.model.FanProfile
 import com.thorctl.protocol.model.Stats
 import com.thorctl.ui.state.DaemonUiState
+import com.thorctl.ui.state.currentUiStateWithStats
+import com.thorctl.ui.state.uiStatesWithStats
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
 @Inject
@@ -35,11 +35,25 @@ class FanViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<FanContent>> =
         combine(daemon.status, preferences.temperatureUnit) { status, unit -> status to unit }
-            .flatMapLatest { (status, unit) -> status.uiStatesWithStats { state, stats -> content(state, stats, unit) } }
+            .flatMapLatest { (status, unit) ->
+                status.uiStatesWithStats { state, stats ->
+                    content(
+                        state,
+                        stats,
+                        unit
+                    )
+                }
+            }
             .stateIn(
                 viewModelScope,
                 SharingStarted.Eagerly,
-                daemon.status.value.currentUiStateWithStats { state, stats -> content(state, stats, preferences.temperatureUnit.value) },
+                daemon.status.value.currentUiStateWithStats { state, stats ->
+                    content(
+                        state,
+                        stats,
+                        preferences.temperatureUnit.value
+                    )
+                },
             )
 
     private fun content(state: DaemonState, stats: Stats, unit: TemperatureUnit) =
@@ -54,7 +68,8 @@ class FanViewModel(
     }
 
     /** A dragged curve point was let go. */
-    fun save(profile: FanProfile) = daemon.send(DaemonCommand.SaveFanProfile(profile, activate = false))
+    fun save(profile: FanProfile) =
+        daemon.send(DaemonCommand.SaveFanProfile(profile, activate = false))
 
     fun delete(id: String) = daemon.send(DaemonCommand.DeleteFanProfile(id))
 

@@ -1,14 +1,8 @@
 package com.thorctl.ui.game
 
-import com.thorctl.ui.components.DaemonPage
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CleaningServices
@@ -28,8 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thorctl.ui.components.ConnectedChoice
-import com.thorctl.ui.components.DetailHeader
-import com.thorctl.ui.components.PagePadding
+import com.thorctl.ui.components.DaemonPage
 import com.thorctl.ui.components.StatusTile
 import com.thorctl.ui.components.SwitchTile
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -48,7 +41,11 @@ fun GameScreen(onBack: () -> Unit, viewModel: GameViewModel = metroViewModel()) 
                 checked = content.game.enabled,
                 onCheckedChange = viewModel::setEnabled,
                 thumbContent = {
-                    Icon(if (content.game.enabled) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize))
+                    Icon(
+                        if (content.game.enabled) Icons.Rounded.Check else Icons.Rounded.Close,
+                        null,
+                        Modifier.size(SwitchDefaults.IconSize)
+                    )
                 },
             )
         },
@@ -64,10 +61,19 @@ fun GameScreen(onBack: () -> Unit, viewModel: GameViewModel = metroViewModel()) 
         Spacer(Modifier.height(12.dp))
 
         val (title, description) = content.status
-        StatusTile(Icons.Rounded.RocketLaunch, title, description, active = game.enabled && game.packageName.isNotEmpty())
+        StatusTile(
+            Icons.Rounded.RocketLaunch,
+            title,
+            description,
+            active = game.enabled && game.packageName.isNotEmpty()
+        )
 
         Spacer(Modifier.height(16.dp))
-        Text("While a game runs", style = MaterialTheme.typography.titleSmall, color = colors.primary)
+        Text(
+            "While a game runs",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.primary
+        )
         Spacer(Modifier.height(8.dp))
         SwitchTile(
             Icons.Rounded.CleaningServices, "Close other apps",
@@ -81,18 +87,37 @@ fun GameScreen(onBack: () -> Unit, viewModel: GameViewModel = metroViewModel()) 
             options.bottomOff, enabled = true,
         ) { on -> viewModel.updateOptions { it.copy(bottomOff = on) } }
         Spacer(Modifier.height(8.dp))
-        SwitchTile(Icons.Rounded.Memory, "CPU at full speed", "Every core held at its top clock", options.cpu, enabled = true) { on ->
+        SwitchTile(
+            Icons.Rounded.Memory,
+            "CPU at full speed",
+            "Every core held at its top clock",
+            options.cpu,
+            enabled = true
+        ) { on ->
             viewModel.updateOptions { it.copy(cpu = on) }
         }
         Spacer(Modifier.height(8.dp))
-        SwitchTile(Icons.Rounded.DeveloperBoard, "GPU at full speed", "GPU held at its top clock", options.gpu, enabled = true) { on ->
+        SwitchTile(
+            Icons.Rounded.DeveloperBoard,
+            "GPU at full speed",
+            "GPU held at its top clock",
+            options.gpu,
+            enabled = true
+        ) { on ->
             viewModel.updateOptions { it.copy(gpu = on) }
         }
         Spacer(Modifier.height(16.dp))
-        Text("Fan while gaming", style = MaterialTheme.typography.titleSmall, color = colors.primary)
+        Text(
+            "Fan while gaming",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.primary
+        )
         Spacer(Modifier.height(8.dp))
         val fanChoices = GameViewModel.FAN_CHOICES
-        ConnectedChoice(listOf("Unchanged", "Sport", "Max"), selected = fanChoices.indexOf(options.fan).coerceAtLeast(0)) { index ->
+        ConnectedChoice(
+            listOf("Unchanged", "Sport", "Max"),
+            selected = fanChoices.indexOf(options.fan).coerceAtLeast(0)
+        ) { index ->
             viewModel.updateOptions { it.copy(fan = fanChoices[index]) }
         }
         Spacer(Modifier.height(12.dp))

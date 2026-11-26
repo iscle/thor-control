@@ -29,7 +29,14 @@ import androidx.compose.ui.unit.dp
 import com.thorctl.ui.theme.qsColors
 
 @Composable
-fun SwitchTile(icon: ImageVector, title: String, description: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+fun SwitchTile(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onChange: (Boolean) -> Unit
+) {
     val shade = qsColors()
     Row(
         Modifier
@@ -44,15 +51,31 @@ fun SwitchTile(icon: ImageVector, title: String, description: String, checked: B
         Icon(icon, null, tint = shade.textSecondary)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text, maxLines = 1)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary, maxLines = 2)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                color = shade.text,
+                maxLines = 1
+            )
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = shade.textSecondary,
+                maxLines = 2
+            )
         }
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked,
             onCheckedChange = onChange,
             enabled = enabled,
-            thumbContent = { Icon(if (checked) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize)) },
+            thumbContent = {
+                Icon(
+                    if (checked) Icons.Rounded.Check else Icons.Rounded.Close,
+                    null,
+                    Modifier.size(SwitchDefaults.IconSize)
+                )
+            },
         )
     }
 }

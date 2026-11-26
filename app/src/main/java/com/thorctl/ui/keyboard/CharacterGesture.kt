@@ -1,7 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import androidx.compose.runtime.key
-
 /** What a finger on a character key is doing. */
 internal enum class CharacterGesture {
     PRESS,

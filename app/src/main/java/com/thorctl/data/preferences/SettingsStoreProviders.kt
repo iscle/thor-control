@@ -20,5 +20,7 @@ object SettingsStoreProviders {
     @Provides
     @SingleIn(AppScope::class)
     fun settings(context: Context, @StorageScope scope: CoroutineScope): DataStore<Preferences> =
-        PreferenceDataStoreFactory.create(scope = scope, produceFile = { context.preferencesDataStoreFile("settings") })
+        PreferenceDataStoreFactory.create(
+            scope = scope,
+            produceFile = { context.preferencesDataStoreFile("settings") })
 }

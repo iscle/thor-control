@@ -16,12 +16,18 @@ import androidx.graphics.shapes.Morph
  * itself is remembered so only the path is rebuilt.
  */
 class MorphShape(private val morph: Morph, private val progress: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
         val path: Path = morph.toPath(progress.coerceIn(0f, 1f), Path())
         path.transform(Matrix().apply { scale(size.width, size.height) })
         return Outline.Generic(path)
     }
 
-    override fun equals(other: Any?): Boolean = other is MorphShape && other.morph === morph && other.progress == progress
+    override fun equals(other: Any?): Boolean =
+        other is MorphShape && other.morph === morph && other.progress == progress
+
     override fun hashCode(): Int = 31 * morph.hashCode() + progress.hashCode()
 }

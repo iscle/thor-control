@@ -18,11 +18,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class FanViewModelTest {
-    @get:Rule val main = MainDispatcherRule()
+    @get:Rule
+    val main = MainDispatcherRule()
 
     private val daemon = FakeDaemonRepository()
     private val preferences = FakeDisplayPreferences()
-    private val viewModel by lazy { FanViewModel(daemon, preferences, CreateCustomFanProfileUseCase(daemon, Clock { 36L * 36 * 36 })) }
+    private val viewModel by lazy {
+        FanViewModel(
+            daemon,
+            preferences,
+            CreateCustomFanProfileUseCase(daemon, Clock { 36L * 36 * 36 })
+        )
+    }
 
     @Test
     fun showsTheSelectedProfile() {
@@ -35,7 +42,17 @@ class FanViewModelTest {
     fun customizingSavesAndSelectsACopy() {
         val base = FanProfile.BUILTINS.first { it.id == "quiet" }
         viewModel.createCustom(base)
-        assertEquals(listOf<DaemonCommand>(DaemonCommand.SaveFanProfile(FanProfile("custom-1000", "Custom 1", base.points), activate = true)), daemon.sent)
+        assertEquals(
+            listOf<DaemonCommand>(
+                DaemonCommand.SaveFanProfile(
+                    FanProfile(
+                        "custom-1000",
+                        "Custom 1",
+                        base.points
+                    ), activate = true
+                )
+            ), daemon.sent
+        )
     }
 
     @Test

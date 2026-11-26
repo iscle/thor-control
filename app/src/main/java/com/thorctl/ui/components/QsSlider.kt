@@ -1,6 +1,5 @@
 package com.thorctl.ui.components
 
-import com.thorctl.ui.theme.qsColors
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -12,9 +11,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,11 +35,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thorctl.ui.theme.qsColors
 import kotlin.math.roundToInt
 
 /**
@@ -71,14 +68,23 @@ fun QsSlider(
     var lastStep by remember { mutableIntStateOf(-1) }
     val onChange by rememberUpdatedState(onValueChange)
     val onFinished by rememberUpdatedState(onValueChangeFinished)
-    val shown by animateFloatAsState(local, if (dragging) snap() else spring(stiffness = 500f), label = "slider")
-    val handleWidth by animateDpAsState(if (dragging) 2.dp else 4.dp, spring(stiffness = 1400f), label = "handle")
+    val shown by animateFloatAsState(
+        local,
+        if (dragging) snap() else spring(stiffness = 500f),
+        label = "slider"
+    )
+    val handleWidth by animateDpAsState(
+        if (dragging) 2.dp else 4.dp,
+        spring(stiffness = 1400f),
+        label = "handle"
+    )
 
     val active = if (enabled) colors.primary else colors.onSurface.copy(alpha = 0.28f)
     val onActive = if (enabled) colors.onPrimary else colors.surface
     val textMeasurer = rememberTextMeasurer()
     val painter = rememberVectorPainter(icon)
-    val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp)
+    val labelStyle =
+        MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp)
 
     Canvas(
         modifier
@@ -135,7 +141,11 @@ fun QsSlider(
                     ),
                 )
             }
-            if (trackBrush != null) drawPath(inactiveTrack, trackBrush, alpha = 0.45f) else drawPath(inactiveTrack, shade.container)
+            if (trackBrush != null) drawPath(
+                inactiveTrack,
+                trackBrush,
+                alpha = 0.45f
+            ) else drawPath(inactiveTrack, shade.container)
         }
         val activeTrack = Path().apply {
             addRoundRect(
@@ -159,16 +169,42 @@ fun QsSlider(
         val iconX = canvasWidth - 16.dp.toPx() - iconSize
         val iconY = (size.height - iconSize) / 2f
         clipRect(right = activeEnd) {
-            translate(iconX, iconY) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(onActive)) } }
+            translate(iconX, iconY) {
+                with(painter) {
+                    draw(
+                        Size(iconSize, iconSize),
+                        colorFilter = ColorFilter.tint(onActive)
+                    )
+                }
+            }
         }
         clipRect(left = activeEnd) {
-            translate(iconX, iconY) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(colors.onSurfaceVariant)) } }
+            translate(iconX, iconY) {
+                with(painter) {
+                    draw(
+                        Size(iconSize, iconSize),
+                        colorFilter = ColorFilter.tint(colors.onSurfaceVariant)
+                    )
+                }
+            }
         }
         // Label at the start.
         val text = textMeasurer.measure(label, labelStyle)
         val labelX = 18.dp.toPx()
         val labelY = (size.height - text.size.height) / 2f
-        clipRect(right = activeEnd) { drawText(text, color = onActive, topLeft = Offset(labelX, labelY)) }
-        clipRect(left = activeEnd) { drawText(text, color = colors.onSurface, topLeft = Offset(labelX, labelY)) }
+        clipRect(right = activeEnd) {
+            drawText(
+                text,
+                color = onActive,
+                topLeft = Offset(labelX, labelY)
+            )
+        }
+        clipRect(left = activeEnd) {
+            drawText(
+                text,
+                color = colors.onSurface,
+                topLeft = Offset(labelX, labelY)
+            )
+        }
     }
 }

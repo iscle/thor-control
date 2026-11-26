@@ -38,7 +38,10 @@ class KeyboardWindow(
         serviceScope.launch {
             try {
                 // Also when the accessibility service binds: a window that couldn't be shown before can be now.
-                combine(editor.panelWanted, accessibility.bound) { wanted, _ -> wanted }.collect { if (it) show() else remove() }
+                combine(
+                    editor.panelWanted,
+                    accessibility.bound
+                ) { wanted, _ -> wanted }.collect { if (it) show() else remove() }
             } finally {
                 remove()
             }
@@ -62,12 +65,13 @@ class KeyboardWindow(
         // Not focusable: the text field keeps focus, whichever screen it is on.
         window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
         window.attributes = window.attributes.apply {
             title = "ThorKeyboard"
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
             windowAnimations = 0
         }
@@ -75,7 +79,13 @@ class KeyboardWindow(
         val composeView = ComposeView(overlayContext.context)
         overlayOwner.attach(composeView)
         composeView.setContent { content { BottomKeyboard() } }
-        keyboardDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        keyboardDialog.setContentView(
+            composeView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
         keyboardDialog.setCancelable(false)
         try {
             keyboardDialog.show()

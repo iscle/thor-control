@@ -46,7 +46,11 @@ fun ShortcutList() {
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(what, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Text(
+                    what,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant
+                )
             }
         }
     }

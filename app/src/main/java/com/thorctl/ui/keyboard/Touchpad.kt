@@ -87,9 +87,13 @@ internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Preview(state, Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+        Preview(state, Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp))
         Row(
-            Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Rounded.Swipe, null, tint = KeyInkSoft, modifier = Modifier.size(16.dp))
@@ -100,7 +104,9 @@ internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
                 fontSize = 13.sp,
             )
         }
-        Flash(state, Modifier.align(Alignment.TopCenter).padding(top = 12.dp))
+        Flash(state, Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = 12.dp))
     }
 }
 
@@ -109,22 +115,52 @@ internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
 private fun Preview(state: KeyboardUi, modifier: Modifier) {
     val style = TextStyle(color = KeyInk, fontSize = 22.sp)
     Row(modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f).fillMaxHeight().clipToBounds(), contentAlignment = Alignment.CenterEnd) {
-            Text(state.before, style = style, softWrap = false, maxLines = 1, modifier = Modifier.wrapContentWidth(Alignment.End, unbounded = true))
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clipToBounds(),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Text(
+                state.before,
+                style = style,
+                softWrap = false,
+                maxLines = 1,
+                modifier = Modifier.wrapContentWidth(Alignment.End, unbounded = true)
+            )
         }
         if (state.selected.isEmpty()) {
-            Box(Modifier.width(2.dp).height(30.dp).background(AccentDeep))
+            Box(Modifier
+                .width(2.dp)
+                .height(30.dp)
+                .background(AccentDeep))
         } else {
             Text(
                 state.selected,
                 style = style,
                 softWrap = false,
                 maxLines = 1,
-                modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Accent.copy(alpha = 0.32f)).padding(horizontal = 2.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Accent.copy(alpha = 0.32f))
+                    .padding(horizontal = 2.dp),
             )
         }
-        Box(Modifier.weight(1f).fillMaxHeight().clipToBounds(), contentAlignment = Alignment.CenterStart) {
-            Text(state.after, style = style.copy(color = KeyInk.copy(alpha = 0.55f)), softWrap = false, maxLines = 1, modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true))
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clipToBounds(),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                state.after,
+                style = style.copy(color = KeyInk.copy(alpha = 0.55f)),
+                softWrap = false,
+                maxLines = 1,
+                modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true)
+            )
         }
     }
 }

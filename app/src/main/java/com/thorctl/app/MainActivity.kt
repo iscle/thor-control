@@ -1,10 +1,6 @@
 package com.thorctl.app
 
-import dev.zacsweers.metrox.android.ActivityKey
 import android.app.Activity
-import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.ContributesIntoMap
-import dev.zacsweers.metro.AppScope
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
@@ -14,14 +10,19 @@ import androidx.activity.enableEdgeToEdge
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.ui.components.ThorContent
 import com.thorctl.ui.status.StatusScreen
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metrox.android.ActivityKey
 import timber.log.Timber
 
 /** The app's own screen (status and the menu, on the top screen). */
 @Inject
 @ActivityKey(MainActivity::class)
 @ContributesIntoMap(AppScope::class, binding = binding<Activity>())
-class MainActivity(private val content: ThorContent, private val daemon: DaemonRepository) : ComponentActivity() {
+class MainActivity(private val content: ThorContent, private val daemon: DaemonRepository) :
+    ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -43,7 +44,14 @@ class MainActivity(private val content: ThorContent, private val daemon: DaemonR
     /** LineageOS's AYN settings: stick calibration and button mapping. */
     private fun openControllerSettings() {
         try {
-            startActivity(Intent().setComponent(ComponentName("org.lineageos.settings.ayn", "org.lineageos.settings.ayn.AynSettingsActivity")))
+            startActivity(
+                Intent().setComponent(
+                    ComponentName(
+                        "org.lineageos.settings.ayn",
+                        "org.lineageos.settings.ayn.AynSettingsActivity"
+                    )
+                )
+            )
         } catch (e: Exception) {
             Timber.w(e, "AYN settings not found")
         }

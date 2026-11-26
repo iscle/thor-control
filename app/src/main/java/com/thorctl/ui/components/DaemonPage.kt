@@ -28,13 +28,17 @@ fun <T> DaemonPage(
     content: @Composable ColumnScope.(T) -> Unit,
 ) {
     val scroll = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
-    Column(Modifier.fillMaxSize().then(scroll).padding(PagePadding)) {
+    Column(Modifier
+        .fillMaxSize()
+        .then(scroll)
+        .padding(PagePadding)) {
         when (state) {
             DaemonUiState.Disconnected -> {
                 DetailHeader(title, onBack)
                 Spacer(Modifier.height(12.dp))
                 DaemonOffline()
             }
+
             is DaemonUiState.Connected -> {
                 DetailHeader(title, onBack) { trailing(state.content) }
                 content(state.content)

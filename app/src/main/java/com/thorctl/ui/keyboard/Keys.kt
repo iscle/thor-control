@@ -1,14 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyPressed
-import com.thorctl.ui.keyboard.KeyboardColors.FunctionKeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
-import com.thorctl.ui.keyboard.KeyboardMetrics.WORD_STEP
-import com.thorctl.ui.keyboard.KeyboardMetrics.LONG_PRESS_MS
-import com.thorctl.ui.keyboard.KeyboardLayout.rows
-import com.thorctl.ui.keyboard.KeyboardLayout.ACCENTS
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -25,10 +16,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Backspace
@@ -39,8 +28,8 @@ import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -68,20 +56,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thorctl.platform.keyboard.KeyboardUi
-import com.thorctl.platform.keyboard.EnterKey as Enter
-import com.thorctl.platform.keyboard.KeyboardLayer as Layer
 import com.thorctl.ui.components.LocalHaptics
+import com.thorctl.ui.keyboard.KeyboardColors.FunctionKeyFill
+import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
+import com.thorctl.ui.keyboard.KeyboardColors.KeyPressed
+import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
+import com.thorctl.ui.keyboard.KeyboardLayout.ACCENTS
+import com.thorctl.ui.keyboard.KeyboardLayout.rows
+import com.thorctl.ui.keyboard.KeyboardMetrics.LONG_PRESS_MS
+import com.thorctl.ui.keyboard.KeyboardMetrics.WORD_STEP
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import com.thorctl.platform.keyboard.EnterKey as Enter
+import com.thorctl.platform.keyboard.KeyboardLayer as Layer
 
 @Composable
 internal fun Keys(state: KeyboardUi, popup: KeyPopup, modifier: Modifier) {
     val layout = rows(state.layer)
     Column(modifier) {
         layout.forEachIndexed { rowIndex, row ->
-            Row(Modifier.fillMaxWidth().weight(1f)) {
+            Row(Modifier
+                .fillMaxWidth()
+                .weight(1f)) {
                 row.forEachIndexed { keyIndex, layoutKey ->
                     // A fresh key per layer and position: no state or handlers carry over.
                     key(state.layer, rowIndex, keyIndex) {
@@ -107,7 +106,8 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
     val haptics = LocalHaptics.current
     val shifted = state.layer == Layer.LETTERS && (state.shift || state.caps)
     val label = if (shifted) charKey.c.uppercase() else charKey.c
-    val accents = ACCENTS[charKey.c].orEmpty().map { if (shifted && it != "ß") it.uppercase() else it }
+    val accents =
+        ACCENTS[charKey.c].orEmpty().map { if (shifted && it != "ß") it.uppercase() else it }
     val accentsNow by rememberUpdatedState(accents)
     var pressed by remember { mutableStateOf(false) }
     val swipe = remember { Animatable(0f) }
@@ -130,7 +130,8 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
                     var released = false
                     var past = false
                     val slop = viewConfiguration.touchSlop
-                    val swipeDistance = (if (face.height > 0f) face.height else size.height.toFloat()) * 0.45f
+                    val swipeDistance =
+                        (if (face.height > 0f) face.height else size.height.toFloat()) * 0.45f
                     val hold = scope.launch {
                         delay(LONG_PRESS_MS)
                         if (mode == CharacterGesture.PRESS && accentOptions.isNotEmpty()) {
@@ -148,12 +149,16 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
                         }
                         val dragOffset = change.position - down.position
                         when (mode) {
-                            CharacterGesture.PRESS -> if (charKey.alternate != null && dragOffset.y > slop && dragOffset.y > abs(dragOffset.x)) {
+                            CharacterGesture.PRESS -> if (charKey.alternate != null && dragOffset.y > slop && dragOffset.y > abs(
+                                    dragOffset.x
+                                )
+                            ) {
                                 mode = CharacterGesture.SWIPE
                                 hold.cancel()
                             } else if (dragOffset.getDistance() > slop * 3) {
                                 hold.cancel()
                             }
+
                             CharacterGesture.SWIPE -> {
                                 val swipeProgress = (dragOffset.y / swipeDistance).coerceIn(0f, 1f)
                                 scope.launch { swipe.snapTo(swipeProgress) }
@@ -162,6 +167,7 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
                                     haptics.tick()
                                 }
                             }
+
                             CharacterGesture.ACCENTS_OPEN -> {
                                 val accentIndex = popup.indexAt(cellRoot.x + change.position.x)
                                 if (accentIndex != popup.selected) {
@@ -176,13 +182,22 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
                     if (released) {
                         when (mode) {
                             CharacterGesture.PRESS -> actions.type(charKey.c)
-                            CharacterGesture.SWIPE -> if (past && charKey.alternate != null) actions.typeExact(charKey.alternate) else actions.type(charKey.c)
-                            CharacterGesture.ACCENTS_OPEN -> popup.options.getOrNull(popup.selected)?.let { actions.typeExact(it) }
+                            CharacterGesture.SWIPE -> if (past && charKey.alternate != null) actions.typeExact(
+                                charKey.alternate
+                            ) else actions.type(charKey.c)
+
+                            CharacterGesture.ACCENTS_OPEN -> popup.options.getOrNull(popup.selected)
+                                ?.let { actions.typeExact(it) }
                         }
                     }
                     popup.options = emptyList()
                     pressed = false
-                    scope.launch { swipe.animateTo(0f, spring(dampingRatio = 1f, stiffness = 900f)) }
+                    scope.launch {
+                        swipe.animateTo(
+                            0f,
+                            spring(dampingRatio = 1f, stiffness = 900f)
+                        )
+                    }
                 }
             },
     ) {
@@ -190,7 +205,9 @@ private fun RowScope.CharKey(charKey: CharacterKey, state: KeyboardUi, popup: Ke
             if (charKey.lead > 0f) Spacer(Modifier.weight(charKey.lead))
             KeyFace(
                 pressed = pressed,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 onFace = { face = it },
             ) { CharLabels(label, charKey.alternate, swipe) }
             if (charKey.trail > 0f) Spacer(Modifier.weight(charKey.trail))
@@ -237,16 +254,27 @@ private fun CharLabels(label: String, alternate: String?, swipe: Animatable<Floa
 @Composable
 private fun RowScope.FunctionKeyButton(functionKey: FunctionKey, state: KeyboardUi) {
     val actions = LocalKeyboardActions.current
-    val cellModifier = Modifier.weight(functionKey.width).fillMaxHeight()
+    val cellModifier = Modifier
+        .weight(functionKey.width)
+        .fillMaxHeight()
     when (functionKey.kind) {
-        FunctionKind.SHIFT -> FunctionCell(cellModifier, active = state.shift || state.caps, onTap = { actions.shift() }) {
+        FunctionKind.SHIFT -> FunctionCell(
+            cellModifier,
+            active = state.shift || state.caps,
+            onTap = { actions.shift() }) {
             ShiftGlyph(filled = state.shift || state.caps, underline = state.caps, tint = KeyInk)
         }
+
         FunctionKind.BACK -> BackspaceKey(cellModifier)
-        FunctionKind.SPACE -> FunctionCell(cellModifier, isFunctionKey = false, onTap = { actions.space() }) {}
+        FunctionKind.SPACE -> FunctionCell(
+            cellModifier,
+            isFunctionKey = false,
+            onTap = { actions.space() }) {}
+
         FunctionKind.ENTER -> FunctionCell(cellModifier, onTap = { actions.enter() }) {
             Icon(enterIcon(state.enter), "Enter", tint = KeyInk, modifier = Modifier.size(26.dp))
         }
+
         FunctionKind.TO_LETTERS -> LayerKey(cellModifier, "ABC", Layer.LETTERS)
         FunctionKind.TO_SYMBOLS -> LayerKey(cellModifier, "?123", Layer.SYMBOLS)
         FunctionKind.TO_MORE -> LayerKey(cellModifier, "=\\<", Layer.MORE)
@@ -313,7 +341,12 @@ private fun BackspaceKey(modifier: Modifier) {
         },
     ) {
         KeyFace(pressed, Modifier.fillMaxSize(), isFunctionKey = true, onFace = {}) {
-            Icon(Icons.Rounded.Backspace, "Backspace", tint = KeyInk, modifier = Modifier.size(24.dp))
+            Icon(
+                Icons.Rounded.Backspace,
+                "Backspace",
+                tint = KeyInk,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -339,7 +372,14 @@ private fun enterIcon(enter: Enter): ImageVector = when (enter) {
  * [repeat] keys act on touch and keep going while held (backspace).
  */
 @Composable
-private fun FunctionCell(modifier: Modifier, active: Boolean = false, repeat: Boolean = false, isFunctionKey: Boolean = true, onTap: () -> Unit, content: @Composable () -> Unit) {
+private fun FunctionCell(
+    modifier: Modifier,
+    active: Boolean = false,
+    repeat: Boolean = false,
+    isFunctionKey: Boolean = true,
+    onTap: () -> Unit,
+    content: @Composable () -> Unit
+) {
     val haptics = LocalHaptics.current
     var pressed by remember { mutableStateOf(false) }
     val action by rememberUpdatedState(onTap)
@@ -369,7 +409,12 @@ private fun FunctionCell(modifier: Modifier, active: Boolean = false, repeat: Bo
             )
         },
     ) {
-        KeyFace(pressed, Modifier.fillMaxSize(), active = active, isFunctionKey = isFunctionKey, onFace = {}) { content() }
+        KeyFace(
+            pressed,
+            Modifier.fillMaxSize(),
+            active = active,
+            isFunctionKey = isFunctionKey,
+            onFace = {}) { content() }
     }
 }
 
@@ -421,6 +466,11 @@ private fun ShiftGlyph(filled: Boolean, underline: Boolean, tint: Color) {
         val stroke = Stroke(width = glyphWidth * 0.075f, join = StrokeJoin.Round)
         drawPath(arrow, tint, style = if (filled) Fill else stroke)
         if (filled) drawPath(arrow, tint, style = stroke)
-        if (underline) drawLine(tint, Offset(glyphWidth * 0.28f, h * 0.94f), Offset(glyphWidth * 0.72f, h * 0.94f), strokeWidth = glyphWidth * 0.08f)
+        if (underline) drawLine(
+            tint,
+            Offset(glyphWidth * 0.28f, h * 0.94f),
+            Offset(glyphWidth * 0.72f, h * 0.94f),
+            strokeWidth = glyphWidth * 0.08f
+        )
     }
 }

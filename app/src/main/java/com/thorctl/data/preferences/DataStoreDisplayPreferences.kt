@@ -29,6 +29,10 @@ class DataStoreDisplayPreferences(
         .stateIn(scope, SharingStarted.Eagerly, TemperatureUnit.CELSIUS)
 
     override fun setTemperatureUnit(unit: TemperatureUnit) {
-        scope.launch { store.edit { it[SettingsKeys.FAHRENHEIT] = unit == TemperatureUnit.FAHRENHEIT } }
+        scope.launch {
+            store.edit {
+                it[SettingsKeys.FAHRENHEIT] = unit == TemperatureUnit.FAHRENHEIT
+            }
+        }
     }
 }

@@ -1,12 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardMetrics.INLINE_KEYBOARD_HEIGHT
-import com.thorctl.ui.keyboard.KeyboardMetrics.LIP
-import com.thorctl.ui.keyboard.KeyboardMetrics.STEP
-import com.thorctl.ui.keyboard.KeyboardMetrics.WORD_STEP
-import com.thorctl.ui.keyboard.KeyboardMetrics.LONG_PRESS_MS
-import androidx.compose.material.icons.rounded.Backspace
-import androidx.compose.runtime.key
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 

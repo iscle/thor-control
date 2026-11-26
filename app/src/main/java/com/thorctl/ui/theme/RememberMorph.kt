@@ -6,4 +6,5 @@ import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 
 @Composable
-fun rememberMorph(start: RoundedPolygon, end: RoundedPolygon): Morph = remember(start, end) { Morph(start, end) }
+fun rememberMorph(start: RoundedPolygon, end: RoundedPolygon): Morph =
+    remember(start, end) { Morph(start, end) }

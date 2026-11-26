@@ -1,6 +1,5 @@
 package com.thorctl.ui.recents
 
-import com.thorctl.ui.theme.qsColors
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
@@ -8,9 +7,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -58,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.thorctl.ui.theme.qsColors
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -146,8 +146,11 @@ fun RecentsStage(
     val press = remember { Animatable(0f) }
     val pressing = session.intro == Intro.HOME_PRESS
     fun pressProgress() = StrongInOut.transform(press.value)
-    fun positionNow(): Float = if (pressing) pressProgress() * (cards.value.size - 1) else positionAnimatable.value
-    fun zoomNow(): Float = if (pressing) pressProgress().let { progress -> 1f - 4f * progress * (1f - progress) } else zoomAnimatable.value
+    fun positionNow(): Float =
+        if (pressing) pressProgress() * (cards.value.size - 1) else positionAnimatable.value
+
+    fun zoomNow(): Float =
+        if (pressing) pressProgress().let { progress -> 1f - 4f * progress * (1f - progress) } else zoomAnimatable.value
 
     // ---- Moves ------------------------------------------------------------------------------
 
@@ -158,7 +161,10 @@ fun RecentsStage(
         target = index
         onStart()
         // Gliding to the card and zooming into it are one camera move (same curve and timing).
-        val spec = tween<Float>(if (abs(positionAnimatable.value - index) > 0.05f) 480 else 370, easing = StrongInOut)
+        val spec = tween<Float>(
+            if (abs(positionAnimatable.value - index) > 0.05f) 480 else 370,
+            easing = StrongInOut
+        )
         scope.launch { positionAnimatable.animateTo(index.toFloat(), spec) }
         scope.launch {
             zoomAnimatable.animateTo(1f, spec)
@@ -168,14 +174,21 @@ fun RecentsStage(
 
     fun openHome() {
         val alreadyThere = homeIsUnderneath()
-        zoomInto(current().lastIndex, if (alreadyThere) 0 else 380) { actions.openHome(alreadyThere) }
+        zoomInto(
+            current().lastIndex,
+            if (alreadyThere) 0 else 380
+        ) { actions.openHome(alreadyThere) }
     }
 
     fun open(index: Int) {
         val card = current().getOrNull(index) ?: return
         if (card.isHome) return openHome()
         val origin = session.intro == Intro.FROM_APP && card.key == session.originKey
-        zoomInto(index, if (origin) 0 else 380) { if (origin) actions.back() else actions.openApp(card) }
+        zoomInto(index, if (origin) 0 else 380) {
+            if (origin) actions.back() else actions.openApp(
+                card
+            )
+        }
     }
 
     fun back() {
@@ -184,7 +197,12 @@ fun RecentsStage(
     }
 
     fun glideTo(index: Int) {
-        if (current()[index].isHome) openHome() else scope.launch { positionAnimatable.animateTo(index.toFloat(), spring(dampingRatio = 1f, stiffness = 380f)) }
+        if (current()[index].isHome) openHome() else scope.launch {
+            positionAnimatable.animateTo(
+                index.toFloat(),
+                spring(dampingRatio = 1f, stiffness = 380f)
+            )
+        }
     }
 
     fun move(delta: Int) {
@@ -266,6 +284,7 @@ fun RecentsStage(
                 zoomAnimatable.animateTo(0f, tween(370, easing = StrongInOut))
                 locked = false
             }
+
             Intro.FROM_HOME -> {
                 // One motion: home pulls back into its card while the row glides over to the most
                 // recent app (same curve and timing for both, so they move as one camera move).
@@ -277,6 +296,7 @@ fun RecentsStage(
                 zoomAnimatable.animateTo(0f, spec)
                 locked = false
             }
+
             Intro.HOME_PRESS -> {
                 actions.homeGo()
                 press.animateTo(1f, tween(550, easing = LinearEasing))
@@ -315,7 +335,8 @@ fun RecentsStage(
         val band = h * (1f - CARD_SCALE) / 2f
 
         fun camera() = 1f + (1f / CARD_SCALE - 1f) * zoomNow()
-        fun offsetFromCamera(index: Int) = index - positionNow() + (if (index in shiftRange) shift.value else 0f)
+        fun offsetFromCamera(index: Int) =
+            index - positionNow() + (if (index in shiftRange) shift.value else 0f)
 
         /** Index of the card under a point (at rest, zoom 0), or -1. */
         fun cardAt(point: Offset): Int {
@@ -332,7 +353,18 @@ fun RecentsStage(
         // Backdrop: solid, the same gradient as the bottom screen (light or dark). At zoom 1 the
         // card covers it completely, so it simply appears around the card as the card shrinks.
         val palette = recentsColors()
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.backdropTop, palette.backdropBottom))))
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            palette.backdropTop,
+                            palette.backdropBottom
+                        )
+                    )
+                )
+        )
 
         items.forEachIndexed { index, card ->
             key(card.key) {
@@ -347,7 +379,8 @@ fun RecentsStage(
                         translationX = cardOffset * step * cameraScale
                         val lifted = card.key in liftKeys
                         translationY = if (lifted) -lift.value * h * 0.9f else 0f
-                        alpha = if (abs(cardOffset) > 2.6f) 0f else if (lifted) 1f - lift.value else 1f
+                        alpha =
+                            if (abs(cardOffset) > 2.6f) 0f else if (lifted) 1f - lift.value else 1f
                         shape = RoundedCornerShape(((radius * (1f - zoomNow())) / cardScale).toDp())
                         clip = true
                         shadowElevation = elevation * (1f - zoomNow()) / cardScale
@@ -367,7 +400,8 @@ fun RecentsStage(
                         modifier = Modifier.graphicsLayer {
                             val cardOffset = offsetFromCamera(index)
                             val cameraScale = camera()
-                            translationX = stageWidth / 2 + cardOffset * step * cameraScale - stageWidth * CARD_SCALE * cameraScale / 2
+                            translationX =
+                                stageWidth / 2 + cardOffset * step * cameraScale - stageWidth * CARD_SCALE * cameraScale / 2
                             translationY = h / 2 - h * CARD_SCALE * cameraScale / 2 - labelLift
                             val lifted = card.key in liftKeys
                             alpha = if (abs(cardOffset) > 2.6f) 0f else
@@ -392,7 +426,11 @@ fun RecentsStage(
                         Hint("X", "Close")
                         Hint("Y", "Close all")
                     } else {
-                        Text("No recent apps", style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+                        Text(
+                            "No recent apps",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = palette.inkSecondary
+                        )
                         Spacer(Modifier.width(24.dp))
                     }
                     Hint("B", "Back")
@@ -425,12 +463,22 @@ fun RecentsStage(
                             }
                             if (axis == 1) {
                                 change.consume()
-                                val newPosition = (startPosition - total.x / step).coerceIn(-0.3f, current().lastIndex - 0.7f)
+                                val newPosition = (startPosition - total.x / step).coerceIn(
+                                    -0.3f,
+                                    current().lastIndex - 0.7f
+                                )
                                 scope.launch { positionAnimatable.snapTo(newPosition) }
                             } else if (axis == 2 && hit == target && current().getOrNull(hit)?.isHome == false) {
                                 change.consume()
                                 liftKeys = setOf(current()[hit].key)
-                                scope.launch { lift.snapTo((-total.y / (h * 0.9f)).coerceIn(0f, 1f)) }
+                                scope.launch {
+                                    lift.snapTo(
+                                        (-total.y / (h * 0.9f)).coerceIn(
+                                            0f,
+                                            1f
+                                        )
+                                    )
+                                }
                             }
                         }
                         val velocity = velocityTracker.calculateVelocity()
@@ -447,12 +495,16 @@ fun RecentsStage(
                                 target = newTarget
                                 glideTo(newTarget)
                             }
+
                             2 -> if (liftKeys.isNotEmpty()) {
                                 if (lift.value > 0.22f || velocity.y < -1400f) {
                                     closeCurrent()
                                 } else {
                                     scope.launch {
-                                        lift.animateTo(0f, spring(dampingRatio = 1f, stiffness = 500f))
+                                        lift.animateTo(
+                                            0f,
+                                            spring(dampingRatio = 1f, stiffness = 500f)
+                                        )
                                         liftKeys = emptySet()
                                     }
                                 }
@@ -482,7 +534,9 @@ private fun CardLayer(card: Card, layer: GraphicsLayerScope.() -> Unit, dim: () 
                 contentScale = if (card.onBottom) ContentScale.Fit else ContentScale.Crop,
             )
         } else if (card.icon != null) {
-            Image(card.icon, card.label, Modifier.align(Alignment.Center).size(96.dp))
+            Image(card.icon, card.label, Modifier
+                .align(Alignment.Center)
+                .size(96.dp))
         }
         // Cards beside the centre one fade towards the backdrop.
         Box(
@@ -499,15 +553,34 @@ private fun CardLabel(card: Card, width: Dp, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     val shade = qsColors()
     val palette = recentsColors()
-    Row(modifier.width(width).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier
+            .width(width)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         if (card.isHome) {
-            Box(Modifier.size(30.dp).clip(CircleShape).background(shade.iconActive), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Home, null, tint = shade.onIconActive, modifier = Modifier.size(18.dp))
+            Box(
+                Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(shade.iconActive),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Home,
+                    null,
+                    tint = shade.onIconActive,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         } else if (card.icon != null) {
             Image(card.icon, null, Modifier.size(30.dp))
         } else {
-            Box(Modifier.size(30.dp).clip(CircleShape).background(palette.chip))
+            Box(Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(palette.chip))
         }
         Spacer(Modifier.width(10.dp))
         Text(
@@ -525,7 +598,10 @@ private fun CardLabel(card: Card, width: Dp, modifier: Modifier) {
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.onSecondaryContainer,
                 maxLines = 1,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.secondaryContainer).padding(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.secondaryContainer)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }
     }

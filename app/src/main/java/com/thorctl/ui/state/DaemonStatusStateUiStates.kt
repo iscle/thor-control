@@ -7,7 +7,14 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** A screen's states for this connection: [content] again whenever the daemon's state changes (telemetry doesn't count). */
-fun <T> DaemonStatus.stateUiStates(content: (DaemonState) -> T): Flow<DaemonUiState<T>> = when (this) {
-    DaemonStatus.Disconnected -> flowOf(DaemonUiState.Disconnected)
-    is DaemonStatus.Connected -> state.map { daemonState -> DaemonUiState.Connected(content(daemonState)) }
-}
+fun <T> DaemonStatus.stateUiStates(content: (DaemonState) -> T): Flow<DaemonUiState<T>> =
+    when (this) {
+        DaemonStatus.Disconnected -> flowOf(DaemonUiState.Disconnected)
+        is DaemonStatus.Connected -> state.map { daemonState ->
+            DaemonUiState.Connected(
+                content(
+                    daemonState
+                )
+            )
+        }
+    }

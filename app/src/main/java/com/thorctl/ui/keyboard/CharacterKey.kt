@@ -5,6 +5,11 @@ package com.thorctl.ui.keyboard
  * above the character); [lead] / [trail] widen the key's touch area (not the key) into the
  * half-key gaps of the staggered row.
  */
-internal data class CharacterKey(val c: String, val alternate: String?, val lead: Float = 0f, val trail: Float = 0f) : Key {
+internal data class CharacterKey(
+    val c: String,
+    val alternate: String?,
+    val lead: Float = 0f,
+    val trail: Float = 0f
+) : Key {
     override val width: Float get() = 1f + lead + trail
 }

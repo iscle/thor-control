@@ -1,11 +1,9 @@
 package com.thorctl.ui.hud
 
-import com.thorctl.ui.theme.MorphShape
-import com.thorctl.ui.theme.rememberMorph
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -50,6 +48,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thorctl.ui.theme.MorphShape
+import com.thorctl.ui.theme.rememberMorph
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -73,7 +73,8 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
         val currentMessage = message
         if (currentMessage != null) {
             // Another step on a level pill that is already up: only the bar moves.
-            val update = currentMessage.level != null && shownIcon == currentMessage.icon && pop.value > 0.5f
+            val update =
+                currentMessage.level != null && shownIcon == currentMessage.icon && pop.value > 0.5f
             shownIcon = currentMessage.icon
             launch { pop.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 520f)) }
             if (update) return@LaunchedEffect
@@ -123,7 +124,9 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
                 },
                 null,
                 tint = colors.onPrimary,
-                modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = (1f - morphProgress.value) * 120f },
+                modifier = Modifier
+                    .size(22.dp)
+                    .graphicsLayer { rotationZ = (1f - morphProgress.value) * 120f },
             )
         }
         Spacer(Modifier.width(14.dp))
@@ -131,8 +134,19 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
         if (level != null) {
             LevelBar(level)
         } else {
-            AnimatedContent(shownMessage.text, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) }, label = "hud") { text ->
-                Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp), color = colors.onSurface)
+            AnimatedContent(
+                shownMessage.text,
+                transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) },
+                label = "hud"
+            ) { text ->
+                Text(
+                    text,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    ),
+                    color = colors.onSurface
+                )
             }
         }
     }
@@ -142,7 +156,11 @@ fun HudPill(state: StateFlow<HudMessage?>, onGone: () -> Unit) {
 @Composable
 private fun LevelBar(level: Float) {
     val colors = MaterialTheme.colorScheme
-    val shown by animateFloatAsState(level.coerceIn(0f, 1f), spring(dampingRatio = 1f, stiffness = 500f), label = "level")
+    val shown by animateFloatAsState(
+        level.coerceIn(0f, 1f),
+        spring(dampingRatio = 1f, stiffness = 500f),
+        label = "level"
+    )
     Box(
         Modifier
             .padding(end = 4.dp)

@@ -26,13 +26,18 @@ fun ConnectedChoice(
     modifier: Modifier = Modifier.fillMaxWidth(),
     onSelect: (Int) -> Unit,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+    ) {
         options.forEachIndexed { index, label ->
             ToggleButton(
                 checked = selected == index,
                 onCheckedChange = { onSelect(index) },
                 enabled = enabled,
-                modifier = Modifier.weight(1f).height(48.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
                 shapes = when (index) {
                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                     options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()

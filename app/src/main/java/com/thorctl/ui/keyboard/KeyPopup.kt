@@ -1,13 +1,9 @@
 package com.thorctl.ui.keyboard
 
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
@@ -23,7 +19,8 @@ internal class KeyPopup {
     var selected by mutableIntStateOf(0)
     var panelWidth = 0f
 
-    fun indexAt(rootX: Float): Int = ((rootX - left) / cellWidth).toInt().coerceIn(0, (options.size - 1).coerceAtLeast(0))
+    fun indexAt(rootX: Float): Int =
+        ((rootX - left) / cellWidth).toInt().coerceIn(0, (options.size - 1).coerceAtLeast(0))
 
     fun show(accentOptions: List<String>, face: Rect, fingerX: Float, gap: Float) {
         cellWidth = face.width

@@ -42,13 +42,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thorctl.domain.model.BatteryStatus
 import com.thorctl.domain.model.TemperatureUnit
-import com.thorctl.protocol.model.BrightnessCurve
-import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.Screen
 import com.thorctl.protocol.model.Stats
 import com.thorctl.ui.components.BatteryPill
 import com.thorctl.ui.components.DaemonOffline
-import com.thorctl.ui.state.DaemonUiState
 import com.thorctl.ui.components.FanGlyph
 import com.thorctl.ui.components.LedRingGlyph
 import com.thorctl.ui.components.QsSlider
@@ -61,6 +58,7 @@ import com.thorctl.ui.navigation.FanKey
 import com.thorctl.ui.navigation.GameKey
 import com.thorctl.ui.navigation.LightsKey
 import com.thorctl.ui.navigation.MenuKey
+import com.thorctl.ui.state.DaemonUiState
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.delay
 import java.util.Date
@@ -76,8 +74,18 @@ fun MainPage(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val battery by viewModel.battery.collectAsStateWithLifecycle()
     val connected = state is DaemonUiState.Connected
-    Column(Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp)) {
-        Header(battery, connected, onTurnOffBottom = viewModel::turnOffBottomScreen, onOpenApp, Modifier.enter(0, entered))
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp)
+    ) {
+        Header(
+            battery,
+            connected,
+            onTurnOffBottom = viewModel::turnOffBottomScreen,
+            onOpenApp,
+            Modifier.enter(0, entered)
+        )
         Spacer(Modifier.height(14.dp))
         when (val current = state) {
             DaemonUiState.Disconnected -> DaemonOffline(Modifier.enter(1, entered))
@@ -88,7 +96,12 @@ fun MainPage(
 
 /** Brightness, the four tiles and the telemetry. */
 @Composable
-private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKey) -> Unit, viewModel: MenuViewModel) {
+private fun Controls(
+    content: MenuContent,
+    entered: Boolean,
+    onNavigate: (MenuKey) -> Unit,
+    viewModel: MenuViewModel
+) {
     Column {
 
         QsSlider(
@@ -97,7 +110,7 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
             onValueChangeFinished = { viewModel.setBrightness(Screen.TOP, it, final = true) },
             icon = Icons.Rounded.BrightnessHigh,
             label = "Top screen",
-                        modifier = Modifier.enter(1, entered),
+            modifier = Modifier.enter(1, entered),
         )
         Spacer(Modifier.height(6.dp))
         QsSlider(
@@ -106,7 +119,7 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
             onValueChangeFinished = { viewModel.setBrightness(Screen.BOTTOM, it, final = true) },
             icon = Icons.Rounded.BrightnessLow,
             label = "Bottom screen",
-                        modifier = Modifier.enter(2, entered),
+            modifier = Modifier.enter(2, entered),
         )
         Spacer(Modifier.height(14.dp))
 
@@ -118,7 +131,9 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
                 icon = { FanGlyph(speed = content.fanPercent / 100f, color = it) },
                 onClick = { onNavigate(FanKey) },
                 onIconClick = viewModel::cycleFan,
-                                modifier = Modifier.weight(1f).enter(3, entered),
+                modifier = Modifier
+                    .weight(1f)
+                    .enter(3, entered),
             )
             QsTile(
                 label = "Controller",
@@ -127,7 +142,9 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
                 icon = { Icon(Icons.Rounded.SportsEsports, null, tint = it) },
                 onClick = { onNavigate(ControllerKey) },
                 onIconClick = viewModel::cycleController,
-                                modifier = Modifier.weight(1f).enter(4, entered),
+                modifier = Modifier
+                    .weight(1f)
+                    .enter(4, entered),
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -139,7 +156,9 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
                 icon = { LedRingGlyph(content.leds, it) },
                 onClick = { onNavigate(LightsKey) },
                 onIconClick = viewModel::toggleLights,
-                                modifier = Modifier.weight(1f).enter(5, entered),
+                modifier = Modifier
+                    .weight(1f)
+                    .enter(5, entered),
             )
             QsTile(
                 label = "Game mode",
@@ -148,7 +167,9 @@ private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKe
                 icon = { Icon(Icons.Rounded.RocketLaunch, null, tint = it) },
                 onClick = { onNavigate(GameKey) },
                 onIconClick = viewModel::toggleGameMode,
-                                modifier = Modifier.weight(1f).enter(6, entered),
+                modifier = Modifier
+                    .weight(1f)
+                    .enter(6, entered),
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -175,10 +196,14 @@ private fun Header(
     }
     val uses24HourClock = DateFormat.is24HourFormat(context)
     val time = DateFormat.format(if (uses24HourClock) "HH:mm" else "h:mm", now).toString()
-    val date = DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEMMMd"), now).toString()
+    val date =
+        DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEMMMd"), now)
+            .toString()
     val textStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp)
 
-    Row(modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier
+        .fillMaxWidth()
+        .height(34.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(time, style = textStyle.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
         Spacer(Modifier.width(10.dp))
         Text(date, style = textStyle, color = colors.onSurface)
@@ -197,13 +222,27 @@ private fun Header(
         }
         BatteryPill(battery.level, battery.charging)
         Spacer(Modifier.width(6.dp))
-        IconButton(onClick = onTurnOffBottom, enabled = connected, modifier = Modifier.size(34.dp)) {
-            Icon(Icons.Rounded.DesktopAccessDisabled, "Turn off bottom screen", tint = colors.onSurface, modifier = Modifier.size(20.dp))
+        IconButton(
+            onClick = onTurnOffBottom,
+            enabled = connected,
+            modifier = Modifier.size(34.dp)
+        ) {
+            Icon(
+                Icons.Rounded.DesktopAccessDisabled,
+                "Turn off bottom screen",
+                tint = colors.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
         }
         if (onOpenApp != null) {
             Spacer(Modifier.width(6.dp))
             IconButton(onClick = onOpenApp, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Rounded.Settings, "Open Thor Control", tint = colors.onSurface, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Rounded.Settings,
+                    "Open Thor Control",
+                    tint = colors.onSurface,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -224,14 +263,18 @@ private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
             value = Format.percent(stats.cpuLoad),
             detail = Format.cpuDetail(stats, unit),
             progress = stats.cpuLoad, accent = colors.primary,
-            modifier = Modifier.weight(1f).enter(7, entered),
+            modifier = Modifier
+                .weight(1f)
+                .enter(7, entered),
         )
         StatTile(
             Icons.Rounded.DeveloperBoard, "GPU",
             value = Format.percent(stats.gpuLoad),
             detail = Format.gpuDetail(stats, unit),
             progress = stats.gpuLoad, accent = colors.tertiary,
-            modifier = Modifier.weight(1f).enter(8, entered),
+            modifier = Modifier
+                .weight(1f)
+                .enter(8, entered),
         )
     }
     Spacer(Modifier.height(8.dp))
@@ -242,14 +285,18 @@ private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
             detail = Format.memoryDetail(stats),
             progress = stats.ramUsedFraction,
             accent = colors.secondary,
-            modifier = Modifier.weight(1f).enter(9, entered),
+            modifier = Modifier
+                .weight(1f)
+                .enter(9, entered),
         )
         StatTile(
             Icons.Rounded.Bolt, "Power",
             value = Format.powerValue(stats),
             detail = Format.powerDetail(stats, unit),
             progress = stats.batteryLevel / 100f, accent = powerAccent,
-            modifier = Modifier.weight(1f).enter(10, entered),
+            modifier = Modifier
+                .weight(1f)
+                .enter(10, entered),
         )
     }
 }

@@ -16,7 +16,9 @@ class VibratorHaptics(private val context: Context) : Haptics {
 
     private fun vibrate(effect: Int) {
         try {
-            context.getSystemService(VibratorManager::class.java)?.defaultVibrator?.vibrate(VibrationEffect.createPredefined(effect))
+            context.getSystemService(VibratorManager::class.java)?.defaultVibrator?.vibrate(
+                VibrationEffect.createPredefined(effect)
+            )
         } catch (_: Exception) {
         }
     }

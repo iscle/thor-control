@@ -1,11 +1,11 @@
 package com.thorctl.platform.overlay
 
-import com.thorctl.domain.model.DaemonStatus
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.provider.Settings
 import android.view.Display
 import android.view.WindowManager
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.accessibility.AccessibilityConnection
 import dev.zacsweers.metro.AppScope
@@ -27,7 +27,8 @@ class OverlayWindows(
     /** The bottom screen: the daemon's word for it, or else the smaller built-in non-default display. */
     fun bottomDisplay(): Display? {
         val status = daemon.status.value
-        val bottomId = if (status is DaemonStatus.Connected) status.state.value.bottomDisplayId else -1
+        val bottomId =
+            if (status is DaemonStatus.Connected) status.state.value.bottomDisplayId else -1
         if (bottomId >= 0) {
             displays.getDisplay(bottomId)?.let { return it }
         }
@@ -43,16 +44,29 @@ class OverlayWindows(
     }
 
     /** An accessibility overlay when the service is bound, else an application overlay; null if neither works. */
-    fun contextFor(display: Display, layer: OverlayLayer? = availableLayers().firstOrNull()): OverlayContext? {
+    fun contextFor(
+        display: Display,
+        layer: OverlayLayer? = availableLayers().firstOrNull()
+    ): OverlayContext? {
         val service = accessibility.service
         return when (layer) {
             OverlayLayer.ACCESSIBILITY -> service?.let {
-                OverlayContext(it.createDisplayContext(display), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, layer)
+                OverlayContext(
+                    it.createDisplayContext(display),
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    layer
+                )
             }
+
             OverlayLayer.APPLICATION -> {
                 val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                OverlayContext(context.createDisplayContext(display).createWindowContext(type, null), type, layer)
+                OverlayContext(
+                    context.createDisplayContext(display).createWindowContext(type, null),
+                    type,
+                    layer
+                )
             }
+
             null -> null
         }
     }

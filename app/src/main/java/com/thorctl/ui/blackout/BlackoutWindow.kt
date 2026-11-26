@@ -1,25 +1,23 @@
 package com.thorctl.ui.blackout
 
-import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.ContributesIntoSet
-import com.thorctl.platform.startup.ProcessObserver
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.domain.model.DaemonStatus
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.overlay.OverlayWindows
+import com.thorctl.platform.startup.ProcessObserver
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -65,15 +63,17 @@ class BlackoutWindow(
             ViewGroup.LayoutParams.MATCH_PARENT,
             overlayContext.type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.OPAQUE,
         ).apply {
             title = "ThorControlBlackout"
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
-        val displayWindowManager = overlayContext.context.getSystemService(WindowManager::class.java)
+        val displayWindowManager =
+            overlayContext.context.getSystemService(WindowManager::class.java)
         try {
             displayWindowManager.addView(blackView, layoutParams)
             view = blackView

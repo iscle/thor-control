@@ -1,6 +1,5 @@
 package com.thorctl.platform.keyboard
 
-import com.thorctl.domain.model.DaemonStatus
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,6 +10,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import com.thorctl.di.ApplicationScope
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.haptics.Haptics
 import com.thorctl.protocol.model.DaemonCommand
@@ -88,7 +88,8 @@ class KeyboardEditor(
         ime = host
         // A daemon (re)start doesn't know the keyboard is up: L1 / R1 are shift only then.
         serviceScope.launch {
-            daemon.status.filterIsInstance<DaemonStatus.Connected>().collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
+            daemon.status.filterIsInstance<DaemonStatus.Connected>()
+                .collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
         }
     }
 
@@ -109,7 +110,10 @@ class KeyboardEditor(
      */
     fun onShow(info: EditorInfo, inline: Boolean) {
         editor = info
-        _uiState.value = KeyboardUi(layer = KeyboardText.layerFor(info.inputType), enter = KeyboardText.enterFor(info.inputType, info.imeOptions))
+        _uiState.value = KeyboardUi(
+            layer = KeyboardText.layerFor(info.inputType),
+            enter = KeyboardText.enterFor(info.inputType, info.imeOptions)
+        )
         autoShift()
         refreshPreview()
         inlineShown = inline
@@ -199,7 +203,11 @@ class KeyboardEditor(
         when {
             connection == null || raw -> imeHost.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
             selectionStart != selectionEnd -> connection.commitText("", 1)
-            else -> if (!connection.deleteSurroundingTextInCodePoints(1, 0)) imeHost.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            else -> if (!connection.deleteSurroundingTextInCodePoints(
+                    1,
+                    0
+                )
+            ) imeHost.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
         endSelecting()
         autoShift()
@@ -225,7 +233,9 @@ class KeyboardEditor(
         val offset = extracted.startOffset
         wordBase = minOf(extracted.selectionStart, extracted.selectionEnd) + offset
         wordEnd = maxOf(extracted.selectionStart, extracted.selectionEnd) + offset
-        val before = extracted.text?.subSequence(0, (wordBase - offset).coerceIn(0, extracted.text.length))?.toString() ?: return
+        val before =
+            extracted.text?.subSequence(0, (wordBase - offset).coerceIn(0, extracted.text.length))
+                ?.toString() ?: return
         wordLengths = KeyboardText.wordsBack(before)
     }
 
@@ -240,7 +250,10 @@ class KeyboardEditor(
 
     override fun endWordDelete(commit: Boolean) {
         if (wordCount > 0) {
-            if (commit) inputConnection?.commitText("", 1) else inputConnection?.setSelection(wordBase, wordEnd)
+            if (commit) inputConnection?.commitText("", 1) else inputConnection?.setSelection(
+                wordBase,
+                wordEnd
+            )
         }
         wordLengths = emptyList()
         wordCount = 0
@@ -290,7 +303,9 @@ class KeyboardEditor(
 
     override fun beginSwipe() {
         val extracted = try {
-            inputConnection?.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 100_000 }, 0)
+            inputConnection?.getExtractedText(ExtractedTextRequest().apply {
+                hintMaxChars = 100_000
+            }, 0)
         } catch (_: Exception) {
             null
         }
@@ -313,8 +328,10 @@ class KeyboardEditor(
         val selecting = _uiState.value.selecting
         if (snapshot == null) {
             // The field can't report its text: arrow keys (with shift while selecting).
-            val keyCode = if (direction < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
-            val metaState = if (selecting) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
+            val keyCode =
+                if (direction < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+            val metaState =
+                if (selecting) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
             val now = SystemClock.uptimeMillis()
             connection.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
             connection.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState))
@@ -380,7 +397,8 @@ class KeyboardEditor(
 
     override fun paste() {
         val clip = clipboard()?.primaryClip
-        val pasted = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)?.toString() else null
+        val pasted = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)
+            ?.toString() else null
         if (pasted.isNullOrEmpty()) {
             flash("Clipboard is empty")
             return
@@ -390,7 +408,8 @@ class KeyboardEditor(
         autoShift()
     }
 
-    private fun clipboard(): ClipboardManager? = context.getSystemService(ClipboardManager::class.java)
+    private fun clipboard(): ClipboardManager? =
+        context.getSystemService(ClipboardManager::class.java)
 
     private fun flash(message: String) {
         _uiState.value = _uiState.value.copy(flash = message, flashId = SystemClock.uptimeMillis())
@@ -406,7 +425,8 @@ class KeyboardEditor(
                 connection.getTextAfterCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
                 isPassword(),
             )
-            _uiState.value = _uiState.value.copy(before = before, selected = selected, after = after)
+            _uiState.value =
+                _uiState.value.copy(before = before, selected = selected, after = after)
         } catch (e: Exception) {
             Timber.w(e, "preview")
         }

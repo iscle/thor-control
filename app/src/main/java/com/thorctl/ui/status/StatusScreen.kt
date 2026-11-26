@@ -37,7 +37,10 @@ import com.thorctl.ui.theme.qsColors
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
-fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewModel = metroViewModel()) {
+fun StatusScreen(
+    onOpenControllerSettings: () -> Unit,
+    viewModel: StatusViewModel = metroViewModel()
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = MaterialTheme.colorScheme
     Row(
@@ -48,8 +51,14 @@ fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewMode
             .padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Column(Modifier.widthIn(max = 300.dp).fillMaxHeight()) {
-            Text("Thor Control", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
+        Column(Modifier
+            .widthIn(max = 300.dp)
+            .fillMaxHeight()) {
+            Text(
+                "Thor Control",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
+                color = colors.onSurface
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Press the AYN button to open the menu on the bottom screen. Hold it with a button for shortcuts.",
@@ -59,17 +68,38 @@ fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewMode
             Spacer(Modifier.height(10.dp))
             ShortcutList()
             Spacer(Modifier.height(16.dp))
-            StatusRow("Root service", if (uiState.connected) "Running" else "Not running", uiState.connected)
-            StatusRow("Menu layer", if (uiState.accessibilityBound) "Accessibility overlay" else "App overlay (fallback)", uiState.accessibilityBound)
-            StatusRow("System app", if (uiState.systemApp) "Yes" else "No – install the Magisk module", uiState.systemApp)
+            StatusRow(
+                "Root service",
+                if (uiState.connected) "Running" else "Not running",
+                uiState.connected
+            )
+            StatusRow(
+                "Menu layer",
+                if (uiState.accessibilityBound) "Accessibility overlay" else "App overlay (fallback)",
+                uiState.accessibilityBound
+            )
+            StatusRow(
+                "System app",
+                if (uiState.systemApp) "Yes" else "No – install the Magisk module",
+                uiState.systemApp
+            )
             StatusRow("Persistent", if (uiState.persistent) "Yes" else "No", uiState.persistent)
-            uiState.menuShownAs?.let { StatusRow("Last shown as", if (it == OverlayLayer.ACCESSIBILITY) "accessibility" else "application", true) }
+            uiState.menuShownAs?.let {
+                StatusRow(
+                    "Last shown as",
+                    if (it == OverlayLayer.ACCESSIBILITY) "accessibility" else "application",
+                    true
+                )
+            }
             Spacer(Modifier.weight(1f))
             Button(onClick = viewModel::showMenu, modifier = Modifier.fillMaxWidth()) {
                 Text("Show menu on bottom screen")
             }
             Spacer(Modifier.height(8.dp))
-            FilledTonalButton(onClick = onOpenControllerSettings, modifier = Modifier.fillMaxWidth()) {
+            FilledTonalButton(
+                onClick = onOpenControllerSettings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Controller calibration & mapping")
             }
         }
@@ -88,11 +118,25 @@ fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewMode
 @Composable
 private fun StatusRow(label: String, value: String, ok: Boolean) {
     val colors = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) Color(0xFF7BD88F) else colors.error))
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(if (ok) Color(0xFF7BD88F) else colors.error)
+        )
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onSurfaceVariant
+            )
             Text(value, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface)
         }
     }

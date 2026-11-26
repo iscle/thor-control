@@ -1,12 +1,5 @@
 package com.thorctl.platform.bluetooth
 
-import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.ContributesIntoSet
-import com.thorctl.platform.startup.ProcessObserver
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.domain.model.DaemonStatus
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -18,19 +11,26 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.domain.repository.GamepadHostRepository
 import com.thorctl.domain.repository.GamepadPairing
 import com.thorctl.platform.overlay.OverlayMenu
+import com.thorctl.platform.startup.ProcessObserver
 import com.thorctl.protocol.GamepadHid
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.GamepadTransport
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -109,7 +109,10 @@ class BluetoothGamepad(
         if (want == wanted) return
         wanted = want
         if (want) {
-            context.registerReceiver(adapterReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            context.registerReceiver(
+                adapterReceiver,
+                IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+            )
             open()
         } else {
             context.unregisterReceiver(adapterReceiver)
@@ -143,7 +146,14 @@ class BluetoothGamepad(
                 GamepadHid.DESCRIPTOR,
             )
             try {
-                if (!hidDevice.registerApp(sdpSettings, null, null, radioExecutor, callback)) Timber.w("registerApp refused")
+                if (!hidDevice.registerApp(
+                        sdpSettings,
+                        null,
+                        null,
+                        radioExecutor,
+                        callback
+                    )
+                ) Timber.w("registerApp refused")
             } catch (e: Exception) {
                 Timber.w(e, "registerApp failed")
             }
@@ -181,7 +191,10 @@ class BluetoothGamepad(
                     pending.set(lastReport)
                     flush()
                 }
-                BluetoothProfile.STATE_DISCONNECTED -> if (host == null || host?.address == device.address) setHost(null)
+
+                BluetoothProfile.STATE_DISCONNECTED -> if (host == null || host?.address == device.address) setHost(
+                    null
+                )
             }
         }
 

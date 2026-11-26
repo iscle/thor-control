@@ -5,7 +5,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 
 /** The menu's back stack. The main page is always at the bottom. */
 class MenuNavigator(initial: List<MenuKey> = listOf(MainKey)) {
-    val backStack: SnapshotStateList<MenuKey> = mutableStateListOf<MenuKey>().apply { addAll(initial.ifEmpty { listOf(MainKey) }) }
+    val backStack: SnapshotStateList<MenuKey> =
+        mutableStateListOf<MenuKey>().apply { addAll(initial.ifEmpty { listOf(MainKey) }) }
 
     val current: MenuKey get() = backStack.last()
 

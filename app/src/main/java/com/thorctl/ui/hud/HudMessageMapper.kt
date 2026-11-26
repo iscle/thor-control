@@ -14,21 +14,33 @@ class HudMessageMapper(private val apps: AppInfoRepository) {
     fun map(event: HudEvent, displayId: Int): HudMessage = when (event) {
         is HudEvent.Controller -> HudMessage(
             HudIcon.CONTROLLER,
-            if (event.target == ControllerTarget.FREE) "Controller follows focus" else "Controller → ${screen(event.target == ControllerTarget.BOTTOM)}",
+            if (event.target == ControllerTarget.FREE) "Controller follows focus" else "Controller → ${
+                screen(
+                    event.target == ControllerTarget.BOTTOM
+                )
+            }",
             displayId,
         )
+
         is HudEvent.Moved -> HudMessage(
             if (event.to == Screen.BOTTOM) HudIcon.MOVE_DOWN else HudIcon.MOVE_UP,
             "${label(event.packageName)} → ${screen(event.to == Screen.BOTTOM)}",
             displayId,
         )
+
         is HudEvent.Brightness -> HudMessage(
             HudIcon.BRIGHTNESS,
             if (event.screen == Screen.BOTTOM) "Bottom screen brightness" else "Top screen brightness",
             displayId,
             level = event.percent / 100f,
         )
-        is HudEvent.NothingToMove -> HudMessage(HudIcon.INFO, "No app on the ${screen(event.from == Screen.BOTTOM)}", displayId)
+
+        is HudEvent.NothingToMove -> HudMessage(
+            HudIcon.INFO,
+            "No app on the ${screen(event.from == Screen.BOTTOM)}",
+            displayId
+        )
+
         is HudEvent.Game -> HudMessage(
             HudIcon.GAME,
             when (event.state) {
@@ -36,10 +48,11 @@ class HudMessageMapper(private val apps: AppInfoRepository) {
                 GameHudState.OFF -> "Game mode off"
                 GameHudState.BOTTOM_OFF -> "Bottom screen off · AYN turns it on"
                 GameHudState.STARTED -> "Game mode · ${label(event.packageName)}" +
-                    if (event.freedMb >= 100) " · ${Format.gigabytes(event.freedMb)} freed" else ""
+                        if (event.freedMb >= 100) " · ${Format.gigabytes(event.freedMb)} freed" else ""
             },
             displayId,
         )
+
         is HudEvent.Text -> HudMessage(HudIcon.INFO, event.text, displayId)
     }
 

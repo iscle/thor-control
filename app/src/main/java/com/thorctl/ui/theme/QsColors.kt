@@ -23,9 +23,15 @@ data class QsColors(
     companion object {
         fun of(scheme: ColorScheme, dark: Boolean): QsColors = with(scheme) {
             QsColors(
-                scrim = if (dark) Color(0xFF000000).copy(alpha = 0.40f) else Color(0xFFFFFFFF).copy(alpha = 0.35f),
-                container = if (dark) surfaceContainerLowest.copy(alpha = 0.58f) else surfaceContainerLowest.copy(alpha = 0.62f),
-                containerPressed = if (dark) surfaceContainerLow.copy(alpha = 0.75f) else surfaceContainerHigh.copy(alpha = 0.75f),
+                scrim = if (dark) Color(0xFF000000).copy(alpha = 0.40f) else Color(0xFFFFFFFF).copy(
+                    alpha = 0.35f
+                ),
+                container = if (dark) surfaceContainerLowest.copy(alpha = 0.58f) else surfaceContainerLowest.copy(
+                    alpha = 0.62f
+                ),
+                containerPressed = if (dark) surfaceContainerLow.copy(alpha = 0.75f) else surfaceContainerHigh.copy(
+                    alpha = 0.75f
+                ),
                 iconActive = primary,
                 onIconActive = onPrimary,
                 iconInactive = surfaceContainerHighest.copy(alpha = 0.85f),

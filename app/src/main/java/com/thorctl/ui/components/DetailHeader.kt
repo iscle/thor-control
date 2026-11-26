@@ -23,7 +23,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun DetailHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier
+        .fillMaxWidth()
+        .height(52.dp), verticalAlignment = Alignment.CenterVertically) {
         FilledTonalIconButton(
             onClick = onBack,
             modifier = Modifier.size(48.dp),
@@ -32,7 +34,11 @@ fun DetailHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> 
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
         }
         Spacer(Modifier.width(14.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
+            color = colors.onSurface
+        )
         Spacer(Modifier.weight(1f))
         trailing()
     }

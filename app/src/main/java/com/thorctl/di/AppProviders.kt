@@ -23,7 +23,8 @@ object AppProviders {
     @Provides
     @SingleIn(AppScope::class)
     @ApplicationScope
-    fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    fun applicationScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
     @SingleIn(AppScope::class)

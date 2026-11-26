@@ -1,5 +1,5 @@
-import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -29,7 +29,8 @@ android {
     // that was signed with the release key.
     val thorKeystore = rootProject.file("keystore/thorctl.jks")
     val thorKeyProps = Properties().apply {
-        rootProject.file("keystore/keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+        rootProject.file("keystore/keystore.properties").takeIf { it.exists() }?.inputStream()
+            ?.use { load(it) }
     }
     signingConfigs {
         if (thorKeystore.exists() && thorKeyProps.getProperty("storePassword") != null) {
@@ -46,7 +47,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.findByName("thor") ?: signingConfigs.getByName("debug")
         }
         debug {

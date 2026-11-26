@@ -1,8 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardLayout.rows
-import com.thorctl.ui.keyboard.KeyboardLayout.ACCENTS
-import androidx.compose.runtime.key
 import com.thorctl.platform.keyboard.KeyboardLayer as Layer
 
 /** The keys of each layer and the accents behind them. */
@@ -19,9 +16,22 @@ internal object KeyboardLayout {
         }
         fun row(rowIndex: Int): List<CharacterKey> {
             val alternates = alternateRows?.get(rowIndex)?.split(' ')
-            return mainRows[rowIndex].split(' ').mapIndexed { keyIndex, character -> CharacterKey(character, alternates?.getOrNull(keyIndex)) }
+            return mainRows[rowIndex].split(' ').mapIndexed { keyIndex, character ->
+                CharacterKey(
+                    character,
+                    alternates?.getOrNull(keyIndex)
+                )
+            }
         }
-        val secondRow = row(1).let { keys -> keys.mapIndexed { keyIndex, charKey -> charKey.copy(lead = if (keyIndex == 0) 0.5f else 0f, trail = if (keyIndex == keys.lastIndex) 0.5f else 0f) } }
+
+        val secondRow = row(1).let { keys ->
+            keys.mapIndexed { keyIndex, charKey ->
+                charKey.copy(
+                    lead = if (keyIndex == 0) 0.5f else 0f,
+                    trail = if (keyIndex == keys.lastIndex) 0.5f else 0f
+                )
+            }
+        }
         val bottomRow = row(3)
         val (thirdRowLeft, bottomRowLeft) = when (layer) {
             Layer.LETTERS -> FunctionKind.SHIFT to FunctionKind.TO_SYMBOLS
@@ -32,16 +42,42 @@ internal object KeyboardLayout {
             row(0),
             secondRow,
             listOf(FunctionKey(thirdRowLeft, 1.5f)) + row(2) + FunctionKey(FunctionKind.BACK, 1.5f),
-            listOf(FunctionKey(bottomRowLeft, 1.5f), bottomRow[0], FunctionKey(FunctionKind.SPACE, 5f), bottomRow[1], FunctionKey(FunctionKind.ENTER, 1.5f)),
+            listOf(
+                FunctionKey(bottomRowLeft, 1.5f),
+                bottomRow[0],
+                FunctionKey(FunctionKind.SPACE, 5f),
+                bottomRow[1],
+                FunctionKey(FunctionKind.ENTER, 1.5f)
+            ),
         )
     }
 
     /** Hold a key for these (slide along the strip, release to type). */
     val ACCENTS: Map<String, List<String>> = mapOf(
-        "a" to "à á â ä æ ã å ā", "c" to "ç ć č", "d" to "ď ð", "e" to "è é ê ë ē ė ę ě", "g" to "ğ",
-        "i" to "î ï í ī į ì", "l" to "ł", "n" to "ñ ń ň", "o" to "ô ö ò ó œ ø ō õ", "r" to "ř",
-        "s" to "ß ś š", "t" to "ť þ", "u" to "û ü ù ú ū ů", "y" to "ÿ ý", "z" to "ž ź ż",
-        "-" to "– — ·", "\$" to "€ £ ¥ ¢", "!" to "¡", "?" to "¿", "'" to "‘ ’ ‚", "\"" to "“ ” „ « »",
-        "." to "…", "0" to "°", "%" to "‰", "*" to "★ †",
+        "a" to "à á â ä æ ã å ā",
+        "c" to "ç ć č",
+        "d" to "ď ð",
+        "e" to "è é ê ë ē ė ę ě",
+        "g" to "ğ",
+        "i" to "î ï í ī į ì",
+        "l" to "ł",
+        "n" to "ñ ń ň",
+        "o" to "ô ö ò ó œ ø ō õ",
+        "r" to "ř",
+        "s" to "ß ś š",
+        "t" to "ť þ",
+        "u" to "û ü ù ú ū ů",
+        "y" to "ÿ ý",
+        "z" to "ž ź ż",
+        "-" to "– — ·",
+        "\$" to "€ £ ¥ ¢",
+        "!" to "¡",
+        "?" to "¿",
+        "'" to "‘ ’ ‚",
+        "\"" to "“ ” „ « »",
+        "." to "…",
+        "0" to "°",
+        "%" to "‰",
+        "*" to "★ †",
     ).mapValues { it.value.split(' ') }
 }

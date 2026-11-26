@@ -57,7 +57,8 @@ fun MenuOverlay(
     LaunchedEffect(Unit) { snapshotFlow { reveal.value }.collect { revealCallback(it) } }
 
     val shade = qsColors()
-    val scrim = if (blur) shade.scrim else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.95f)
+    val scrim =
+        if (blur) shade.scrim else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.95f)
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier

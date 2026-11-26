@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Records what was sent; tests push the states and readings the daemon would. Starts connected. */
-class FakeDaemonRepository(initial: DaemonState = sampleState, initialStats: Stats = sampleStats) : DaemonRepository {
+class FakeDaemonRepository(initial: DaemonState = sampleState, initialStats: Stats = sampleStats) :
+    DaemonRepository {
     private var state = MutableStateFlow(initial)
     private var stats = MutableStateFlow(initialStats)
     override val status = MutableStateFlow<DaemonStatus>(DaemonStatus.Connected(state, stats))

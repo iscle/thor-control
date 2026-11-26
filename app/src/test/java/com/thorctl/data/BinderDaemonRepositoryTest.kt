@@ -2,8 +2,6 @@ package com.thorctl.data
 
 import com.thorctl.data.daemon.BinderDaemonRepository
 import com.thorctl.domain.model.DaemonStatus
-import kotlin.test.assertIs
-import kotlin.test.assertSame
 import com.thorctl.protocol.ipc.DaemonBinder
 import com.thorctl.protocol.ipc.DaemonEndpoint
 import com.thorctl.protocol.ipc.IThorClient
@@ -15,8 +13,9 @@ import com.thorctl.testing.sampleState
 import com.thorctl.testing.sampleStats
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /** The app's repository talking to a real [DaemonBinder] (called directly, as Binder would in-process). */
@@ -111,7 +110,10 @@ class BinderDaemonRepositoryTest {
         connect()
         repository.send(DaemonCommand.SetFanProfile("quiet"))
         repository.send(DaemonCommand.RecentsClose)
-        assertEquals(listOf(DaemonCommand.SetFanProfile("quiet"), DaemonCommand.RecentsClose), endpoint.commands)
+        assertEquals(
+            listOf(DaemonCommand.SetFanProfile("quiet"), DaemonCommand.RecentsClose),
+            endpoint.commands
+        )
     }
 
     @Test

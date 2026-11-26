@@ -33,10 +33,10 @@
 
         <activity
             android:name=".app.MainActivity"
-            tools:ignore="Instantiatable"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density|uiMode">
+            tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -45,10 +45,10 @@
 
         <service
             android:name=".app.ThorAccessibilityService"
-            tools:ignore="Instantiatable"
             android:exported="true"
             android:label="@string/a11y_label"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
@@ -60,10 +60,10 @@
         <!-- Keyboard: the system talks to this service; its keys live on the bottom screen. -->
         <service
             android:name=".app.ThorKeyboard"
-            tools:ignore="Instantiatable"
             android:exported="true"
             android:label="@string/keyboard_label"
-            android:permission="android.permission.BIND_INPUT_METHOD">
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
             </intent-filter>
@@ -74,8 +74,8 @@
 
         <receiver
             android:name=".app.CommandReceiver"
-            tools:ignore="Instantiatable"
-            android:exported="false">
+            android:exported="false"
+            tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="com.thorctl.action.TOGGLE_MENU" />
                 <action android:name="com.thorctl.action.HIDE_MENU" />

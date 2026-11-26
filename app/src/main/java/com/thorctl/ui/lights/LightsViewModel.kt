@@ -1,26 +1,26 @@
 package com.thorctl.ui.lights
 
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.stateUiStates
-import com.thorctl.ui.state.currentUiState
-import com.thorctl.domain.model.ifConnected
-import com.thorctl.ui.state.DaemonUiState
-import com.thorctl.domain.model.DaemonStatus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.thorctl.domain.model.DaemonStatus
+import com.thorctl.domain.model.ifConnected
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
+import com.thorctl.ui.state.DaemonUiState
+import com.thorctl.ui.state.currentUiState
+import com.thorctl.ui.state.stateUiStates
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
 @Inject
@@ -38,8 +38,23 @@ class LightsViewModel(private val daemon: DaemonRepository) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<LightsContent>> =
         combine(daemon.status, target) { status, stick -> status to stick }
-            .flatMapLatest { (status, stick) -> status.stateUiStates { state -> LightsContent(state.leds, stick) } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state -> LightsContent(state.leds, target.value) })
+            .flatMapLatest { (status, stick) ->
+                status.stateUiStates { state ->
+                    LightsContent(
+                        state.leds,
+                        stick
+                    )
+                }
+            }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.Eagerly,
+                daemon.status.value.currentUiState { state ->
+                    LightsContent(
+                        state.leds,
+                        target.value
+                    )
+                })
 
     /** Changes the daemon's current lights; nothing while disconnected. */
     private fun update(change: (LedState) -> LedState) = daemon.status.value.ifConnected {
@@ -77,15 +92,24 @@ class LightsViewModel(private val daemon: DaemonRepository) : ViewModel() {
     }
 
     /** [fraction] 0..1; never fully dark (that's what the switch is for). */
-    fun setBrightness(fraction: Float) = update { it.copy(brightness = (fraction * 255).toInt().coerceIn(MIN_BRIGHTNESS, 255)) }
+    fun setBrightness(fraction: Float) =
+        update { it.copy(brightness = (fraction * 255).toInt().coerceIn(MIN_BRIGHTNESS, 255)) }
 
     /** [fraction] 0..1 over the speed range. */
     fun setSpeed(fraction: Float) =
-        update { it.copy(speed = LedState.MIN_SPEED + fraction.coerceIn(0f, 1f) * (LedState.MAX_SPEED - LedState.MIN_SPEED)) }
+        update {
+            it.copy(
+                speed = LedState.MIN_SPEED + fraction.coerceIn(
+                    0f,
+                    1f
+                ) * (LedState.MAX_SPEED - LedState.MIN_SPEED)
+            )
+        }
 
     companion object {
         const val MIN_BRIGHTNESS = 4
 
-        fun speedFraction(speed: Float) = (speed - LedState.MIN_SPEED) / (LedState.MAX_SPEED - LedState.MIN_SPEED)
+        fun speedFraction(speed: Float) =
+            (speed - LedState.MIN_SPEED) / (LedState.MAX_SPEED - LedState.MIN_SPEED)
     }
 }

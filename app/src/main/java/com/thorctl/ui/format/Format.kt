@@ -56,13 +56,16 @@ object Format {
         else -> "On battery · ${stats.batteryLevel}% · ${temperature(stats.batteryTemp, unit)}"
     }
 
-    fun cpuDetail(stats: Stats, unit: TemperatureUnit): String = "${"%.2f".format(stats.cpuFreqMhz / 1000f)} GHz · ${temperature(stats.cpuTemp, unit)}"
+    fun cpuDetail(stats: Stats, unit: TemperatureUnit): String =
+        "${"%.2f".format(stats.cpuFreqMhz / 1000f)} GHz · ${temperature(stats.cpuTemp, unit)}"
 
-    fun gpuDetail(stats: Stats, unit: TemperatureUnit): String = "${stats.gpuFreqMhz} MHz · ${temperature(stats.gpuTemp, unit)}"
+    fun gpuDetail(stats: Stats, unit: TemperatureUnit): String =
+        "${stats.gpuFreqMhz} MHz · ${temperature(stats.gpuTemp, unit)}"
 
     fun memoryValue(stats: Stats): String = gigabytes(stats.ramUsedMb)
 
-    fun memoryDetail(stats: Stats): String = "of ${"%.0f".format(stats.ramTotalMb / 1024f)} GB · ${(stats.ramUsedFraction * 100).toInt()}% used"
+    fun memoryDetail(stats: Stats): String =
+        "of ${"%.0f".format(stats.ramTotalMb / 1024f)} GB · ${(stats.ramUsedFraction * 100).toInt()}% used"
 
     fun fanDescription(profile: FanProfile): String = when (profile.id) {
         FanProfile.AUTO_ID -> "LineageOS thermal control"

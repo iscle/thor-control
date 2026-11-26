@@ -30,12 +30,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MenuViewModelTest {
-    @get:Rule val main = MainDispatcherRule()
+    @get:Rule
+    val main = MainDispatcherRule()
 
     private val daemon = FakeDaemonRepository()
     private val preferences = FakeDisplayPreferences()
     private val battery = FakeBattery()
-    private val viewModel by lazy { MenuViewModel(daemon, FakeAppInfo(), battery, CycleFanProfileUseCase(daemon), preferences) }
+    private val viewModel by lazy {
+        MenuViewModel(
+            daemon,
+            FakeAppInfo(),
+            battery,
+            CycleFanProfileUseCase(daemon),
+            preferences
+        )
+    }
 
     @Test
     fun tilesDescribeTheDaemonsState() {
@@ -62,7 +71,10 @@ class MenuViewModelTest {
     @Test
     fun gamepadModeTakesOverTheControllerTile() {
         daemon.push(sampleState.copy(gamepad = GamepadState(on = true, connected = true)))
-        assertEquals(TileUi("Gamepad · connected", active = true), viewModel.uiState.value.content.controller)
+        assertEquals(
+            TileUi("Gamepad · connected", active = true),
+            viewModel.uiState.value.content.controller
+        )
     }
 
     @Test
@@ -92,7 +104,15 @@ class MenuViewModelTest {
     @Test
     fun brightnessSlidersSendLinearValues() {
         viewModel.setBrightness(Screen.BOTTOM, 0.6f, final = true)
-        assertEquals(listOf<DaemonCommand>(DaemonCommand.SetBrightness(Screen.BOTTOM, BrightnessCurve.toLinear(0.6f), true)), daemon.sent)
+        assertEquals(
+            listOf<DaemonCommand>(
+                DaemonCommand.SetBrightness(
+                    Screen.BOTTOM,
+                    BrightnessCurve.toLinear(0.6f),
+                    true
+                )
+            ), daemon.sent
+        )
     }
 
     @Test

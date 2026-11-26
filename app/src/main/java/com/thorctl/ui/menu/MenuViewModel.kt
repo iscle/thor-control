@@ -1,9 +1,5 @@
 package com.thorctl.ui.menu
 
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStatesWithStats
-import com.thorctl.ui.state.currentUiStateWithStats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thorctl.domain.model.BatteryStatus
@@ -22,14 +18,18 @@ import com.thorctl.protocol.model.Screen
 import com.thorctl.protocol.model.Stats
 import com.thorctl.ui.format.Format
 import com.thorctl.ui.state.DaemonUiState
+import com.thorctl.ui.state.currentUiStateWithStats
+import com.thorctl.ui.state.uiStatesWithStats
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 
@@ -47,11 +47,25 @@ class MenuViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<MenuContent>> =
         combine(daemon.status, preferences.temperatureUnit) { status, unit -> status to unit }
-            .flatMapLatest { (status, unit) -> status.uiStatesWithStats { state, stats -> content(state, stats, unit) } }
+            .flatMapLatest { (status, unit) ->
+                status.uiStatesWithStats { state, stats ->
+                    content(
+                        state,
+                        stats,
+                        unit
+                    )
+                }
+            }
             .stateIn(
                 viewModelScope,
                 SharingStarted.Eagerly,
-                daemon.status.value.currentUiStateWithStats { state, stats -> content(state, stats, preferences.temperatureUnit.value) },
+                daemon.status.value.currentUiStateWithStats { state, stats ->
+                    content(
+                        state,
+                        stats,
+                        preferences.temperatureUnit.value
+                    )
+                },
             )
 
     /** Polled: the battery's level hardly moves while the menu is open. */
@@ -108,11 +122,14 @@ class MenuViewModel(
 
     fun cycleFan() = daemon.status.value.ifConnected { cycleFanProfile(it) }
 
-    fun cycleController() = daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetController(it.controller.next())) }
+    fun cycleController() =
+        daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetController(it.controller.next())) }
 
-    fun toggleLights() = daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetLeds(it.leds.copy(enabled = !it.leds.enabled))) }
+    fun toggleLights() =
+        daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetLeds(it.leds.copy(enabled = !it.leds.enabled))) }
 
-    fun toggleGameMode() = daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetGameMode(!it.game.enabled)) }
+    fun toggleGameMode() =
+        daemon.status.value.ifConnected { daemon.send(DaemonCommand.SetGameMode(!it.game.enabled)) }
 
     fun turnOffBottomScreen() = daemon.send(DaemonCommand.SetBottomPower(false))
 

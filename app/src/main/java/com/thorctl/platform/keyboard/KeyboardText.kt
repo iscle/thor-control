@@ -33,15 +33,19 @@ object KeyboardText {
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         val inputClass = inputType and InputType.TYPE_MASK_CLASS
         return inputClass == InputType.TYPE_CLASS_TEXT &&
-            (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-                variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) ||
-            inputClass == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                        variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) ||
+                inputClass == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
 
     /** Shift key: tap toggles shift, a quick second tap locks caps, a tap with caps on releases both. */
     fun shifted(keyboard: KeyboardUi, sinceLastTapMs: Long): KeyboardUi = when {
         keyboard.caps -> keyboard.copy(caps = false, shift = false)
-        keyboard.shift && sinceLastTapMs < SHIFT_DOUBLE_TAP_MS -> keyboard.copy(caps = true, shift = false)
+        keyboard.shift && sinceLastTapMs < SHIFT_DOUBLE_TAP_MS -> keyboard.copy(
+            caps = true,
+            shift = false
+        )
+
         else -> keyboard.copy(shift = !keyboard.shift)
     }
 
@@ -65,7 +69,12 @@ object KeyboardText {
     }
 
     /** The touchpad preview: this line only, passwords masked, long selections shortened. */
-    fun preview(before: String, selected: String, after: String, password: Boolean): Triple<String, String, String> {
+    fun preview(
+        before: String,
+        selected: String,
+        after: String,
+        password: Boolean
+    ): Triple<String, String, String> {
         var shownBefore = before
         var shownSelected = selected
         var shownAfter = after
@@ -74,8 +83,13 @@ object KeyboardText {
             shownSelected = "•".repeat(shownSelected.length)
             shownAfter = "•".repeat(shownAfter.length)
         }
-        if (shownSelected.length > 40) shownSelected = shownSelected.take(18) + " … " + shownSelected.takeLast(18)
-        return Triple(shownBefore.substringAfterLast('\n'), shownSelected, shownAfter.substringBefore('\n'))
+        if (shownSelected.length > 40) shownSelected =
+            shownSelected.take(18) + " … " + shownSelected.takeLast(18)
+        return Triple(
+            shownBefore.substringAfterLast('\n'),
+            shownSelected,
+            shownAfter.substringBefore('\n')
+        )
     }
 
     /**
@@ -86,7 +100,10 @@ object KeyboardText {
         val textEnd = offset + text.length
         var to = (from + direction).coerceIn(0, textEnd)
         val index = to - offset
-        if (index in 1 until text.length && Character.isHighSurrogate(text[index - 1]) && Character.isLowSurrogate(text[index])) to += direction
+        if (index in 1 until text.length && Character.isHighSurrogate(text[index - 1]) && Character.isLowSurrogate(
+                text[index]
+            )
+        ) to += direction
         return to.coerceIn(0, textEnd)
     }
 }

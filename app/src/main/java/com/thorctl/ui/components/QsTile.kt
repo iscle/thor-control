@@ -1,10 +1,8 @@
 package com.thorctl.ui.components
 
-import com.thorctl.ui.theme.qsColors
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,7 +23,6 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thorctl.ui.theme.qsColors
 
 /**
  * Android 17 large QS tile: translucent dark pill with a 56dp icon container whose shape tells
@@ -59,7 +57,11 @@ fun QsTile(
     val iconInteractionSource = remember { MutableInteractionSource() }
     val pressed by tileInteractionSource.collectIsPressedAsState()
     val iconPressed by iconInteractionSource.collectIsPressedAsState()
-    val tileCorner by animateDpAsState(if (pressed) 14.dp else 24.dp, motion.fastSpatialSpec(), label = "tileCorner")
+    val tileCorner by animateDpAsState(
+        if (pressed) 14.dp else 24.dp,
+        motion.fastSpatialSpec(),
+        label = "tileCorner"
+    )
     val iconCorner by animateFloatAsState(
         when {
             iconPressed -> 22f
@@ -68,7 +70,11 @@ fun QsTile(
         },
         motion.defaultSpatialSpec(), label = "iconCorner",
     )
-    val iconScale by animateFloatAsState(if (iconPressed) 0.88f else 1f, motion.fastSpatialSpec(), label = "iconScale")
+    val iconScale by animateFloatAsState(
+        if (iconPressed) 0.88f else 1f,
+        motion.fastSpatialSpec(),
+        label = "iconScale"
+    )
     val iconBackground by animateColorAsState(
         when {
             active -> shade.iconActive
@@ -77,7 +83,11 @@ fun QsTile(
         },
         motion.defaultEffectsSpec(), label = "iconBg",
     )
-    val iconForeground by animateColorAsState(if (active) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "iconFg")
+    val iconForeground by animateColorAsState(
+        if (active) shade.onIconActive else shade.onIconInactive,
+        motion.defaultEffectsSpec(),
+        label = "iconFg"
+    )
     val alpha = if (enabled) 1f else 0.45f
 
     Row(
@@ -86,7 +96,12 @@ fun QsTile(
             .graphicsLayer { this.alpha = alpha }
             .clip(RoundedCornerShape(tileCorner))
             .background(if (pressed) shade.containerPressed else shade.container)
-            .clickable(enabled = enabled, interactionSource = tileInteractionSource, indication = ripple(), onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                interactionSource = tileInteractionSource,
+                indication = ripple(),
+                onClick = onClick
+            )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -99,7 +114,12 @@ fun QsTile(
                 }
                 .clip(RoundedCornerShape(CornerSize(iconCorner)))
                 .background(iconBackground)
-                .clickable(enabled = enabled, interactionSource = iconInteractionSource, indication = ripple(), onClick = onIconClick ?: onClick),
+                .clickable(
+                    enabled = enabled,
+                    interactionSource = iconInteractionSource,
+                    indication = ripple(),
+                    onClick = onIconClick ?: onClick
+                ),
             contentAlignment = Alignment.Center,
         ) { icon(iconForeground) }
         Spacer(Modifier.width(10.dp))
@@ -107,7 +127,10 @@ fun QsTile(
             Text(
                 label,
                 color = shade.text,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

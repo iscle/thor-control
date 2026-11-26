@@ -1,15 +1,15 @@
 package com.thorctl.app
 
-import dev.zacsweers.metrox.android.ServiceKey
-import com.thorctl.platform.accessibility.AccessibilityConnection
-import android.app.Service
-import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.ContributesIntoMap
-import dev.zacsweers.metro.AppScope
 import android.accessibilityservice.AccessibilityService
+import android.app.Service
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import com.thorctl.platform.accessibility.AccessibilityConnection
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metrox.android.ServiceKey
 
 /**
  * Exists only to give overlays the accessibility overlay window layer. It requests no key
@@ -18,7 +18,8 @@ import android.view.accessibility.AccessibilityEvent
 @Inject
 @ServiceKey(ThorAccessibilityService::class)
 @ContributesIntoMap(AppScope::class, binding = binding<Service>())
-class ThorAccessibilityService(private val accessibility: AccessibilityConnection) : AccessibilityService() {
+class ThorAccessibilityService(private val accessibility: AccessibilityConnection) :
+    AccessibilityService() {
     override fun onServiceConnected() {
         accessibility.onConnected(this)
     }

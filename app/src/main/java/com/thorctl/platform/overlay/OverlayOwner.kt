@@ -21,7 +21,8 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * ViewModels (the screens' and Navigation 3's) and back events (Navigation 3's NavDisplay needs a
  * dispatcher; these windows never get key focus, so nothing feeds it).
  */
-class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner, NavigationEventDispatcherOwner {
+class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner,
+    NavigationEventDispatcherOwner {
     private val registry = LifecycleRegistry(this)
     private val savedState = SavedStateRegistryController.create(this)
 

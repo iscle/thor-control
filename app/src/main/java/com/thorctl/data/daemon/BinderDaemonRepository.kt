@@ -9,9 +9,9 @@ import com.thorctl.protocol.ipc.IThorDaemon
 import com.thorctl.protocol.ipc.send
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
-import com.thorctl.protocol.model.closeImages
 import com.thorctl.protocol.model.DaemonState
 import com.thorctl.protocol.model.Stats
+import com.thorctl.protocol.model.closeImages
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -35,7 +35,10 @@ class BinderDaemonRepository(
     private val asInterface: (IBinder) -> IThorDaemon,
 ) : DaemonRepository, DaemonConnection {
     @Inject
-    constructor() : this(Executors.newSingleThreadExecutor { Thread(it, "thor-daemon-tx") }, IThorDaemon.Stub::asInterface)
+    constructor() : this(
+        Executors.newSingleThreadExecutor { Thread(it, "thor-daemon-tx") },
+        IThorDaemon.Stub::asInterface
+    )
 
     private val _status = MutableStateFlow<DaemonStatus>(DaemonStatus.Disconnected)
     override val status: StateFlow<DaemonStatus> = _status
@@ -44,7 +47,10 @@ class BinderDaemonRepository(
     private val _events = MutableSharedFlow<DaemonEvent>(extraBufferCapacity = 256)
     override val events: SharedFlow<DaemonEvent> = _events
 
-    private val _gamepadReports = MutableSharedFlow<ByteArray>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _gamepadReports = MutableSharedFlow<ByteArray>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     override val gamepadReports: SharedFlow<ByteArray> = _gamepadReports
 
     private val client = ClientBinder(::onEvent)

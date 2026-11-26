@@ -1,15 +1,6 @@
 package com.thorctl.app
 
-import dev.zacsweers.metrox.android.ServiceKey
 import android.app.Service
-import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.ContributesIntoMap
-import dev.zacsweers.metro.AppScope
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CoroutineScope
-import com.thorctl.ui.keyboard.KeyboardWindow
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.view.Display
@@ -27,8 +18,17 @@ import com.thorctl.platform.keyboard.ImeHost
 import com.thorctl.platform.keyboard.KeyboardEditor
 import com.thorctl.platform.overlay.OverlayOwner
 import com.thorctl.ui.components.ThorContent
+import com.thorctl.ui.keyboard.KeyboardWindow
 import com.thorctl.ui.keyboard.UprightKeyboard
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metrox.android.ServiceKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 /**
  * The system keyboard service. Android always puts a keyboard window on the screen of the text
@@ -58,7 +58,8 @@ class ThorKeyboard(
 
         override fun sendKeyChar(c: Char) = this@ThorKeyboard.sendKeyChar(c)
 
-        override fun sendDownUpKeyEvents(keyCode: Int) = this@ThorKeyboard.sendDownUpKeyEvents(keyCode)
+        override fun sendDownUpKeyEvents(keyCode: Int) =
+            this@ThorKeyboard.sendDownUpKeyEvents(keyCode)
 
         override fun requestHideSelf(flags: Int) = this@ThorKeyboard.requestHideSelf(flags)
     }
@@ -83,7 +84,10 @@ class ThorKeyboard(
     override fun onCreateInputView(): View {
         dropInline()
         return FrameLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
         }.also { root = it }
     }
 
@@ -125,7 +129,7 @@ class ThorKeyboard(
             null
         } ?: return false
         return keyboardDisplay.displayId == Display.DEFAULT_DISPLAY &&
-            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+                resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     }
 
     private fun showInline() {
@@ -141,7 +145,13 @@ class ThorKeyboard(
             decorView.setViewTreeViewModelStoreOwner(overlayOwner)
         }
         composeView.setContent { content { UprightKeyboard() } }
-        container.addView(composeView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        container.addView(
+            composeView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
         overlayOwner.resume()
         inlineView = composeView
         owner = overlayOwner
@@ -164,7 +174,8 @@ class ThorKeyboard(
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
         if (isShoulder(keyCode) && editor.isShown) true else super.onKeyUp(keyCode, event)
 
-    private fun isShoulder(keyCode: Int) = keyCode == KeyEvent.KEYCODE_BUTTON_L1 || keyCode == KeyEvent.KEYCODE_BUTTON_R1
+    private fun isShoulder(keyCode: Int) =
+        keyCode == KeyEvent.KEYCODE_BUTTON_L1 || keyCode == KeyEvent.KEYCODE_BUTTON_R1
 
     override fun onUpdateSelection(
         oldSelStart: Int,
@@ -174,7 +185,14 @@ class ThorKeyboard(
         candidatesStart: Int,
         candidatesEnd: Int,
     ) {
-        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        super.onUpdateSelection(
+            oldSelStart,
+            oldSelEnd,
+            newSelStart,
+            newSelEnd,
+            candidatesStart,
+            candidatesEnd
+        )
         editor.onSelection(newSelStart, newSelEnd)
     }
 }

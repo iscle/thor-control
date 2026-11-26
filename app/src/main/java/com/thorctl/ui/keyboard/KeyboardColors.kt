@@ -1,20 +1,6 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyboardTop
-import com.thorctl.ui.keyboard.KeyboardColors.KeyboardBottom
-import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyPressed
-import com.thorctl.ui.keyboard.KeyboardColors.FunctionKeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInkSoft
-import com.thorctl.ui.keyboard.KeyboardColors.Accent
-import com.thorctl.ui.keyboard.KeyboardColors.AccentDeep
-import com.thorctl.ui.keyboard.KeyboardColors.PadFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShadow
-import com.thorctl.ui.keyboard.KeyboardColors.LipColor
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -24,6 +10,7 @@ internal object KeyboardColors {
     val KeyboardBottom = Color(0xFFCFCFDA)
     val KeyFill = Color(0xFFFFFFFF)
     val KeyPressed = Color(0xFFE2E2EA)
+
     /** Function keys (shift, backspace, layer keys, enter): iOS's darker grey. */
     val FunctionKeyFill = Color(0xFFADB3BC)
     val KeyInk = Color(0xFF1B1B1F)

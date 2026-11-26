@@ -21,11 +21,21 @@ class FormatTest {
     @Test
     fun power() {
         assertEquals("6.3 W", Format.powerValue(sampleStats))
-        assertEquals("On battery · 81% · 31 °C", Format.powerDetail(sampleStats, TemperatureUnit.CELSIUS))
-        val charging = sampleStats.copy(batteryStatus = "Charging", batteryWatts = 12f, inputWatts = 18f)
+        assertEquals(
+            "On battery · 81% · 31 °C",
+            Format.powerDetail(sampleStats, TemperatureUnit.CELSIUS)
+        )
+        val charging =
+            sampleStats.copy(batteryStatus = "Charging", batteryWatts = 12f, inputWatts = 18f)
         assertEquals("+12.0 W", Format.powerValue(charging))
-        assertEquals("Charging · 81% · in 18.0 W", Format.powerDetail(charging, TemperatureUnit.CELSIUS))
-        assertEquals("Plugged in · 81%", Format.powerDetail(sampleStats.copy(inputWatts = 3f), TemperatureUnit.CELSIUS))
+        assertEquals(
+            "Charging · 81% · in 18.0 W",
+            Format.powerDetail(charging, TemperatureUnit.CELSIUS)
+        )
+        assertEquals(
+            "Plugged in · 81%",
+            Format.powerDetail(sampleStats.copy(inputWatts = 3f), TemperatureUnit.CELSIUS)
+        )
     }
 
     @Test
@@ -41,17 +51,48 @@ class FormatTest {
     fun gamepadSummaries() {
         assertEquals("Off", Format.gamepadSummary(GamepadState()))
         assertEquals("USB · waiting for a computer", Format.gamepadSummary(GamepadState(on = true)))
-        assertEquals("Connected to Mac", Format.gamepadSummary(GamepadState(on = true, transport = GamepadTransport.BLUETOOTH, connected = true, host = "Mac")))
-        assertEquals("Connected to a device", Format.gamepadSummary(GamepadState(on = true, transport = GamepadTransport.BLUETOOTH, connected = true)))
-        assertEquals("No gadget", Format.gamepadSummary(GamepadState(on = true, error = "No gadget")))
-        assertEquals("Try Bluetooth instead", Format.gamepadHint(GamepadState(on = true, error = "No gadget")))
+        assertEquals(
+            "Connected to Mac",
+            Format.gamepadSummary(
+                GamepadState(
+                    on = true,
+                    transport = GamepadTransport.BLUETOOTH,
+                    connected = true,
+                    host = "Mac"
+                )
+            )
+        )
+        assertEquals(
+            "Connected to a device",
+            Format.gamepadSummary(
+                GamepadState(
+                    on = true,
+                    transport = GamepadTransport.BLUETOOTH,
+                    connected = true
+                )
+            )
+        )
+        assertEquals(
+            "No gadget",
+            Format.gamepadSummary(GamepadState(on = true, error = "No gadget"))
+        )
+        assertEquals(
+            "Try Bluetooth instead",
+            Format.gamepadHint(GamepadState(on = true, error = "No gadget"))
+        )
     }
 
     @Test
     fun labels() {
         assertEquals("Unavailable", Format.controller(null))
         assertEquals("Follows focus", Format.controller(ControllerTarget.FREE))
-        assertEquals("Balanced", Format.fanDescription(FanProfile.BUILTINS.first { it.id == FanProfile.SMART_ID }))
-        assertEquals("Custom curve", Format.fanDescription(FanProfile("custom-1", "x", emptyList())))
+        assertEquals(
+            "Balanced",
+            Format.fanDescription(FanProfile.BUILTINS.first { it.id == FanProfile.SMART_ID })
+        )
+        assertEquals(
+            "Custom curve",
+            Format.fanDescription(FanProfile("custom-1", "x", emptyList()))
+        )
     }
 }

@@ -43,7 +43,13 @@ fun DaemonOffline(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(56.dp).clip(CircleShape).background(colors.errorContainer), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(colors.errorContainer),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(Icons.Rounded.LinkOff, null, tint = colors.onErrorContainer)
         }
         Spacer(Modifier.height(14.dp))

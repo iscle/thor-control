@@ -1,6 +1,5 @@
 package com.thorctl.ui.components
 
-import com.thorctl.ui.theme.qsColors
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -21,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thorctl.ui.theme.qsColors
 
 /** Telemetry tile: expressive wavy progress ring with the metric icon inside. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -45,7 +44,11 @@ fun StatTile(
     modifier: Modifier = Modifier,
 ) {
     val shade = qsColors()
-    val animatedProgress by animateFloatAsState(progress.coerceIn(0f, 1f), spring(dampingRatio = 0.8f, stiffness = 120f), label = "stat")
+    val animatedProgress by animateFloatAsState(
+        progress.coerceIn(0f, 1f),
+        spring(dampingRatio = 0.8f, stiffness = 120f),
+        label = "stat"
+    )
     Row(
         modifier
             .height(72.dp)
@@ -65,14 +68,28 @@ fun StatTile(
         }
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = shade.textSecondary, maxLines = 1)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = shade.textSecondary,
+                maxLines = 1
+            )
             Text(
                 value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp
+                ),
                 color = shade.text,
                 maxLines = 1,
             )
-            Text(detail, style = MaterialTheme.typography.labelSmall, color = shade.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = shade.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

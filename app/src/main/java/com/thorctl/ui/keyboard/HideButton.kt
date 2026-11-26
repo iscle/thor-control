@@ -1,7 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -16,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
 
 @Composable
 internal fun HideButton() {
@@ -29,7 +29,12 @@ internal fun HideButton() {
             .pointerInput(Unit) { detectTapGestures(onTap = { actions.hideKeyboard() }) },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.KeyboardHide, "Hide keyboard", tint = KeyInk, modifier = Modifier.size(22.dp))
+        Icon(
+            Icons.Rounded.KeyboardHide,
+            "Hide keyboard",
+            tint = KeyInk,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 

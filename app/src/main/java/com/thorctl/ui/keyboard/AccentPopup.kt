@@ -1,10 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
-import com.thorctl.ui.keyboard.KeyboardColors.Accent
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
-import com.thorctl.ui.keyboard.KeyboardColors.KeyShadow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -24,6 +19,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thorctl.ui.keyboard.KeyboardColors.Accent
+import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
+import com.thorctl.ui.keyboard.KeyboardColors.KeyShadow
+import com.thorctl.ui.keyboard.KeyboardColors.KeyShape
 import kotlin.math.roundToInt
 
 @Composable
@@ -33,7 +33,9 @@ internal fun AccentPopup(popup: KeyPopup) {
     Row(
         Modifier
             .offset { IntOffset(popup.left.roundToInt(), popup.top.roundToInt()) }
-            .size(with(density) { (popup.cellWidth * popup.options.size).toDp() }, with(density) { popup.cellHeight.toDp() })
+            .size(
+                with(density) { (popup.cellWidth * popup.options.size).toDp() },
+                with(density) { popup.cellHeight.toDp() })
             .shadow(10.dp, KeyShape, ambientColor = KeyShadow, spotColor = KeyShadow)
             .clip(KeyShape)
             .background(KeyFill)
@@ -48,7 +50,11 @@ internal fun AccentPopup(popup: KeyPopup) {
                     .background(if (index == popup.selected) Accent else Color.Transparent),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(option, color = if (index == popup.selected) Color.White else KeyInk, fontSize = 24.sp)
+                Text(
+                    option,
+                    color = if (index == popup.selected) Color.White else KeyInk,
+                    fontSize = 24.sp
+                )
             }
         }
     }

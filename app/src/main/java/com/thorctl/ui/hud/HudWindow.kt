@@ -1,6 +1,5 @@
 package com.thorctl.ui.hud
 
-import com.thorctl.protocol.model.HudEvent
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +10,7 @@ import androidx.compose.ui.platform.ComposeView
 import com.thorctl.platform.haptics.Haptics
 import com.thorctl.platform.overlay.OverlayOwner
 import com.thorctl.platform.overlay.OverlayWindows
+import com.thorctl.protocol.model.HudEvent
 import com.thorctl.ui.theme.ThorTheme
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
@@ -38,7 +38,8 @@ class HudWindow(
     fun show(event: HudEvent, displayId: Int) = show(mapper.map(event, displayId))
 
     private fun show(message: HudMessage) {
-        val display = windows.display(message.displayId) ?: windows.display(Display.DEFAULT_DISPLAY) ?: return
+        val display =
+            windows.display(message.displayId) ?: windows.display(Display.DEFAULT_DISPLAY) ?: return
         if (view != null && displayId != display.displayId) remove()
         if (view == null && !add(display)) return
         haptics.tick()
@@ -49,21 +50,23 @@ class HudWindow(
 
     private fun add(display: Display): Boolean {
         val overlayContext = windows.contextFor(display) ?: return false
-        val displayWindowManager = overlayContext.context.getSystemService(WindowManager::class.java)
+        val displayWindowManager =
+            overlayContext.context.getSystemService(WindowManager::class.java)
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayContext.type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
             title = "ThorControlHud"
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = (28 * overlayContext.context.resources.displayMetrics.density).toInt()
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
         }
         val overlayOwner = OverlayOwner()

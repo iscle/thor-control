@@ -5,5 +5,6 @@ fun startIndex(cards: List<Card>, fromHome: Boolean, originTask: Int): Int =
     if (fromHome) {
         cards.lastIndex
     } else {
-        cards.indexOfFirst { it.key == originTask }.takeIf { it >= 0 } ?: (cards.lastIndex - 1).coerceAtLeast(0)
+        cards.indexOfFirst { it.key == originTask }.takeIf { it >= 0 }
+            ?: (cards.lastIndex - 1).coerceAtLeast(0)
     }

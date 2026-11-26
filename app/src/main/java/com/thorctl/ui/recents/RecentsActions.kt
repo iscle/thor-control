@@ -1,7 +1,5 @@
 package com.thorctl.ui.recents
 
-import androidx.compose.material.icons.rounded.Home
-
 /** What the stage asks the controller to do. */
 interface RecentsActions {
     /** Zooming into an app card (start of the animation). */

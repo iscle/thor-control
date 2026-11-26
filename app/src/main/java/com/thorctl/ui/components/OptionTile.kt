@@ -21,7 +21,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +31,30 @@ import com.thorctl.ui.theme.qsColors
 
 /** Selectable row in the QS tile style; the icon container morphs circle -> rounded square. */
 @Composable
-fun OptionTile(icon: ImageVector, title: String, description: String, selected: Boolean, onClick: () -> Unit) {
+fun OptionTile(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
     val shade = qsColors()
     val motion = MaterialTheme.motionScheme
-    val corner by animateFloatAsState(if (selected) 29f else 50f, motion.defaultSpatialSpec(), label = "optCorner")
-    val iconBackground by animateColorAsState(if (selected) shade.iconActive else shade.iconInactive, motion.defaultEffectsSpec(), label = "optBg")
-    val iconForeground by animateColorAsState(if (selected) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "optFg")
+    val corner by animateFloatAsState(
+        if (selected) 29f else 50f,
+        motion.defaultSpatialSpec(),
+        label = "optCorner"
+    )
+    val iconBackground by animateColorAsState(
+        if (selected) shade.iconActive else shade.iconInactive,
+        motion.defaultEffectsSpec(),
+        label = "optBg"
+    )
+    val iconForeground by animateColorAsState(
+        if (selected) shade.onIconActive else shade.onIconInactive,
+        motion.defaultEffectsSpec(),
+        label = "optFg"
+    )
     Row(
         Modifier
             .fillMaxWidth()
@@ -49,13 +66,24 @@ fun OptionTile(icon: ImageVector, title: String, description: String, selected: 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBackground),
+            Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(CornerSize(corner)))
+                .background(iconBackground),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = iconForeground) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                color = shade.text
+            )
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = shade.textSecondary
+            )
         }
         RadioButton(selected = selected, onClick = onClick)
     }

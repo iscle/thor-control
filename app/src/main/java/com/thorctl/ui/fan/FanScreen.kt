@@ -1,13 +1,11 @@
 package com.thorctl.ui.fan
 
-import com.thorctl.ui.components.DaemonPage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,9 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thorctl.domain.model.TemperatureUnit
 import com.thorctl.ui.components.ConnectedChoice
-import com.thorctl.ui.components.DetailHeader
+import com.thorctl.ui.components.DaemonPage
 import com.thorctl.ui.components.FanGlyph
-import com.thorctl.ui.components.PagePadding
 import com.thorctl.ui.format.Format
 import com.thorctl.ui.theme.qsColors
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -74,7 +71,11 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                         .padding(start = 8.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FanGlyph(stats.fanPercent / 100f, colors.onTertiaryContainer, Modifier.size(20.dp))
+                    FanGlyph(
+                        stats.fanPercent / 100f,
+                        colors.onTertiaryContainer,
+                        Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "${Format.temperature(stats.fanTemp, content.unit)} · ${stats.fanPercent}%",
@@ -97,7 +98,11 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                 ToggleButton(
                     checked = checked,
                     onCheckedChange = { viewModel.select(profile.id) },
-                    shapes = ToggleButtonShapes(ToggleButtonDefaults.shape, ToggleButtonDefaults.pressedShape, ToggleButtonDefaults.checkedShape),
+                    shapes = ToggleButtonShapes(
+                        ToggleButtonDefaults.shape,
+                        ToggleButtonDefaults.pressedShape,
+                        ToggleButtonDefaults.checkedShape
+                    ),
                     modifier = Modifier.height(44.dp),
                 ) {
                     if (checked) {
@@ -108,7 +113,10 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                 }
             }
             item(key = "_new") {
-                OutlinedButton(onClick = { viewModel.createCustom(active) }, modifier = Modifier.height(44.dp)) {
+                OutlinedButton(
+                    onClick = { viewModel.createCustom(active) },
+                    modifier = Modifier.height(44.dp)
+                ) {
                     Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("New")
@@ -133,14 +141,27 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                 onCommit = viewModel::save,
             )
             if (draft.isAuto) {
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("System control", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                    Text("LineageOS thermal zones drive the fan", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                Column(
+                    Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "System control",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSurface
+                    )
+                    Text(
+                        "LineageOS thermal zones drive the fan",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant
+                    )
                 }
             }
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier
+            .fillMaxWidth()
+            .height(44.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 if (draft.isBuiltin) Format.fanDescription(draft) else "Drag the points to shape the curve",
                 style = MaterialTheme.typography.bodyMedium,

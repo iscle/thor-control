@@ -1,8 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyboardTop
-import com.thorctl.ui.keyboard.KeyboardColors.KeyboardBottom
-import com.thorctl.ui.keyboard.KeyboardMetrics.INLINE_KEYBOARD_HEIGHT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -18,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.thorctl.platform.keyboard.KeyboardUi
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardBottom
+import com.thorctl.ui.keyboard.KeyboardColors.KeyboardTop
+import com.thorctl.ui.keyboard.KeyboardMetrics.INLINE_KEYBOARD_HEIGHT
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -45,14 +44,23 @@ fun InlineKeyboard(uiState: StateFlow<KeyboardUi>) {
         popup.panelWidth = constraints.maxWidth.toFloat()
         Column(Modifier.fillMaxSize()) {
             Row(
-                Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 2.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Pill(Icons.Rounded.ContentPaste, "Paste") { actions.paste() }
                 Spacer(Modifier.weight(1f))
                 HideButton()
             }
-            Keys(state, popup, Modifier.fillMaxWidth().weight(1f).padding(start = 2.dp, end = 2.dp, bottom = 3.dp))
+            Keys(
+                state,
+                popup,
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(start = 2.dp, end = 2.dp, bottom = 3.dp)
+            )
         }
         AccentPopup(popup)
     }

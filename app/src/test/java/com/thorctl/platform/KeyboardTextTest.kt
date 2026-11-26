@@ -15,7 +15,10 @@ class KeyboardTextTest {
     @Test
     fun wordsBackFromTheCursor() {
         assertEquals(listOf(5, 11), KeyboardText.wordsBack("hello world"))
-        assertEquals(listOf(7, 13), KeyboardText.wordsBack("hello world  ")) // spaces go with the word before them
+        assertEquals(
+            listOf(7, 13),
+            KeyboardText.wordsBack("hello world  ")
+        ) // spaces go with the word before them
         assertEquals(emptyList(), KeyboardText.wordsBack(""))
         assertEquals(listOf(3), KeyboardText.wordsBack("one two", max = 1))
     }
@@ -36,7 +39,12 @@ class KeyboardTextTest {
         assertTrue(locked.caps)
         assertFalse(locked.shift)
         assertEquals(KeyboardUi(), KeyboardText.shifted(locked, 10_000))
-        assertFalse(KeyboardText.shifted(shifted, 10_000).shift) // a slow second tap just releases it
+        assertFalse(
+            KeyboardText.shifted(
+                shifted,
+                10_000
+            ).shift
+        ) // a slow second tap just releases it
     }
 
     @Test
@@ -44,7 +52,10 @@ class KeyboardTextTest {
         assertEquals("A", KeyboardText.output(KeyboardUi(shift = true), "a"))
         assertEquals("A", KeyboardText.output(KeyboardUi(caps = true), "a"))
         assertEquals("a", KeyboardText.output(KeyboardUi(), "a"))
-        assertEquals("ä", KeyboardText.output(KeyboardUi(layer = KeyboardLayer.SYMBOLS, shift = true), "ä"))
+        assertEquals(
+            "ä",
+            KeyboardText.output(KeyboardUi(layer = KeyboardLayer.SYMBOLS, shift = true), "ä")
+        )
     }
 
     @Test
@@ -52,8 +63,20 @@ class KeyboardTextTest {
         val text = InputType.TYPE_CLASS_TEXT
         assertEquals(EnterKey.SEARCH, KeyboardText.enterFor(text, EditorInfo.IME_ACTION_SEARCH))
         assertEquals(EnterKey.SEND, KeyboardText.enterFor(text, EditorInfo.IME_ACTION_SEND))
-        assertEquals(EnterKey.RETURN, KeyboardText.enterFor(text or InputType.TYPE_TEXT_FLAG_MULTI_LINE, EditorInfo.IME_ACTION_SEND))
-        assertEquals(EnterKey.RETURN, KeyboardText.enterFor(text, EditorInfo.IME_ACTION_GO or EditorInfo.IME_FLAG_NO_ENTER_ACTION))
+        assertEquals(
+            EnterKey.RETURN,
+            KeyboardText.enterFor(
+                text or InputType.TYPE_TEXT_FLAG_MULTI_LINE,
+                EditorInfo.IME_ACTION_SEND
+            )
+        )
+        assertEquals(
+            EnterKey.RETURN,
+            KeyboardText.enterFor(
+                text,
+                EditorInfo.IME_ACTION_GO or EditorInfo.IME_FLAG_NO_ENTER_ACTION
+            )
+        )
     }
 
     @Test
@@ -72,10 +95,19 @@ class KeyboardTextTest {
 
     @Test
     fun previewIsOneLineAndMasksPasswords() {
-        assertEquals(Triple("second", "", "third"), KeyboardText.preview("first\nsecond", "", "third\nfourth", password = false))
-        assertEquals(Triple("•••", "••", "•"), KeyboardText.preview("abc", "de", "f", password = true))
+        assertEquals(
+            Triple("second", "", "third"),
+            KeyboardText.preview("first\nsecond", "", "third\nfourth", password = false)
+        )
+        assertEquals(
+            Triple("•••", "••", "•"),
+            KeyboardText.preview("abc", "de", "f", password = true)
+        )
         val long = "x".repeat(50)
-        assertEquals("x".repeat(18) + " … " + "x".repeat(18), KeyboardText.preview("", long, "", password = false).second)
+        assertEquals(
+            "x".repeat(18) + " … " + "x".repeat(18),
+            KeyboardText.preview("", long, "", password = false).second
+        )
     }
 
     @Test

@@ -138,7 +138,8 @@ class MenuWindow(
 
     private fun tryAdd(display: Display, layer: OverlayLayer): Boolean {
         val overlayContext = windows.contextFor(display, layer) ?: return false
-        val blur = overlayContext.context.getSystemService(WindowManager::class.java).isCrossWindowBlurEnabled
+        val blur =
+            overlayContext.context.getSystemService(WindowManager::class.java).isCrossWindowBlurEnabled
         val menuDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
         val window = menuDialog.window ?: return false
         window.setType(overlayContext.type)
@@ -149,12 +150,13 @@ class MenuWindow(
         // Not focusable: tapping the menu must not steal window focus from the game on top.
         window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
         window.attributes = window.attributes.apply {
             title = "ThorControlMenu"
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
             windowAnimations = 0
         }
@@ -174,7 +176,13 @@ class MenuWindow(
                 )
             }
         }
-        menuDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        menuDialog.setContentView(
+            composeView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
         menuDialog.setCancelable(false)
         return try {
             menuDialog.show()
@@ -221,9 +229,12 @@ class MenuWindow(
     /** The full app, on the top screen. */
     private fun openApp() {
         hide()
-        val intent = Intent().setClassName(context, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent =
+            Intent().setClassName(context, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val options = ActivityOptions.makeBasic()
-        daemon.status.value.ifConnected { state -> if (state.topDisplayId >= 0) options.launchDisplayId = state.topDisplayId }
+        daemon.status.value.ifConnected { state ->
+            if (state.topDisplayId >= 0) options.launchDisplayId = state.topDisplayId
+        }
         try {
             context.startActivity(intent, options.toBundle())
         } catch (e: Exception) {

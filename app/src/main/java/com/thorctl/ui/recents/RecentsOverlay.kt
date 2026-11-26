@@ -101,7 +101,16 @@ class RecentsOverlay(
             if (sessionId != session) return@launch
             cards.value = built
             val intro = if (event.fromHome) Intro.FROM_HOME else Intro.FROM_APP
-            if (!show(display, Session(sessionId, intro, startIndex(built, event.fromHome, event.originTask), event.originTask))) {
+            if (!show(
+                    display,
+                    Session(
+                        sessionId,
+                        intro,
+                        startIndex(built, event.fromHome, event.originTask),
+                        event.originTask
+                    )
+                )
+            ) {
                 daemon.send(DaemonCommand.RecentsClose)
             }
         }
@@ -122,7 +131,13 @@ class RecentsOverlay(
                 running = task.running,
             )
         }
-        return appCards.reversed() + Card(Card.HOME_KEY, "", "Home", image = decode(event.home), isHome = true)
+        return appCards.reversed() + Card(
+            Card.HOME_KEY,
+            "",
+            "Home",
+            image = decode(event.home),
+            isHome = true
+        )
     }
 
     /** Home pressed inside an app: the zoom to the home screen. */
@@ -138,7 +153,13 @@ class RecentsOverlay(
             val built = withContext(Dispatchers.Default) {
                 listOf(
                     Card(Card.PRESS_APP_KEY, "", "", image = decode(event.appScreen)),
-                    Card(Card.HOME_KEY, "", "Home", image = decode(event.homeScreen), isHome = true),
+                    Card(
+                        Card.HOME_KEY,
+                        "",
+                        "Home",
+                        image = decode(event.homeScreen),
+                        isHome = true
+                    ),
                 )
             }
             if (sessionId != session) return@launch
@@ -172,7 +193,8 @@ class RecentsOverlay(
     private fun decode(jpeg: Jpeg?): ImageBitmap? {
         if (jpeg == null) return null
         return try {
-            val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
+            val options =
+                BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
             jpeg.open().use { BitmapFactory.decodeStream(it, null, options) }?.asImageBitmap()
         } catch (e: Exception) {
             Timber.w(e, "decode failed")
@@ -200,13 +222,14 @@ class RecentsOverlay(
         // Never focusable: the app underneath keeps focus (and keeps running); buttons come from the daemon.
         window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
         window.attributes = window.attributes.apply {
             title = "ThorControlRecents"
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
             windowAnimations = 0
         }
@@ -218,7 +241,12 @@ class RecentsOverlay(
         overlayOwner.attach(composeView)
         composeView.setContent {
             ThorTheme {
-                RecentsStage(session = stageSession, cards = cards, keys = keys, actions = Actions(stageSession.id))
+                RecentsStage(
+                    session = stageSession,
+                    cards = cards,
+                    keys = keys,
+                    actions = Actions(stageSession.id)
+                )
             }
         }
         // The first frame is on screen: only now may the app underneath change.
@@ -228,7 +256,13 @@ class RecentsOverlay(
                 if (homeGoPending) sendHomeGo()
             }, 24)
         }
-        recentsDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        recentsDialog.setContentView(
+            composeView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
         recentsDialog.setCancelable(false)
         return try {
             recentsDialog.show()
@@ -259,7 +293,8 @@ class RecentsOverlay(
         main.postDelayed({
             if (sessionId != session) return@postDelayed
             val shownView = view ?: return@postDelayed
-            shownView.animate().alpha(0f).setDuration(140).withEndAction { if (sessionId == session) removeNow() }.start()
+            shownView.animate().alpha(0f).setDuration(140)
+                .withEndAction { if (sessionId == session) removeNow() }.start()
         }, settleMs)
     }
 

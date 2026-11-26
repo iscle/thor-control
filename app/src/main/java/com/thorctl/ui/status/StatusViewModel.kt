@@ -1,9 +1,9 @@
 package com.thorctl.ui.status
 
-import com.thorctl.domain.model.DaemonStatus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thorctl.di.AppFlags
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.accessibility.AccessibilityConnection
 import com.thorctl.platform.overlay.OverlayMenu
@@ -28,8 +28,18 @@ class StatusViewModel(
 ) : ViewModel() {
     val uiState: StateFlow<StatusUiState> =
         combine(daemon.status, accessibility.bound, menu.shownAs) { status, bound, layer ->
-            StatusUiState(status is DaemonStatus.Connected, bound, layer, flags.system, flags.persistent)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, StatusUiState(systemApp = flags.system, persistent = flags.persistent))
+            StatusUiState(
+                status is DaemonStatus.Connected,
+                bound,
+                layer,
+                flags.system,
+                flags.persistent
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            StatusUiState(systemApp = flags.system, persistent = flags.persistent)
+        )
 
     fun showMenu() = menu.show()
 }

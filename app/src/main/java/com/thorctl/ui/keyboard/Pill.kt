@@ -1,10 +1,5 @@
 package com.thorctl.ui.keyboard
 
-import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
-import com.thorctl.ui.keyboard.KeyboardColors.KeyPressed
-import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
-import com.thorctl.ui.keyboard.KeyboardColors.Accent
-import com.thorctl.ui.keyboard.KeyboardColors.AccentDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Row
@@ -32,6 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thorctl.ui.components.LocalHaptics
+import com.thorctl.ui.keyboard.KeyboardColors.Accent
+import com.thorctl.ui.keyboard.KeyboardColors.AccentDeep
+import com.thorctl.ui.keyboard.KeyboardColors.KeyFill
+import com.thorctl.ui.keyboard.KeyboardColors.KeyInk
+import com.thorctl.ui.keyboard.KeyboardColors.KeyPressed
 
 @Composable
 internal fun Pill(icon: ImageVector, label: String, active: Boolean = false, onTap: () -> Unit) {
@@ -65,7 +65,13 @@ internal fun Pill(icon: ImageVector, label: String, active: Boolean = false, onT
     ) {
         Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text(label, color = ink, fontSize = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp)
+        Text(
+            label,
+            color = ink,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.5.sp
+        )
     }
 }
 
