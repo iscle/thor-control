@@ -1,5 +1,11 @@
 package com.thorctl.app
 
+import dev.zacsweers.metrox.android.ContentProviderKey
+import com.thorctl.data.daemon.DaemonConnection
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.AppScope
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.database.Cursor
@@ -13,24 +19,26 @@ import timber.log.Timber
  * Where the root daemon hands over its binder ([ThorIpc.METHOD_OFFER], root only) and where the
  * debug CLI asks for it ([ThorIpc.METHOD_GET], root or shell). It holds no data.
  */
-class DaemonBinderProvider : ContentProvider() {
+@Inject
+@ContentProviderKey(DaemonBinderProvider::class)
+@ContributesIntoMap(AppScope::class, binding = binding<ContentProvider>())
+class DaemonBinderProvider(private val connection: DaemonConnection) : ContentProvider() {
     override fun onCreate(): Boolean = true
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         val uid = Binder.getCallingUid()
-        val context = context ?: return null
         return when (method) {
             ThorIpc.METHOD_OFFER -> {
                 if (uid != ThorIpc.UID_ROOT) {
                     Timber.w("binder offered by uid $uid: ignored")
                     return null
                 }
-                extras?.getBinder(ThorIpc.KEY_BINDER)?.let { context.graph.daemonConnection.onDaemonBinder(it) }
+                extras?.getBinder(ThorIpc.KEY_BINDER)?.let { connection.onDaemonBinder(it) }
                 null
             }
             ThorIpc.METHOD_GET -> {
                 if (uid != ThorIpc.UID_ROOT && uid != ThorIpc.UID_SHELL) return null
-                Bundle().apply { putBinder(ThorIpc.KEY_BINDER, context.graph.daemonConnection.currentBinder()) }
+                Bundle().apply { putBinder(ThorIpc.KEY_BINDER, connection.currentBinder()) }
             }
             else -> null
         }

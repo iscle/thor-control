@@ -1,21 +1,26 @@
 package com.thorctl.app
 
+import dev.zacsweers.metrox.android.ServiceKey
+import com.thorctl.platform.accessibility.AccessibilityConnection
+import android.app.Service
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.AppScope
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
-
-/*
- * Android components, at the names Android settings and the Magisk scripts know them by. They
- * only hand over to the graph.
- */
 
 /**
  * Exists only to give overlays the accessibility overlay window layer. It requests no key
  * filtering and no window content, so it never sits in the input path of games.
  */
-class ThorAccessibilityService : AccessibilityService() {
+@Inject
+@ServiceKey(ThorAccessibilityService::class)
+@ContributesIntoMap(AppScope::class, binding = binding<Service>())
+class ThorAccessibilityService(private val accessibility: AccessibilityConnection) : AccessibilityService() {
     override fun onServiceConnected() {
-        graph.accessibility.onConnected(this)
+        accessibility.onConnected(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -23,12 +28,12 @@ class ThorAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: Intent?): Boolean {
-        graph.accessibility.onDisconnected(this)
+        accessibility.onDisconnected(this)
         return false
     }
 
     override fun onDestroy() {
-        graph.accessibility.onDisconnected(this)
+        accessibility.onDisconnected(this)
         super.onDestroy()
     }
 }

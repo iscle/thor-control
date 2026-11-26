@@ -19,6 +19,8 @@
     <!-- persistent is honoured because the Magisk module installs this as a system app:
          the process runs at PERSISTENT_PROC_ADJ, is never chosen by lmkd and is restarted
          immediately by ActivityManager if it ever dies. -->
+    <!-- Components are created by Metro's AppComponentFactory (see ThorApp) with constructor
+         injection, so most have no default constructor: hence tools:ignore="Instantiatable". -->
     <application
         android:name=".app.ThorApp"
         android:allowBackup="false"
@@ -31,6 +33,7 @@
 
         <activity
             android:name=".app.MainActivity"
+            tools:ignore="Instantiatable"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density|uiMode">
@@ -42,6 +45,7 @@
 
         <service
             android:name=".app.ThorAccessibilityService"
+            tools:ignore="Instantiatable"
             android:exported="true"
             android:label="@string/a11y_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -56,6 +60,7 @@
         <!-- Keyboard: the system talks to this service; its keys live on the bottom screen. -->
         <service
             android:name=".app.ThorKeyboard"
+            tools:ignore="Instantiatable"
             android:exported="true"
             android:label="@string/keyboard_label"
             android:permission="android.permission.BIND_INPUT_METHOD">
@@ -69,6 +74,7 @@
 
         <receiver
             android:name=".app.CommandReceiver"
+            tools:ignore="Instantiatable"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.thorctl.action.TOGGLE_MENU" />
@@ -82,7 +88,7 @@
             android:name=".app.DaemonBinderProvider"
             android:authorities="com.thorctl.ipc"
             android:exported="true"
-            tools:ignore="ExportedContentProvider" />
+            tools:ignore="ExportedContentProvider,Instantiatable" />
 
         <receiver
             android:name=".app.BootReceiver"

@@ -1,5 +1,10 @@
 package com.thorctl.app
 
+import dev.zacsweers.metrox.android.ActivityKey
+import android.app.Activity
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.AppScope
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
@@ -13,13 +18,11 @@ import dev.zacsweers.metro.Inject
 import timber.log.Timber
 
 /** The app's own screen (status and the menu, on the top screen). */
-class MainActivity : ComponentActivity() {
-    @Inject lateinit var content: ThorContent
-
-    @Inject lateinit var daemon: DaemonRepository
-
+@Inject
+@ActivityKey(MainActivity::class)
+@ContributesIntoMap(AppScope::class, binding = binding<Activity>())
+class MainActivity(private val content: ThorContent, private val daemon: DaemonRepository) : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        graph.inject(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // Same look as the shade: wallpaper behind, blurred.

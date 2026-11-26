@@ -1,5 +1,10 @@
 package com.thorctl.app
 
+import dev.zacsweers.metrox.android.ServiceKey
+import android.app.Service
+import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.AppScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -33,13 +38,14 @@ import dev.zacsweers.metro.Inject
  * the side), the keys appear in this window instead, as an ordinary keyboard under the app. Both
  * live in this persistent process, so keys go straight into [getCurrentInputConnection].
  */
-class ThorKeyboard : InputMethodService() {
-    @Inject lateinit var editor: KeyboardEditor
-
-    @Inject lateinit var content: ThorContent
-
-    @Inject lateinit var keyboardWindow: KeyboardWindow
-
+@Inject
+@ServiceKey(ThorKeyboard::class)
+@ContributesIntoMap(AppScope::class, binding = binding<Service>())
+class ThorKeyboard(
+    private val editor: KeyboardEditor,
+    private val content: ThorContent,
+    private val keyboardWindow: KeyboardWindow,
+) : InputMethodService() {
     private var root: FrameLayout? = null
     private var inlineView: ComposeView? = null
     private var owner: OverlayOwner? = null
@@ -61,7 +67,6 @@ class ThorKeyboard : InputMethodService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
-        graph.inject(this)
         super.onCreate()
         editor.attach(host, serviceScope)
         keyboardWindow.attach(serviceScope)
