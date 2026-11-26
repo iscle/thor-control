@@ -1,5 +1,6 @@
 package com.thorctl.ui.game
 
+import com.thorctl.ui.components.DaemonPage
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,68 +36,70 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun GameScreen(onBack: () -> Unit, viewModel: GameViewModel = metroViewModel()) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val cs = MaterialTheme.colorScheme
-    val g = ui.game
-    val o = g.options
-    val enabled = ui.enabled
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PagePadding)) {
-        DetailHeader("Game mode", onBack) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = MaterialTheme.colorScheme
+    DaemonPage(
+        title = "Game mode",
+        onBack = onBack,
+        state = state,
+        scrollable = true,
+        trailing = { content ->
             Switch(
-                checked = g.enabled,
+                checked = content.game.enabled,
                 onCheckedChange = viewModel::setEnabled,
-                enabled = enabled,
                 thumbContent = {
-                    Icon(if (g.enabled) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize))
+                    Icon(if (content.game.enabled) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize))
                 },
             )
-        }
+        },
+    ) { content ->
+        val game = content.game
+        val options = game.options
         Spacer(Modifier.height(4.dp))
         Text(
             "Gives the game on the top screen the whole device. Turn it on before or during a game, or press AYN + Y.",
             style = MaterialTheme.typography.bodyMedium,
-            color = cs.onSurfaceVariant,
+            color = colors.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
 
-        val (title, desc) = ui.status
-        StatusTile(Icons.Rounded.RocketLaunch, title, desc, active = g.enabled && g.pkg.isNotEmpty())
+        val (title, description) = content.status
+        StatusTile(Icons.Rounded.RocketLaunch, title, description, active = game.enabled && game.packageName.isNotEmpty())
 
         Spacer(Modifier.height(16.dp))
-        Text("While a game runs", style = MaterialTheme.typography.titleSmall, color = cs.primary)
+        Text("While a game runs", style = MaterialTheme.typography.titleSmall, color = colors.primary)
         Spacer(Modifier.height(8.dp))
         SwitchTile(
             Icons.Rounded.CleaningServices, "Close other apps",
             "Closes every other app when the game starts and keeps background apps closed",
-            o.closeApps, enabled,
+            options.closeApps, enabled = true,
         ) { on -> viewModel.updateOptions { it.copy(closeApps = on) } }
         Spacer(Modifier.height(8.dp))
         SwitchTile(
             Icons.Rounded.DesktopAccessDisabled, "Turn off the bottom screen",
             "While the game is in front, so the launcher there frees its memory. AYN turns it back on",
-            o.bottomOff, enabled,
+            options.bottomOff, enabled = true,
         ) { on -> viewModel.updateOptions { it.copy(bottomOff = on) } }
         Spacer(Modifier.height(8.dp))
-        SwitchTile(Icons.Rounded.Memory, "CPU at full speed", "Every core held at its top clock", o.cpu, enabled) { on ->
+        SwitchTile(Icons.Rounded.Memory, "CPU at full speed", "Every core held at its top clock", options.cpu, enabled = true) { on ->
             viewModel.updateOptions { it.copy(cpu = on) }
         }
         Spacer(Modifier.height(8.dp))
-        SwitchTile(Icons.Rounded.DeveloperBoard, "GPU at full speed", "GPU held at its top clock", o.gpu, enabled) { on ->
+        SwitchTile(Icons.Rounded.DeveloperBoard, "GPU at full speed", "GPU held at its top clock", options.gpu, enabled = true) { on ->
             viewModel.updateOptions { it.copy(gpu = on) }
         }
         Spacer(Modifier.height(16.dp))
-        Text("Fan while gaming", style = MaterialTheme.typography.titleSmall, color = cs.primary)
+        Text("Fan while gaming", style = MaterialTheme.typography.titleSmall, color = colors.primary)
         Spacer(Modifier.height(8.dp))
-        val fanIds = GameViewModel.FAN_CHOICES
-        ConnectedChoice(listOf("Unchanged", "Sport", "Max"), selected = fanIds.indexOf(o.fan).coerceAtLeast(0), enabled = enabled) { i ->
-            viewModel.updateOptions { it.copy(fan = fanIds[i]) }
+        val fanChoices = GameViewModel.FAN_CHOICES
+        ConnectedChoice(listOf("Unchanged", "Sport", "Max"), selected = fanChoices.indexOf(options.fan).coerceAtLeast(0)) { index ->
+            viewModel.updateOptions { it.copy(fan = fanChoices[index]) }
         }
         Spacer(Modifier.height(12.dp))
         Text(
             "Clocks still drop if the chip runs too hot. Everything goes back to normal while the screen is off and when game mode ends.",
             style = MaterialTheme.typography.bodySmall,
-            color = cs.onSurfaceVariant,
+            color = colors.onSurfaceVariant,
         )
     }
 }

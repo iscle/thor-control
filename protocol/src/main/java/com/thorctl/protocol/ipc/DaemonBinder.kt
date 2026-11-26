@@ -16,8 +16,8 @@ class DaemonBinder(
 ) : IThorDaemon.Stub() {
     private fun allowed(): Boolean = endpoint.isAllowed(callingUid())
 
-    private fun command(c: DaemonCommand?) {
-        if (c != null && allowed()) endpoint.handle(c)
+    private fun command(command: DaemonCommand?) {
+        if (command != null && allowed()) endpoint.handle(command)
     }
 
     override fun getVersion(): Int = IThorDaemon.VERSION

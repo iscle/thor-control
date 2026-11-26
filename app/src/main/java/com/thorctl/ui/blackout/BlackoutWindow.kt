@@ -1,5 +1,9 @@
 package com.thorctl.ui.blackout
 
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.thorctl.domain.model.DaemonStatus
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.view.View
@@ -32,12 +36,18 @@ class BlackoutWindow(
     private var view: View? = null
     private var wm: WindowManager? = null
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun start() {
         scope.launch {
             // Every state push, not only changes: a show that failed (no overlay layer yet) is retried.
-            daemon.state
-                .map { s -> s?.gamepad?.let { it.on && it.dark } == true }
-                .collect { if (it) show() else hide() }
+            daemon.status
+                .flatMapLatest { status ->
+                    when (status) {
+                        DaemonStatus.Disconnected -> flowOf(false)
+                        is DaemonStatus.Connected -> status.state.map { it.gamepad.on && it.gamepad.dark }
+                    }
+                }
+                .collect { dark -> if (dark) show() else hide() }
         }
     }
 

@@ -23,9 +23,9 @@ import com.thorctl.protocol.model.LedState
 
 /** Ring split in four segments showing the current stick light colors. */
 @Composable
-fun LedRingGlyph(leds: LedState?, color: Color, modifier: Modifier = Modifier.size(26.dp)) {
+fun LedRingGlyph(leds: LedState, color: Color, modifier: Modifier = Modifier.size(26.dp)) {
     var hueShift by remember { mutableFloatStateOf(0f) }
-    val rainbow = leds != null && leds.enabled && leds.mode == LedMode.RAINBOW
+    val rainbow = leds.enabled && leds.mode == LedMode.RAINBOW
     LaunchedEffect(rainbow) {
         if (!rainbow) return@LaunchedEffect
         var last = 0L
@@ -42,7 +42,7 @@ fun LedRingGlyph(leds: LedState?, color: Color, modifier: Modifier = Modifier.si
         val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
         for (i in 0 until 4) {
             val c = when {
-                leds == null || !leds.enabled -> color.copy(alpha = 0.45f)
+                !leds.enabled -> color.copy(alpha = 0.45f)
                 rainbow -> Color.hsv((hueShift + i * 90f) % 360f, 0.85f, 1f)
                 else -> Color(0xFF000000.toInt() or (if (i < 2) leds.left else leds.rightColor))
             }

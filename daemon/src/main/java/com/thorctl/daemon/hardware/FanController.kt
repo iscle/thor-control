@@ -150,16 +150,16 @@ class FanController(private val sys: Sys, private val clock: Clock) {
         // fall slowly, so the fan neither bursts on spikes nor hunts around a curve knee.
         filtered = if (filtered == 0f) t else filtered + (t - filtered) * (if (t >= filtered) 0.35f else 0.12f)
         controlTemp = filtered
-        var pct = profile.percentAt(filtered)
+        var percent = profile.percentAt(filtered)
 
         // Charging heat: the stock zones spin the fan for a hot USB port, keep that behaviour.
         val usbT = readMax(usbSensors)
-        if (usbT >= 45f) pct = max(pct, 40f) else if (usbT >= 43f) pct = max(pct, 20f)
+        if (usbT >= 45f) percent = max(percent, 40f) else if (usbT >= 43f) percent = max(percent, 20f)
 
         // Safety net independent of the selected curve.
-        if (filtered >= SAFETY_TEMP || t >= SAFETY_TEMP + 8f) pct = 100f
+        if (filtered >= SAFETY_TEMP || t >= SAFETY_TEMP + 8f) percent = 100f
 
-        var desired = (pct * 2.55f).roundToInt().coerceIn(0, 255)
+        var desired = (percent * 2.55f).roundToInt().coerceIn(0, 255)
         if (desired in 1 until MIN_SPIN_PWM) desired = MIN_SPIN_PWM
         var target = desired
         if (target < currentPwm) target = max(target, currentPwm - MAX_STEP_DOWN)

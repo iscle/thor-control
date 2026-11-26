@@ -37,9 +37,9 @@ class FanProfileTest {
 
     @Test
     fun stateFallsBackToAutoForAnUnknownProfile() {
-        val s = DaemonState("gone", FanProfile.BUILTINS, 0.5f, 0.5f, ControllerTarget.FREE, LedState(), true, 0, 1, true)
-        assertEquals(FanProfile.AUTO_ID, s.activeProfile.id)
-        assertEquals(FanProfile.AUTO_ID, s.runningProfile.id)
-        assertEquals("max", s.copy(fanOverride = "max").runningProfile.id)
+        val state = DaemonState("gone", FanProfile.BUILTINS, 0.5f, 0.5f, ControllerTarget.FREE, LedState(), true, 0, 1, true)
+        assertEquals(FanProfile.AUTO_ID, state.activeProfile.id)
+        assertEquals(FanProfile.AUTO_ID, state.runningProfile.id)
+        assertEquals("max", state.copy(fanOverride = "max").runningProfile.id)
     }
 }

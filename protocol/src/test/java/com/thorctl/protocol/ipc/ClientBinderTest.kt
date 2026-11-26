@@ -14,7 +14,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
-/** The daemon's [ClientEventSender] calling straight into the app's [ClientBinder]. */
+/** The daemon's [ClientEventSender] calling straight into the appScreen's [ClientBinder]. */
 class ClientBinderTest {
     private class TestJpeg(val name: String) : Jpeg {
         override fun open() = ByteArrayInputStream(name.toByteArray())
@@ -26,7 +26,7 @@ class ClientBinderTest {
     private class Pipes : JpegExporter, JpegImporter {
         private val sent = HashMap<ParcelFileDescriptor, Jpeg>()
 
-        override fun export(jpeg: Jpeg?): ParcelFileDescriptor? = jpeg?.let { j -> ParcelFileDescriptor(null).also { sent[it] = j } }
+        override fun export(jpeg: Jpeg?): ParcelFileDescriptor? = jpeg?.let { jpeg -> ParcelFileDescriptor(null).also { sent[it] = jpeg } }
 
         override fun import(pfd: ParcelFileDescriptor?): Jpeg? = pfd?.let { sent.getValue(it) }
     }
@@ -35,9 +35,9 @@ class ClientBinderTest {
     private val pipes = Pipes()
     private val sender = ClientEventSender(ClientBinder(received::add, pipes), pipes)
 
-    private fun roundTrip(e: DaemonEvent): DaemonEvent {
+    private fun roundTrip(event: DaemonEvent): DaemonEvent {
         received.clear()
-        sender.send(e)
+        sender.send(event)
         return received.single()
     }
 
@@ -60,28 +60,28 @@ class ClientBinderTest {
     fun recentsCarryTheirImages() {
         val hero = TestJpeg("hero")
         val thumb = TestJpeg("thumb")
-        val e = DaemonEvent.RecentsOpened(
+        val event = DaemonEvent.RecentsOpened(
             displayId = 1, fromHome = false, originTask = 5, hero = hero, home = null,
             tasks = listOf(RecentTask(5, "com.a", 1, true, true, null), RecentTask(6, "com.b", -1, false, false, thumb)),
         )
-        val got = assertIs<DaemonEvent.RecentsOpened>(roundTrip(e))
+        val got = assertIs<DaemonEvent.RecentsOpened>(roundTrip(event))
         assertSame(hero, got.hero)
         assertNull(got.home)
         assertEquals(listOf(null, thumb), got.tasks.map { it.thumb })
-        assertEquals(e.tasks.map { it.copy(thumb = null) }, got.tasks.map { it.copy(thumb = null) })
+        assertEquals(event.tasks.map { it.copy(thumb = null) }, got.tasks.map { it.copy(thumb = null) })
     }
 
     @Test
     fun homeAnimationAndThumbnails() {
-        val app = TestJpeg("app")
-        val home = TestJpeg("home")
-        assertEquals(DaemonEvent.HomeAnimation(3, 0, app, home), roundTrip(DaemonEvent.HomeAnimation(3, 0, app, home)))
-        assertEquals(DaemonEvent.RecentsThumb(9, app), roundTrip(DaemonEvent.RecentsThumb(9, app)))
+        val appScreen = TestJpeg("appScreen")
+        val homeScreen = TestJpeg("homeScreen")
+        assertEquals(DaemonEvent.HomeAnimation(3, 0, appScreen, homeScreen), roundTrip(DaemonEvent.HomeAnimation(3, 0, appScreen, homeScreen)))
+        assertEquals(DaemonEvent.RecentsThumb(9, appScreen), roundTrip(DaemonEvent.RecentsThumb(9, appScreen)))
     }
 
     @Test
     fun gamepadReportsAreRawBytes() {
-        val r = byteArrayOf(8, 0, 0x40, -128, -128, -128, -128, 0, 0, 0)
-        assertContentEquals(r, assertIs<DaemonEvent.GamepadReport>(roundTrip(DaemonEvent.GamepadReport(r))).report)
+        val report = byteArrayOf(8, 0, 0x40, -128, -128, -128, -128, 0, 0, 0)
+        assertContentEquals(report, assertIs<DaemonEvent.GamepadReport>(roundTrip(DaemonEvent.GamepadReport(report))).report)
     }
 }

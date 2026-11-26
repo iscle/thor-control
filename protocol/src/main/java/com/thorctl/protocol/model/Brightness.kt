@@ -10,22 +10,24 @@ import kotlin.math.sqrt
  * slider position 0..1 <-> linear brightness 0..1.
  */
 object BrightnessCurve {
-    private const val R = 0.5f
-    private const val A = 0.17883277f
-    private const val B = 0.28466892f
-    private const val C = 0.55991073f
-    private const val MIN = 0.004f
+    /** Where the curve turns from square-law to logarithmic (BT.2100 HLG, as SystemUI scales it). */
+    private const val KNEE = 0.5f
+    private const val HLG_A = 0.17883277f
+    private const val HLG_B = 0.28466892f
+    private const val HLG_C = 0.55991073f
+    /** The darkest the panels go: the slider never turns a screen off. */
+    private const val MIN_LINEAR = 0.004f
 
     fun toLinear(position: Float): Float {
-        val v = position.coerceIn(0f, 1f)
-        val ret = if (v <= R) (v / R) * (v / R) else exp((v - C) / A) + B
-        return (ret / 12f).coerceIn(MIN, 1f)
+        val clamped = position.coerceIn(0f, 1f)
+        val curve = if (clamped <= KNEE) (clamped / KNEE) * (clamped / KNEE) else exp((clamped - HLG_C) / HLG_A) + HLG_B
+        return (curve / 12f).coerceIn(MIN_LINEAR, 1f)
     }
 
     fun toPosition(linear: Float): Float {
-        val n = linear.coerceIn(0f, 1f) * 12f
-        val ret = if (n <= 1f) R * sqrt(n) else A * ln(n - B) + C
-        return ret.coerceIn(0f, 1f)
+        val scaled = linear.coerceIn(0f, 1f) * 12f
+        val curve = if (scaled <= 1f) KNEE * sqrt(scaled) else HLG_A * ln(scaled - HLG_B) + HLG_C
+        return curve.coerceIn(0f, 1f)
     }
 
     /**
@@ -33,7 +35,7 @@ object BrightnessCurve {
      * snapped to whole 5 % positions. Returns the new slider position, 0..1.
      */
     fun step(linear: Float, direction: Int): Float {
-        val pos = toPosition(linear)
-        return (((pos * 20f).roundToInt() + direction * 2).coerceIn(0, 20)) / 20f
+        val position = toPosition(linear)
+        return (((position * 20f).roundToInt() + direction * 2).coerceIn(0, 20)) / 20f
     }
 }

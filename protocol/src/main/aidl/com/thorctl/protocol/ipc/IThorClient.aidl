@@ -32,7 +32,7 @@ oneway interface IThorClient {
 
     void onRecentsClosed();
 
-    void onHomeAnimation(int seq, int displayId, in @nullable ParcelFileDescriptor app, in @nullable ParcelFileDescriptor home);
+    void onHomeAnimation(int seq, int displayId, in @nullable ParcelFileDescriptor appScreen, in @nullable ParcelFileDescriptor homeScreen);
 
     void onKeyboardKey(String key);
 

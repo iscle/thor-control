@@ -101,8 +101,8 @@ class DaemonActions(
             system.moveTaskToDisplay(task.taskId, dest)
             // With "follow focus" routing, input should follow the app to its new screen.
             if (router.target == ControllerTarget.FREE) system.focusTopTask(dest)
-            Timber.i("moved task ${task.taskId} (${task.pkg}) to display $dest")
-            notifier.hud(HudEvent.Moved(task.pkg.orEmpty(), to), dest)
+            Timber.i("moved task ${task.taskId} (${task.packageName}) to display $dest")
+            notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), dest)
         } catch (e: Throwable) {
             Timber.w(e, "move task failed")
         }

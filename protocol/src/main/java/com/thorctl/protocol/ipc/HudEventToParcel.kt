@@ -11,7 +11,7 @@ fun HudEvent.toParcel(displayId: Int) = HudParcel().also {
         }
         is HudEvent.Moved -> {
             it.kind = "moved"
-            it.pkg = pkg
+            it.packageName = packageName
             it.screen = to.wire
         }
         is HudEvent.Brightness -> {
@@ -26,7 +26,7 @@ fun HudEvent.toParcel(displayId: Int) = HudParcel().also {
         is HudEvent.Game -> {
             it.kind = "game"
             it.gameState = state.wire
-            it.pkg = pkg
+            it.packageName = packageName
             it.freedMb = freedMb
         }
         is HudEvent.Text -> {

@@ -4,11 +4,11 @@ import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
 
 fun LedStateParcel?.toModel(): LedState {
-    val d = LedState()
-    if (this == null) return d
+    val defaults = LedState()
+    if (this == null) return defaults
     return LedState(
         enabled = enabled,
-        mode = LedMode.fromWire(mode) ?: d.mode,
+        mode = LedMode.fromWire(mode) ?: defaults.mode,
         left = left and 0xFFFFFF,
         right = right and 0xFFFFFF,
         sync = sync,

@@ -1,5 +1,6 @@
 package com.thorctl.ui.lights
 
+import com.thorctl.ui.components.DaemonPage
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,42 +46,45 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun LightsScreen(onBack: () -> Unit, viewModel: LightsViewModel = metroViewModel()) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val leds = ui.leds
-
-    Column(Modifier.fillMaxSize().padding(PagePadding)) {
-        DetailHeader("Stick lights", onBack) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DaemonPage(
+        title = "Stick lights",
+        onBack = onBack,
+        state = state,
+        trailing = { content ->
             Switch(
-                checked = leds.enabled,
+                checked = content.leds.enabled,
                 onCheckedChange = viewModel::setEnabled,
                 thumbContent = {
-                    Icon(if (leds.enabled) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize))
+                    Icon(if (content.leds.enabled) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(SwitchDefaults.IconSize))
                 },
             )
-        }
+        },
+    ) { content ->
+        val leds = content.leds
         Spacer(Modifier.height(10.dp))
         val modes = listOf(LedMode.SOLID, LedMode.BREATHE, LedMode.RAINBOW)
-        ConnectedChoice(listOf("Solid", "Breathe", "Rainbow"), modes.indexOf(leds.mode).coerceAtLeast(0)) { viewModel.setMode(modes[it]) }
+        ConnectedChoice(listOf("Solid", "Breathe", "Rainbow"), modes.indexOf(leds.mode).coerceAtLeast(0)) { index -> viewModel.setMode(modes[index]) }
         Spacer(Modifier.height(8.dp))
-        ConnectedChoice(listOf("Both sticks", "Left", "Right"), ui.target.ordinal, enabled = ui.colorEditable) {
-            viewModel.setTarget(StickTarget.entries[it])
+        ConnectedChoice(listOf("Both sticks", "Left", "Right"), content.target.ordinal, enabled = content.colorEditable) { index ->
+            viewModel.setTarget(StickTarget.entries[index])
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Swatches.forEach { rgb ->
-                Swatch(rgb, selected = (ui.color and 0xFFFFFF) == rgb, enabled = ui.colorEditable) { viewModel.setColor(rgb) }
+                Swatch(rgb, selected = (content.color and 0xFFFFFF) == rgb, enabled = content.colorEditable) { viewModel.setColor(rgb) }
             }
         }
         Spacer(Modifier.height(10.dp))
-        val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV(0xFF000000.toInt() or ui.color, it) }
+        val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV(0xFF000000.toInt() or content.color, it) }
         QsSlider(
             value = hsv[0] / 360f,
-            onValueChange = { viewModel.setColor(android.graphics.Color.HSVToColor(floatArrayOf(it * 360f, 1f, 1f))) },
+            onValueChange = { hue -> viewModel.setColor(android.graphics.Color.HSVToColor(floatArrayOf(hue * 360f, 1f, 1f))) },
             onValueChangeFinished = {},
             icon = Icons.Rounded.Palette,
             label = "Color",
-            enabled = ui.colorEditable,
-            trackBrush = Brush.horizontalGradient((0..6).map { Color.hsv(it * 60f % 360f, 1f, 1f) }),
+            enabled = content.colorEditable,
+            trackBrush = Brush.horizontalGradient((0..6).map { step -> Color.hsv(step * 60f % 360f, 1f, 1f) }),
         )
         Spacer(Modifier.height(4.dp))
         QsSlider(
@@ -98,7 +102,7 @@ fun LightsScreen(onBack: () -> Unit, viewModel: LightsViewModel = metroViewModel
             onValueChangeFinished = {},
             icon = Icons.Rounded.Speed,
             label = "Effect speed",
-            enabled = ui.speedEditable,
+            enabled = content.speedEditable,
         )
     }
 }

@@ -1,6 +1,9 @@
 package com.thorctl.data
 
 import com.thorctl.data.daemon.BinderDaemonRepository
+import com.thorctl.domain.model.DaemonStatus
+import kotlin.test.assertIs
+import kotlin.test.assertSame
 import com.thorctl.protocol.ipc.DaemonBinder
 import com.thorctl.protocol.ipc.DaemonEndpoint
 import com.thorctl.protocol.ipc.IThorClient
@@ -55,10 +58,17 @@ class BinderDaemonRepositoryTest {
 
     @Test
     fun connectingRegistersAClient() {
-        assertFalse(repo.connected.value)
+        assertEquals(DaemonStatus.Disconnected, repo.status.value)
         connect()
-        assertTrue(repo.connected.value)
         assertTrue(endpoint.client != null)
+        // Connected once the daemon's first state and first reading are both in.
+        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        endpoint.client!!.onState(sampleState.toParcel())
+        assertEquals(DaemonStatus.Disconnected, repo.status.value)
+        endpoint.client!!.onStats(sampleStats.toParcel())
+        val connected = assertIs<DaemonStatus.Connected>(repo.status.value)
+        assertEquals(sampleState, connected.state.value)
+        assertEquals(sampleStats, connected.stats.value)
         assertEquals(daemonBinder, repo.currentBinder())
     }
 
@@ -68,25 +78,32 @@ class BinderDaemonRepositoryTest {
         connect()
         connect()
         assertEquals(2, endpoint.registrations)
-        assertTrue(repo.connected.value)
+        assertEquals(daemonBinder, repo.currentBinder())
     }
 
     @Test
     fun aDaemonOfAnotherVersionIsLeftAlone() {
         daemonVersion = IThorDaemon.VERSION + 1
         connect()
-        assertFalse(repo.connected.value)
+        assertEquals(DaemonStatus.Disconnected, repo.status.value)
         assertNull(endpoint.client)
         assertNull(repo.currentBinder())
     }
 
     @Test
-    fun stateAndStatsArriveInTheirFlows() {
+    fun laterStatesAndReadingsFlowInsideTheConnection() {
         connect()
         endpoint.client!!.onState(sampleState.toParcel())
         endpoint.client!!.onStats(sampleStats.toParcel())
-        assertEquals(sampleState, repo.state.value)
-        assertEquals(sampleStats, repo.stats.value)
+        val connected = assertIs<DaemonStatus.Connected>(repo.status.value)
+        val later = sampleState.copy(bottomOn = false)
+        val hotter = sampleStats.copy(cpuTemp = 90f)
+        endpoint.client!!.onState(later.toParcel())
+        endpoint.client!!.onStats(hotter.toParcel())
+        // The status itself doesn't change: only what flows inside it.
+        assertSame(connected, repo.status.value)
+        assertEquals(later, connected.state.value)
+        assertEquals(hotter, connected.stats.value)
     }
 
     @Test
@@ -107,11 +124,13 @@ class BinderDaemonRepositoryTest {
     fun lightsAndGameModeShowAtOnce() {
         connect()
         endpoint.client!!.onState(sampleState.toParcel())
+        endpoint.client!!.onStats(sampleStats.toParcel())
         val leds = LedState(brightness = 12)
         repo.send(DaemonCommand.SetLeds(leds))
         repo.send(DaemonCommand.SetGameMode(true))
-        assertEquals(leds, repo.state.value!!.leds)
-        assertTrue(repo.state.value!!.game.enabled)
+        val state = assertIs<DaemonStatus.Connected>(repo.status.value).state.value
+        assertEquals(leds, state.leds)
+        assertTrue(state.game.enabled)
     }
 
     @Test

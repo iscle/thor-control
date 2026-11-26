@@ -1,5 +1,12 @@
 package com.thorctl.ui.lights
 
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.thorctl.ui.state.uiStates
+import com.thorctl.ui.state.currentUiState
+import com.thorctl.domain.model.ifConnected
+import com.thorctl.ui.state.DaemonUiState
+import com.thorctl.domain.model.DaemonStatus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thorctl.domain.repository.DaemonRepository
@@ -20,48 +27,61 @@ import kotlinx.coroutines.flow.stateIn
 @ViewModelKey
 @ContributesIntoMap(AppScope::class)
 class LightsViewModel(private val daemon: DaemonRepository) : ViewModel() {
-    private val leds: LedState get() = daemon.state.value?.leds ?: LedState()
+    /** Linked sticks start on "Both", unlinked ones on the left stick. */
+    private val target = MutableStateFlow(
+        when (val status = daemon.status.value) {
+            DaemonStatus.Disconnected -> StickTarget.BOTH
+            is DaemonStatus.Connected -> if (status.state.value.leds.sync) StickTarget.BOTH else StickTarget.LEFT
+        },
+    )
 
-    private val target = MutableStateFlow(if (leds.sync) StickTarget.BOTH else StickTarget.LEFT)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<DaemonUiState<LightsContent>> =
+        combine(daemon.status, target) { status, stick -> status to stick }
+            .flatMapLatest { (status, stick) -> status.uiStates { state, _ -> LightsContent(state.leds, stick) } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state, _ -> LightsContent(state.leds, target.value) })
 
-    val uiState: StateFlow<LightsUiState> =
-        combine(daemon.state, target) { s, t -> LightsUiState(s?.leds ?: LedState(), t) }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, LightsUiState(leds, target.value))
+    /** Changes the daemon's current lights; nothing while disconnected. */
+    private fun update(change: (LedState) -> LedState) = daemon.status.value.ifConnected {
+        val next = change(it.leds)
+        if (next != it.leds) daemon.send(DaemonCommand.SetLeds(next))
+    }
 
-    private fun set(s: LedState) = daemon.send(DaemonCommand.SetLeds(s))
-
-    fun setEnabled(on: Boolean) = set(leds.copy(enabled = on))
+    fun setEnabled(on: Boolean) = update { it.copy(enabled = on) }
 
     /** Picking a mode turns the lights on. */
-    fun setMode(mode: LedMode) = set(leds.copy(mode = mode, enabled = true))
+    fun setMode(mode: LedMode) = update { it.copy(mode = mode, enabled = true) }
 
     /** Both sticks share the left one's color; one stick alone unlinks them. */
     fun setTarget(t: StickTarget) {
         target.value = t
-        val l = leds
-        if (t == StickTarget.BOTH && !l.sync) set(l.copy(sync = true, right = l.left))
-        if (t != StickTarget.BOTH && l.sync) set(l.copy(sync = false, right = l.left))
+        update { l ->
+            when {
+                t == StickTarget.BOTH && !l.sync -> l.copy(sync = true, right = l.left)
+                t != StickTarget.BOTH && l.sync -> l.copy(sync = false, right = l.left)
+                else -> l
+            }
+        }
     }
 
     /** [rgb] is 0xRRGGBB (anything above is ignored). */
     fun setColor(rgb: Int) {
         val c = rgb and 0xFFFFFF
-        val l = leds
-        set(
+        update { l ->
             when (target.value) {
                 StickTarget.BOTH -> l.copy(left = c, right = c, sync = true)
                 StickTarget.LEFT -> l.copy(left = c, right = l.rightColor, sync = false)
                 StickTarget.RIGHT -> l.copy(right = c, sync = false)
-            },
-        )
+            }
+        }
     }
 
     /** [fraction] 0..1; never fully dark (that's what the switch is for). */
-    fun setBrightness(fraction: Float) = set(leds.copy(brightness = (fraction * 255).toInt().coerceIn(MIN_BRIGHTNESS, 255)))
+    fun setBrightness(fraction: Float) = update { it.copy(brightness = (fraction * 255).toInt().coerceIn(MIN_BRIGHTNESS, 255)) }
 
     /** [fraction] 0..1 over the speed range. */
     fun setSpeed(fraction: Float) =
-        set(leds.copy(speed = LedState.MIN_SPEED + fraction.coerceIn(0f, 1f) * (LedState.MAX_SPEED - LedState.MIN_SPEED)))
+        update { it.copy(speed = LedState.MIN_SPEED + fraction.coerceIn(0f, 1f) * (LedState.MAX_SPEED - LedState.MIN_SPEED)) }
 
     companion object {
         const val MIN_BRIGHTNESS = 4

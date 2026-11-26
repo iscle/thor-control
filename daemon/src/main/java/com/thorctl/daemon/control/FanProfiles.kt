@@ -13,7 +13,7 @@ object FanProfiles {
     fun sanitize(p: FanProfile): FanProfile? {
         if (p.id.isBlank() || p.points.size < MIN_POINTS || p.points.size > MAX_POINTS) return null
         val pts = p.points
-            .map { FanPoint(it.temp.coerceIn(20f, 100f), it.pct.coerceIn(0f, 100f)) }
+            .map { FanPoint(it.temp.coerceIn(20f, 100f), it.percent.coerceIn(0f, 100f)) }
             .sortedBy { it.temp }
         return p.copy(name = p.name.take(MAX_NAME).ifBlank { "Custom" }, points = pts)
     }

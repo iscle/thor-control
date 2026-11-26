@@ -1,12 +1,16 @@
 package com.thorctl.ui.gamepad
 
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.thorctl.ui.state.uiStates
+import com.thorctl.ui.state.currentUiState
+import com.thorctl.ui.state.DaemonUiState
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.domain.repository.GamepadPairing
 import com.thorctl.protocol.model.DaemonCommand
-import com.thorctl.protocol.model.GamepadState
 import com.thorctl.protocol.model.GamepadTransport
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
@@ -14,16 +18,16 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @Inject
 @ViewModelKey
 @ContributesIntoMap(AppScope::class)
 class GamepadViewModel(private val daemon: DaemonRepository, private val pairing: GamepadPairing) : ViewModel() {
-    val uiState: StateFlow<GamepadUiState> = daemon.state
-        .map { GamepadUiState(it?.gamepad ?: GamepadState(), enabled = it != null) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, GamepadUiState())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<DaemonUiState<GamepadContent>> = daemon.status
+        .flatMapLatest { status -> status.uiStates { state, _ -> GamepadContent(state.gamepad) } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state, _ -> GamepadContent(state.gamepad) })
 
     fun setOn(on: Boolean) = daemon.send(DaemonCommand.SetGamepad(on))
 

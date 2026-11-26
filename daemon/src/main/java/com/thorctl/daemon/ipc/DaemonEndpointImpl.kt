@@ -24,8 +24,11 @@ class DaemonEndpointImpl(
 ) : DaemonEndpoint {
     override fun isAllowed(uid: Int): Boolean = uids.isAllowed(uid).also { if (!it) Timber.w("rejecting caller uid=$uid") }
 
+    /** A new client starts from the full state and a telemetry reading: it never has to show "no data". */
     override fun register(client: IThorClient, uid: Int) {
-        if (clients.add(client, uid)) clients.send(client.asBinder(), DaemonEvent.StateChanged(snapshot.current()))
+        if (!clients.add(client, uid)) return
+        clients.send(client.asBinder(), DaemonEvent.StateChanged(snapshot.current()))
+        clients.send(client.asBinder(), DaemonEvent.StatsUpdated(stats.collect()))
     }
 
     override fun unregister(client: IThorClient) = clients.remove(client.asBinder())

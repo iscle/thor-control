@@ -1,5 +1,6 @@
 package com.thorctl.platform.keyboard
 
+import com.thorctl.domain.model.DaemonStatus
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -22,7 +23,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -83,7 +83,7 @@ class KeyboardEditor(
         }
         // A daemon (re)start doesn't know the keyboard is up: L1 / R1 are shift only then.
         scope.launch {
-            daemon.connected.filter { it }.collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
+            daemon.status.filterIsInstance<DaemonStatus.Connected>().collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
         }
     }
 
@@ -140,7 +140,8 @@ class KeyboardEditor(
     private fun showPanel() {
         _visible.value = true
         // Typing needs the bottom screen: wake it if it was turned off (game mode, menu button).
-        if (daemon.state.value?.bottomOn == false) {
+        val status = daemon.status.value
+        if (status is DaemonStatus.Connected && !status.state.value.bottomOn) {
             daemon.send(DaemonCommand.SetBottomPower(true))
             setPanel(true, delayMs = 350)
         } else {

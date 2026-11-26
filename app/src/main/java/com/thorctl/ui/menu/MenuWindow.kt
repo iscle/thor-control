@@ -1,5 +1,12 @@
 package com.thorctl.ui.menu
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.thorctl.domain.model.ifConnected
+import com.thorctl.domain.model.DaemonStatus
 import android.app.ActivityOptions
 import android.app.Dialog
 import android.content.Context
@@ -69,7 +76,7 @@ class MenuWindow(
 
     fun start() {
         scope.launch { daemon.events.filterIsInstance<DaemonEvent.MenuButton>().collect { toggle() } }
-        scope.launch { daemon.state.collect { if (it != null && !it.bottomOn) removeNow() } }
+        scope.launch { bottomScreenOff().collect { off -> if (off) removeNow() } }
         scope.launch {
             accessibility.bound.drop(1).collect { bound ->
                 if (bound && view != null && _shownAs.value != OverlayLayer.ACCESSIBILITY) {
@@ -83,6 +90,15 @@ class MenuWindow(
         }
     }
 
+    /** The daemon turned the bottom screen off (never while disconnected: then it's unknown). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun bottomScreenOff(): Flow<Boolean> = daemon.status.flatMapLatest { status ->
+        when (status) {
+            DaemonStatus.Disconnected -> flowOf(false)
+            is DaemonStatus.Connected -> status.state.map { !it.bottomOn }
+        }
+    }
+
     override fun toggle() {
         if (isShowing) hide() else show()
     }
@@ -92,7 +108,8 @@ class MenuWindow(
             visible.value = true
             return
         }
-        if (daemon.state.value?.bottomOn == false) return
+        val status = daemon.status.value
+        if (status is DaemonStatus.Connected && !status.state.value.bottomOn) return
         val display = windows.bottomDisplay() ?: run {
             Timber.w("no bottom display")
             return
@@ -199,7 +216,7 @@ class MenuWindow(
         hide()
         val i = Intent().setClassName(app, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val opts = ActivityOptions.makeBasic()
-        daemon.state.value?.topDisplayId?.takeIf { it >= 0 }?.let { opts.launchDisplayId = it }
+        daemon.status.value.ifConnected { state -> if (state.topDisplayId >= 0) opts.launchDisplayId = state.topDisplayId }
         try {
             app.startActivity(i, opts.toBundle())
         } catch (e: Exception) {

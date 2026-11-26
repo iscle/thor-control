@@ -79,7 +79,7 @@ class ConfigStoreTest {
         assertEquals(ControllerTarget.FREE, c.controller)
     }
 
-    /** What 2.2 wrote with org.json: custom curves as [[temp, pct]] pairs, gamepad settings nested. */
+    /** What 2.2 wrote with org.json: custom curves as [[temp, percent]] pairs, gamepad settings nested. */
     @Test
     fun readsTheFileEarlierVersionsWrote() {
         file.parentFile!!.mkdirs()

@@ -11,9 +11,9 @@ import dev.zacsweers.metro.SingleIn
 @Inject
 @SingleIn(AppScope::class)
 class AppIcons(private val context: Context) {
-    /** [pkg]'s icon, [sizeDp] square; null if the package is unknown. */
-    fun icon(pkg: String, sizeDp: Int = 40): Bitmap? = try {
-        val d = context.packageManager.getApplicationIcon(pkg)
+    /** [packageName]'s icon, [sizeDp] square; null if the package is unknown. */
+    fun icon(packageName: String, sizeDp: Int = 40): Bitmap? = try {
+        val d = context.packageManager.getApplicationIcon(packageName)
         val px = (sizeDp * context.resources.displayMetrics.density).toInt()
         val b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         d.setBounds(0, 0, px, px)

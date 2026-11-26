@@ -1,5 +1,6 @@
 package com.thorctl.ui.controller
 
+import com.thorctl.ui.components.DaemonPage
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,31 +31,30 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun ControllerScreen(onBack: () -> Unit, onGamepad: () -> Unit, viewModel: ControllerViewModel = metroViewModel()) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val cs = MaterialTheme.colorScheme
-    val gp = ui.gamepad
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PagePadding)) {
-        DetailHeader("Controller input", onBack)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = MaterialTheme.colorScheme
+    DaemonPage(title = "Controller input", onBack = onBack, state = state, scrollable = true) { content ->
+        val gamepad = content.gamepad
         Spacer(Modifier.height(4.dp))
         NavTile(
             Icons.Rounded.Gamepad,
             "Gamepad mode",
-            if (gp != null && gp.on) Format.gamepadSummary(gp) else "Play on a PC, console or phone over USB or Bluetooth",
-            active = gp?.on == true,
+            if (gamepad.on) Format.gamepadSummary(gamepad) else "Play on a PC, console or phone over USB or Bluetooth",
+            active = gamepad.on,
             onClick = onGamepad,
         )
         Spacer(Modifier.height(12.dp))
-        Text("Choose which screen receives the built-in controller.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+        Text("Choose which screen receives the built-in controller.", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
-        OptionTile(Icons.Rounded.TouchApp, "Follow focus", "Goes to whichever screen you touched last", ui.target == ControllerTarget.FREE) {
+        OptionTile(Icons.Rounded.TouchApp, "Follow focus", "Goes to whichever screen you touched last", content.target == ControllerTarget.FREE) {
             viewModel.setTarget(ControllerTarget.FREE)
         }
         Spacer(Modifier.height(8.dp))
-        OptionTile(Icons.Rounded.VerticalAlignTop, "Top screen", "Always control the app on the top screen", ui.target == ControllerTarget.TOP) {
+        OptionTile(Icons.Rounded.VerticalAlignTop, "Top screen", "Always control the app on the top screen", content.target == ControllerTarget.TOP) {
             viewModel.setTarget(ControllerTarget.TOP)
         }
         Spacer(Modifier.height(8.dp))
-        OptionTile(Icons.Rounded.VerticalAlignBottom, "Bottom screen", "Always control the app on the bottom screen", ui.target == ControllerTarget.BOTTOM) {
+        OptionTile(Icons.Rounded.VerticalAlignBottom, "Bottom screen", "Always control the app on the bottom screen", content.target == ControllerTarget.BOTTOM) {
             viewModel.setTarget(ControllerTarget.BOTTOM)
         }
         Spacer(Modifier.height(16.dp))

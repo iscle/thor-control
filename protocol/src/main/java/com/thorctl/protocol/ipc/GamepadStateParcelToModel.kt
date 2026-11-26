@@ -4,11 +4,11 @@ import com.thorctl.protocol.model.GamepadState
 import com.thorctl.protocol.model.GamepadTransport
 
 fun GamepadStateParcel?.toModel(): GamepadState {
-    val d = GamepadState()
-    if (this == null) return d
+    val defaults = GamepadState()
+    if (this == null) return defaults
     return GamepadState(
         on = on,
-        transport = GamepadTransport.fromWire(transport) ?: d.transport,
+        transport = GamepadTransport.fromWire(transport) ?: defaults.transport,
         connected = connected,
         host = host.orEmpty(),
         screensOff = screensOff,

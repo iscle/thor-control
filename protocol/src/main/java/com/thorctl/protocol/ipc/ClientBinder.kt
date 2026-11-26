@@ -40,7 +40,7 @@ class ClientBinder(
             hero = jpegs.import(hero),
             home = jpegs.import(home),
             tasks = tasks.orEmpty().filterNotNull().map {
-                RecentTask(it.id, it.pkg.orEmpty(), it.displayId, it.visible, it.running, jpegs.import(it.thumb))
+                RecentTask(it.id, it.packageName.orEmpty(), it.displayId, it.visible, it.running, jpegs.import(it.thumb))
             },
         ),
     )
@@ -53,8 +53,8 @@ class ClientBinder(
 
     override fun onRecentsClosed() = onEvent(DaemonEvent.RecentsClosed)
 
-    override fun onHomeAnimation(seq: Int, displayId: Int, app: ParcelFileDescriptor?, home: ParcelFileDescriptor?) =
-        onEvent(DaemonEvent.HomeAnimation(seq, displayId, jpegs.import(app), jpegs.import(home)))
+    override fun onHomeAnimation(seq: Int, displayId: Int, appScreen: ParcelFileDescriptor?, homeScreen: ParcelFileDescriptor?) =
+        onEvent(DaemonEvent.HomeAnimation(seq, displayId, jpegs.import(appScreen), jpegs.import(homeScreen)))
 
     override fun onKeyboardKey(key: String?) = onEvent(DaemonEvent.KeyboardKey(key.orEmpty()))
 

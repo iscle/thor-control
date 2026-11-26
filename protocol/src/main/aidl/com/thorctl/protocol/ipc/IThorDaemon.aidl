@@ -16,7 +16,7 @@ interface IThorDaemon {
 
     int getVersion();
 
-    /** Adds a client; it gets the full state right away. A dead client is dropped by itself. */
+    /** Adds a client; it gets the full state and a telemetry reading right away. A dead client is dropped by itself. */
     void register(IThorClient client);
 
     void unregister(IThorClient client);

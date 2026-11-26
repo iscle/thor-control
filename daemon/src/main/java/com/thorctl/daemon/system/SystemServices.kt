@@ -141,7 +141,7 @@ class SystemServices {
         atm.call("focusTopTask", displayId)
     }
 
-    data class TaskDesc(val taskId: Int, val pkg: String?)
+    data class TaskDesc(val taskId: Int, val packageName: String?)
 
     /** Top-most visible standard (non-home) root task on a display, i.e. the app the user sees. */
     fun topAppTask(displayId: Int): TaskDesc? {
@@ -203,7 +203,7 @@ class SystemServices {
     // ---- Recent tasks ---------------------------------------------------------------------
 
     /** displayId is -1 for a task that is no longer running (it is restored when opened). */
-    data class RecentTask(val taskId: Int, val pkg: String, val displayId: Int, val visible: Boolean, val running: Boolean)
+    data class RecentTask(val taskId: Int, val packageName: String, val displayId: Int, val visible: Boolean, val running: Boolean)
 
     /** Most recent first, as the system's recents list (home and excluded tasks are left out). */
     fun recentTasks(max: Int): List<RecentTask> {
@@ -212,11 +212,11 @@ class SystemServices {
         return list.mapNotNull { info ->
             if (info == null) return@mapNotNull null
             val base = (field(info, "baseIntent") as? android.content.Intent)?.component
-            val pkg = ((field(info, "topActivity") ?: field(info, "baseActivity")) as? android.content.ComponentName)?.packageName
+            val packageName = ((field(info, "topActivity") ?: field(info, "baseActivity")) as? android.content.ComponentName)?.packageName
                 ?: base?.packageName ?: return@mapNotNull null
             RecentTask(
                 taskId = field(info, "taskId") as? Int ?: return@mapNotNull null,
-                pkg = pkg,
+                packageName = packageName,
                 displayId = field(info, "displayId") as? Int ?: -1,
                 visible = field(info, "isVisible") as? Boolean ?: false,
                 running = field(info, "isRunning") as? Boolean ?: false,
@@ -267,7 +267,7 @@ class SystemServices {
 
     // ---- Processes / packages -------------------------------------------------------------
 
-    data class AppProcess(val pid: Int, val uid: Int, val name: String, val pkgs: List<String>, val importance: Int)
+    data class AppProcess(val pid: Int, val uid: Int, val name: String, val packageNames: List<String>, val importance: Int)
 
     fun runningApps(): List<AppProcess> {
         val list = am.call("getRunningAppProcesses") as? List<*> ?: return emptyList()
@@ -277,21 +277,21 @@ class SystemServices {
         }
     }
 
-    fun forceStop(pkg: String) {
-        am.call("forceStopPackage", pkg, 0)
+    fun forceStop(packageName: String) {
+        am.call("forceStopPackage", packageName, 0)
     }
 
     /** Kills the package's processes that are in the background (adj >= service); visible ones survive. */
-    fun killBackground(pkg: String) {
-        am.call("killBackgroundProcesses", pkg, 0)
+    fun killBackground(packageName: String) {
+        am.call("killBackgroundProcesses", packageName, 0)
     }
 
     /** ApplicationInfo.flags, or null if the package is unknown. */
-    fun appFlags(pkg: String): Int? {
+    fun appFlags(packageName: String): Int? {
         val p = pm.get() ?: return null
         val m = p.javaClass.methods.firstOrNull { it.name == "getApplicationInfo" && it.parameterTypes.size == 3 } ?: return null
         val flagsArg: Any = if (m.parameterTypes[1] == Long::class.javaPrimitiveType) 0L else 0
-        val info = m.invoke(p, pkg, flagsArg, 0) as? android.content.pm.ApplicationInfo ?: return null
+        val info = m.invoke(p, packageName, flagsArg, 0) as? android.content.pm.ApplicationInfo ?: return null
         return info.flags
     }
 

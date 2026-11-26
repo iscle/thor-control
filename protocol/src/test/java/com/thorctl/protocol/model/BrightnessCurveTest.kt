@@ -7,9 +7,9 @@ class BrightnessCurveTest {
     @Test
     fun positionAndLinearAreInverses() {
         // Below 15 % the linear value is clamped to the panel's minimum.
-        for (i in 3..20) {
-            val p = i / 20f
-            assertEquals(p, BrightnessCurve.toPosition(BrightnessCurve.toLinear(p)), 1e-3f)
+        for (step in 3..20) {
+            val position = step / 20f
+            assertEquals(position, BrightnessCurve.toPosition(BrightnessCurve.toLinear(position)), 1e-3f)
         }
     }
 

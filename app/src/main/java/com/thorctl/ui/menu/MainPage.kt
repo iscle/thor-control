@@ -47,6 +47,8 @@ import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.Screen
 import com.thorctl.protocol.model.Stats
 import com.thorctl.ui.components.BatteryPill
+import com.thorctl.ui.components.DaemonOffline
+import com.thorctl.ui.state.DaemonUiState
 import com.thorctl.ui.components.FanGlyph
 import com.thorctl.ui.components.LedRingGlyph
 import com.thorctl.ui.components.QsSlider
@@ -71,107 +73,86 @@ fun MainPage(
     onOpenApp: (() -> Unit)?,
     viewModel: MenuViewModel = metroViewModel(),
 ) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val battery by viewModel.battery.collectAsStateWithLifecycle()
-    val state = ui.state
-    val stats = ui.stats
-    val enabled = ui.enabled
+    val connected = state is DaemonUiState.Connected
     Column(Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp)) {
-        Header(battery, ui.connected, enabled, onTurnOffBottom = viewModel::turnOffBottomScreen, onOpenApp, Modifier.enter(0, entered))
+        Header(battery, connected, onTurnOffBottom = viewModel::turnOffBottomScreen, onOpenApp, Modifier.enter(0, entered))
         Spacer(Modifier.height(14.dp))
+        when (val current = state) {
+            DaemonUiState.Disconnected -> DaemonOffline(Modifier.enter(1, entered))
+            is DaemonUiState.Connected -> Controls(current.content, entered, onNavigate, viewModel)
+        }
+    }
+}
+
+/** Brightness, the four tiles and the telemetry. */
+@Composable
+private fun Controls(content: MenuContent, entered: Boolean, onNavigate: (MenuKey) -> Unit, viewModel: MenuViewModel) {
+    Column {
 
         QsSlider(
-            value = BrightnessCurve.toPosition(state?.brightnessTop ?: 0.5f),
+            value = content.brightnessTop,
             onValueChange = { viewModel.setBrightness(Screen.TOP, it, final = false) },
             onValueChangeFinished = { viewModel.setBrightness(Screen.TOP, it, final = true) },
             icon = Icons.Rounded.BrightnessHigh,
             label = "Top screen",
-            enabled = enabled,
-            modifier = Modifier.enter(1, entered),
+                        modifier = Modifier.enter(1, entered),
         )
         Spacer(Modifier.height(6.dp))
         QsSlider(
-            value = BrightnessCurve.toPosition(state?.brightnessBottom ?: 0.5f),
+            value = content.brightnessBottom,
             onValueChange = { viewModel.setBrightness(Screen.BOTTOM, it, final = false) },
             onValueChangeFinished = { viewModel.setBrightness(Screen.BOTTOM, it, final = true) },
             icon = Icons.Rounded.BrightnessLow,
             label = "Bottom screen",
-            enabled = enabled,
-            modifier = Modifier.enter(2, entered),
+                        modifier = Modifier.enter(2, entered),
         )
         Spacer(Modifier.height(14.dp))
 
-        val profile = state?.runningProfile
-        val fanByGame = state != null && state.fanOverride.isNotEmpty()
-        val fanPct = stats?.fanPercent ?: 0
-        val game = state?.game
-        val leds = state?.leds
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             QsTile(
                 label = "Fan",
-                secondary = when {
-                    profile == null -> "Unavailable"
-                    fanByGame -> "${profile.name} (game) · $fanPct%"
-                    else -> "${profile.name} · $fanPct%"
-                },
-                active = profile != null && !profile.isAuto,
-                icon = { FanGlyph(speed = fanPct / 100f, color = it) },
+                secondary = content.fan.secondary,
+                active = content.fan.active,
+                icon = { FanGlyph(speed = content.fanPercent / 100f, color = it) },
                 onClick = { onNavigate(FanKey) },
                 onIconClick = viewModel::cycleFan,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).enter(3, entered),
+                                modifier = Modifier.weight(1f).enter(3, entered),
             )
-            val gamepad = state?.gamepad
             QsTile(
                 label = "Controller",
-                secondary = when {
-                    gamepad?.on != true -> Format.controller(state?.controller)
-                    gamepad.connected -> "Gamepad · connected"
-                    else -> "Gamepad · waiting"
-                },
-                active = state != null && (state.controller != ControllerTarget.FREE || state.gamepad.on),
+                secondary = content.controller.secondary,
+                active = content.controller.active,
                 icon = { Icon(Icons.Rounded.SportsEsports, null, tint = it) },
                 onClick = { onNavigate(ControllerKey) },
                 onIconClick = viewModel::cycleController,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).enter(4, entered),
+                                modifier = Modifier.weight(1f).enter(4, entered),
             )
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             QsTile(
                 label = "Stick lights",
-                secondary = when {
-                    leds == null -> "Unavailable"
-                    !leds.enabled -> "Off"
-                    else -> leds.mode.wire.replaceFirstChar { it.uppercase() }
-                },
-                active = leds?.enabled == true,
-                icon = { LedRingGlyph(leds, it) },
+                secondary = content.lights.secondary,
+                active = content.lights.active,
+                icon = { LedRingGlyph(content.leds, it) },
                 onClick = { onNavigate(LightsKey) },
                 onIconClick = viewModel::toggleLights,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).enter(5, entered),
+                                modifier = Modifier.weight(1f).enter(5, entered),
             )
             QsTile(
                 label = "Game mode",
-                secondary = when {
-                    game == null -> "Unavailable"
-                    !game.enabled -> "Off"
-                    game.pkg.isEmpty() -> "Waiting for a game"
-                    !game.boosted -> "${ui.gameLabel} · paused"
-                    else -> ui.gameLabel
-                },
-                active = game?.enabled == true,
+                secondary = content.game.secondary,
+                active = content.game.active,
                 icon = { Icon(Icons.Rounded.RocketLaunch, null, tint = it) },
                 onClick = { onNavigate(GameKey) },
                 onIconClick = viewModel::toggleGameMode,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).enter(6, entered),
+                                modifier = Modifier.weight(1f).enter(6, entered),
             )
         }
         Spacer(Modifier.height(8.dp))
-        StatsGrid(stats, entered, ui.unit)
+        StatsGrid(content.stats, entered, content.unit)
     }
 }
 
@@ -180,7 +161,6 @@ fun MainPage(
 private fun Header(
     battery: BatteryStatus,
     connected: Boolean,
-    enabled: Boolean,
     onTurnOffBottom: () -> Unit,
     onOpenApp: (() -> Unit)?,
     modifier: Modifier,
@@ -217,7 +197,7 @@ private fun Header(
         }
         BatteryPill(battery.level, battery.charging)
         Spacer(Modifier.width(6.dp))
-        IconButton(onClick = onTurnOffBottom, enabled = enabled, modifier = Modifier.size(34.dp)) {
+        IconButton(onClick = onTurnOffBottom, enabled = connected, modifier = Modifier.size(34.dp)) {
             Icon(Icons.Rounded.DesktopAccessDisabled, "Turn off bottom screen", tint = cs.onSurface, modifier = Modifier.size(20.dp))
         }
         if (onOpenApp != null) {
@@ -231,27 +211,26 @@ private fun Header(
 
 /** Telemetry as two more rows of the tile grid (wavy rings instead of icon containers). */
 @Composable
-private fun StatsGrid(stats: Stats?, entered: Boolean, unit: TemperatureUnit) {
-    val cs = MaterialTheme.colorScheme
+private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
+    val colors = MaterialTheme.colorScheme
     val powerAccent = when {
-        stats == null -> cs.primary
         stats.charging || stats.plugged -> Color(0xFF63CF79)
-        stats.batteryLevel <= 15 -> cs.error
+        stats.batteryLevel <= 15 -> colors.error
         else -> Color(0xFFF2C46B)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatTile(
             Icons.Rounded.Memory, "CPU",
-            value = stats?.let { Format.percent(it.cpuLoad) } ?: "–",
-            sub = stats?.let { Format.cpuDetail(it, unit) } ?: "",
-            progress = stats?.cpuLoad ?: 0f, accent = cs.primary,
+            value = Format.percent(stats.cpuLoad),
+            sub = Format.cpuDetail(stats, unit),
+            progress = stats.cpuLoad, accent = colors.primary,
             modifier = Modifier.weight(1f).enter(7, entered),
         )
         StatTile(
             Icons.Rounded.DeveloperBoard, "GPU",
-            value = stats?.let { Format.percent(it.gpuLoad) } ?: "–",
-            sub = stats?.let { Format.gpuDetail(it, unit) } ?: "",
-            progress = stats?.gpuLoad ?: 0f, accent = cs.tertiary,
+            value = Format.percent(stats.gpuLoad),
+            sub = Format.gpuDetail(stats, unit),
+            progress = stats.gpuLoad, accent = colors.tertiary,
             modifier = Modifier.weight(1f).enter(8, entered),
         )
     }
@@ -259,17 +238,17 @@ private fun StatsGrid(stats: Stats?, entered: Boolean, unit: TemperatureUnit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatTile(
             Icons.Rounded.Storage, "Memory",
-            value = stats?.let { Format.memoryValue(it) } ?: "–",
-            sub = stats?.let { Format.memoryDetail(it) } ?: "",
-            progress = stats?.ramUsedFraction ?: 0f,
-            accent = cs.secondary,
+            value = Format.memoryValue(stats),
+            sub = Format.memoryDetail(stats),
+            progress = stats.ramUsedFraction,
+            accent = colors.secondary,
             modifier = Modifier.weight(1f).enter(9, entered),
         )
         StatTile(
             Icons.Rounded.Bolt, "Power",
-            value = stats?.let { Format.powerValue(it) } ?: "–",
-            sub = stats?.let { Format.powerDetail(it, unit) } ?: "",
-            progress = (stats?.batteryLevel ?: 0) / 100f, accent = powerAccent,
+            value = Format.powerValue(stats),
+            sub = Format.powerDetail(stats, unit),
+            progress = stats.batteryLevel / 100f, accent = powerAccent,
             modifier = Modifier.weight(1f).enter(10, entered),
         )
     }

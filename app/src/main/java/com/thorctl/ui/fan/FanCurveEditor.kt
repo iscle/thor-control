@@ -135,7 +135,7 @@ fun FanCurveEditor(
                 detectDragGestures(
                     onDragStart = { pos ->
                         val pts = cur.points
-                        val (i, d) = pts.indices.map { it to hypot(px(pts[it].temp) - pos.x, py(pts[it].pct) - pos.y) }
+                        val (i, d) = pts.indices.map { it to hypot(px(pts[it].temp) - pos.x, py(pts[it].percent) - pos.y) }
                             .minByOrNull { it.second } ?: (-1 to Float.MAX_VALUE)
                         dragIndex = if (d < 40.dp.toPx()) i else -1
                     },
@@ -183,9 +183,9 @@ fun FanCurveEditor(
         val pts = profile.points.sortedBy { it.temp }
         if (pts.isNotEmpty()) {
             val line = Path().apply {
-                moveTo(px(T_MIN), py(pts.first().pct))
-                pts.forEach { lineTo(px(it.temp.coerceIn(T_MIN, T_MAX)), py(it.pct)) }
-                lineTo(px(T_MAX), py(pts.last().pct))
+                moveTo(px(T_MIN), py(pts.first().percent))
+                pts.forEach { lineTo(px(it.temp.coerceIn(T_MIN, T_MAX)), py(it.percent)) }
+                lineTo(px(T_MAX), py(pts.last().percent))
             }
             val area = Path().apply {
                 addPath(line)
@@ -196,13 +196,13 @@ fun FanCurveEditor(
             drawPath(area, Brush.verticalGradient(listOf(cs.primary.copy(alpha = 0.32f), cs.primary.copy(alpha = 0.02f)), startY = top, endY = top + ph))
             drawPath(line, cs.primary, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
             pts.forEachIndexed { i, p ->
-                val c = Offset(px(p.temp), py(p.pct))
+                val c = Offset(px(p.temp), py(p.percent))
                 if (editable) {
                     val r = 8.dp.toPx() + if (i == dragIndex) 5.dp.toPx() * pointGrow else 0f
                     drawCircle(cs.surfaceContainerHigh, r + 3.dp.toPx(), c)
                     drawCircle(cs.primary, r, c)
                     if (i == dragIndex) {
-                        val l = tm.measure("${Format.temperature(p.temp, unit)} → ${p.pct.toInt()}%", labelStyle.copy(fontWeight = FontWeight.SemiBold))
+                        val l = tm.measure("${Format.temperature(p.temp, unit)} → ${p.percent.toInt()}%", labelStyle.copy(fontWeight = FontWeight.SemiBold))
                         drawText(l, cs.onSurface, Offset((c.x - l.size.width / 2).coerceIn(left, left + pw - l.size.width), c.y - r - l.size.height - 6.dp.toPx()))
                     }
                 } else {

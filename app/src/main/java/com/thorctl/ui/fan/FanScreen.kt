@@ -1,5 +1,6 @@
 package com.thorctl.ui.fan
 
+import com.thorctl.ui.components.DaemonPage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,48 +51,52 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val cs = MaterialTheme.colorScheme
-    val qs = qsColors()
-    val stats = ui.stats
-    val active = ui.active
-    // The curve being dragged; the daemon's copy comes back once a point is let go.
-    var draft by remember(active) { mutableStateOf(active) }
-
-    Column(Modifier.fillMaxSize().padding(PagePadding)) {
-        DetailHeader("Fan", onBack) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = MaterialTheme.colorScheme
+    val shade = qsColors()
+    DaemonPage(
+        title = "Fan",
+        onBack = onBack,
+        state = state,
+        trailing = { content ->
             ConnectedChoice(
                 options = listOf("°C", "°F"),
-                selected = if (ui.unit == TemperatureUnit.FAHRENHEIT) 1 else 0,
+                selected = if (content.unit == TemperatureUnit.FAHRENHEIT) 1 else 0,
                 modifier = Modifier.width(176.dp),
-                onSelect = { viewModel.setUnit(if (it == 1) TemperatureUnit.FAHRENHEIT else TemperatureUnit.CELSIUS) },
+                onSelect = { index -> viewModel.setUnit(if (index == 1) TemperatureUnit.FAHRENHEIT else TemperatureUnit.CELSIUS) },
             )
             Spacer(Modifier.width(8.dp))
-            if (stats != null) {
+            content.stats.let { stats ->
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(cs.tertiaryContainer)
+                        .background(colors.tertiaryContainer)
                         .padding(start = 8.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FanGlyph(stats.fanPercent / 100f, cs.onTertiaryContainer, Modifier.size(20.dp))
+                    FanGlyph(stats.fanPercent / 100f, colors.onTertiaryContainer, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "${Format.temperature(stats.fanTemp, ui.unit)} · ${stats.fanPercent}%",
+                        "${Format.temperature(stats.fanTemp, content.unit)} · ${stats.fanPercent}%",
                         style = MaterialTheme.typography.labelLarge,
-                        color = cs.onTertiaryContainer,
+                        color = colors.onTertiaryContainer,
                     )
                 }
             }
-        }
+        },
+    ) { content ->
+        val stats = content.stats
+        val active = content.active
+        // The curve being dragged; the daemon's copy comes back once a point is let go.
+        var draft by remember(active) { mutableStateOf(active) }
+
         Spacer(Modifier.height(10.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(ui.profiles, key = { it.id }) { p ->
-                val checked = p.id == active.id
+            items(content.profiles, key = { it.id }) { profile ->
+                val checked = profile.id == active.id
                 ToggleButton(
                     checked = checked,
-                    onCheckedChange = { viewModel.select(p.id) },
+                    onCheckedChange = { viewModel.select(profile.id) },
                     shapes = ToggleButtonShapes(ToggleButtonDefaults.shape, ToggleButtonDefaults.pressedShape, ToggleButtonDefaults.checkedShape),
                     modifier = Modifier.height(44.dp),
                 ) {
@@ -99,7 +104,7 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                         Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                     }
-                    Text(p.name)
+                    Text(profile.name)
                 }
             }
             item(key = "_new") {
@@ -116,21 +121,21 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(28.dp))
-                .background(qs.container),
+                .background(shade.container),
         ) {
             FanCurveEditor(
                 profile = draft,
                 editable = !draft.isBuiltin,
-                liveTemp = stats?.fanTemp,
-                unit = ui.unit,
-                livePct = stats?.fanPercent,
+                liveTemp = stats.fanTemp,
+                unit = content.unit,
+                livePct = stats.fanPercent,
                 onChange = { draft = it },
                 onCommit = viewModel::save,
             )
             if (draft.isAuto) {
                 Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("System control", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-                    Text("LineageOS thermal zones drive the fan", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                    Text("System control", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
+                    Text("LineageOS thermal zones drive the fan", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 }
             }
         }
@@ -139,7 +144,7 @@ fun FanScreen(onBack: () -> Unit, viewModel: FanViewModel = metroViewModel()) {
             Text(
                 if (draft.isBuiltin) Format.fanDescription(draft) else "Drag the points to shape the curve",
                 style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
             if (!draft.isBuiltin) {

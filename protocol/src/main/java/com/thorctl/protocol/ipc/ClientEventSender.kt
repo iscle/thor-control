@@ -11,40 +11,40 @@ import java.io.IOException
 class ClientEventSender(private val client: IThorClient, private val jpegs: JpegExporter) {
     val binder get() = client.asBinder()
 
-    fun send(e: DaemonEvent) {
+    fun send(event: DaemonEvent) {
         // Our copies of the pipes' read ends: the transaction duplicates them for the client.
         val sent = ArrayList<ParcelFileDescriptor>(4)
-        fun export(j: com.thorctl.protocol.model.Jpeg?) = jpegs.export(j)?.also { sent += it }
+        fun export(jpeg: com.thorctl.protocol.model.Jpeg?) = jpegs.export(jpeg)?.also { sent += it }
         try {
-            when (e) {
-                is DaemonEvent.StateChanged -> client.onState(e.state.toParcel())
-                is DaemonEvent.StatsUpdated -> client.onStats(e.stats.toParcel())
+            when (event) {
+                is DaemonEvent.StateChanged -> client.onState(event.state.toParcel())
+                is DaemonEvent.StatsUpdated -> client.onStats(event.stats.toParcel())
                 DaemonEvent.MenuButton -> client.onMenuButton()
                 DaemonEvent.Haptic -> client.onHaptic()
-                is DaemonEvent.Hud -> client.onHud(e.hud.toParcel(e.displayId))
+                is DaemonEvent.Hud -> client.onHud(event.hud.toParcel(event.displayId))
                 is DaemonEvent.RecentsOpened -> client.onRecents(
-                    e.displayId,
-                    e.fromHome,
-                    e.originTask,
-                    export(e.hero),
-                    export(e.home),
-                    e.tasks.map { t ->
+                    event.displayId,
+                    event.fromHome,
+                    event.originTask,
+                    export(event.hero),
+                    export(event.home),
+                    event.tasks.map { task ->
                         RecentTaskParcel().also {
-                            it.id = t.id
-                            it.pkg = t.pkg
-                            it.displayId = t.displayId
-                            it.visible = t.visible
-                            it.running = t.running
-                            it.thumb = export(t.thumb)
+                            it.id = task.id
+                            it.packageName = task.packageName
+                            it.displayId = task.displayId
+                            it.visible = task.visible
+                            it.running = task.running
+                            it.thumb = export(task.thumb)
                         }
                     }.toTypedArray(),
                 )
-                is DaemonEvent.RecentsThumb -> export(e.thumb)?.let { client.onRecentsThumb(e.taskId, it) }
-                is DaemonEvent.RecentsKey -> client.onRecentsKey(e.key)
+                is DaemonEvent.RecentsThumb -> export(event.thumb)?.let { client.onRecentsThumb(event.taskId, it) }
+                is DaemonEvent.RecentsKey -> client.onRecentsKey(event.key)
                 DaemonEvent.RecentsClosed -> client.onRecentsClosed()
-                is DaemonEvent.HomeAnimation -> client.onHomeAnimation(e.seq, e.displayId, export(e.app), export(e.home))
-                is DaemonEvent.KeyboardKey -> client.onKeyboardKey(e.key)
-                is DaemonEvent.GamepadReport -> client.onGamepadReport(e.report)
+                is DaemonEvent.HomeAnimation -> client.onHomeAnimation(event.seq, event.displayId, export(event.appScreen), export(event.homeScreen))
+                is DaemonEvent.KeyboardKey -> client.onKeyboardKey(event.key)
+                is DaemonEvent.GamepadReport -> client.onGamepadReport(event.report)
             }
         } finally {
             sent.forEach {

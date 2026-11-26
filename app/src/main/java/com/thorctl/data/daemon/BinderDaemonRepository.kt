@@ -2,14 +2,15 @@ package com.thorctl.data.daemon
 
 import android.os.IBinder
 import android.os.RemoteException
+import com.thorctl.domain.model.DaemonStatus
 import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.protocol.ipc.ClientBinder
 import com.thorctl.protocol.ipc.IThorDaemon
 import com.thorctl.protocol.ipc.send
 import com.thorctl.protocol.model.DaemonCommand
 import com.thorctl.protocol.model.DaemonEvent
-import com.thorctl.protocol.model.DaemonState
 import com.thorctl.protocol.model.closeImages
+import com.thorctl.protocol.model.DaemonState
 import com.thorctl.protocol.model.Stats
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -35,14 +37,9 @@ class BinderDaemonRepository(
     @Inject
     constructor() : this(Executors.newSingleThreadExecutor { Thread(it, "thor-daemon-tx") }, IThorDaemon.Stub::asInterface)
 
-    private val _state = MutableStateFlow<DaemonState?>(null)
-    override val state: StateFlow<DaemonState?> = _state
+    private val _status = MutableStateFlow<DaemonStatus>(DaemonStatus.Disconnected)
+    override val status: StateFlow<DaemonStatus> = _status
 
-    private val _stats = MutableStateFlow<Stats?>(null)
-    override val stats: StateFlow<Stats?> = _stats
-
-    private val _connected = MutableStateFlow(false)
-    override val connected: StateFlow<Boolean> = _connected
 
     private val _events = MutableSharedFlow<DaemonEvent>(extraBufferCapacity = 256)
     override val events: SharedFlow<DaemonEvent> = _events
@@ -61,16 +58,34 @@ class BinderDaemonRepository(
     @Volatile
     private var statsWanted = 0
 
+    /** Registered with the daemon (its first state may still be on the way). */
+    @Volatile
+    private var registered = false
+
+    /**
+     * The connection being set up: registering, the daemon sends its state and a telemetry
+     * reading. [DaemonStatus.Connected] waits for both, so neither is ever missing on screen.
+     */
+    private var pendingState: DaemonState? = null
+    private var pendingStats: Stats? = null
+
+    /** The connection's flows, once [DaemonStatus.Connected]. */
+    @Volatile
+    private var state: MutableStateFlow<DaemonState>? = null
+
+    @Volatile
+    private var stats: MutableStateFlow<Stats>? = null
+
     private val death = IBinder.DeathRecipient { calls.execute { disconnected("daemon died") } }
 
     override fun onDaemonBinder(binder: IBinder) {
         calls.execute { connect(binder) }
     }
 
-    override fun currentBinder(): IBinder? = binder.takeIf { _connected.value }
+    override fun currentBinder(): IBinder? = binder.takeIf { registered }
 
     private fun connect(b: IBinder) {
-        if (b == binder && _connected.value) {
+        if (b == binder && registered) {
             // The daemon offers its binder only while it doesn't count us as registered: it
             // dropped us (a failed call), so register again. Registering twice changes nothing.
             try {
@@ -92,11 +107,12 @@ class BinderDaemonRepository(
                 return
             }
             b.linkToDeath(death, 0)
+            // Set before registering: the daemon's first state can arrive before register returns.
             binder = b
             daemon = d
             d.register(client)
             if (statsWanted > 0) d.setStatsSubscribed(client, true)
-            _connected.value = true
+            registered = true
             Timber.i("connected to the daemon")
         } catch (e: RemoteException) {
             Timber.w(e, "connecting to the daemon failed")
@@ -112,14 +128,22 @@ class BinderDaemonRepository(
         }
         binder = null
         daemon = null
-        _connected.value = false
+        synchronized(this) {
+            registered = false
+            pendingState = null
+            pendingStats = null
+            state = null
+            stats = null
+            _status.value = DaemonStatus.Disconnected
+        }
         Timber.i("disconnected from the daemon: $why")
     }
 
     private fun onEvent(e: DaemonEvent) {
         when (e) {
-            is DaemonEvent.StateChanged -> _state.value = e.state
-            is DaemonEvent.StatsUpdated -> _stats.value = e.stats
+            // Only from the daemon we're connected to: a late call from a dead one changes nothing.
+            is DaemonEvent.StateChanged -> onState(e.state)
+            is DaemonEvent.StatsUpdated -> onStats(e.stats)
             is DaemonEvent.GamepadReport -> _gamepadReports.tryEmit(e.report)
             else -> if (_events.subscriptionCount.value == 0 || !_events.tryEmit(e)) {
                 // Nobody would read its images: free the daemon's pipes now.
@@ -129,6 +153,33 @@ class BinderDaemonRepository(
         }
     }
 
+    private fun onState(newState: DaemonState) = synchronized(this) {
+        if (daemon == null) return // a late call from a dead daemon
+        val current = state
+        if (current != null) current.value = newState else pendingState = newState
+        publishWhenComplete()
+    }
+
+    private fun onStats(reading: Stats) = synchronized(this) {
+        if (daemon == null) return
+        val current = stats
+        if (current != null) current.value = reading else pendingStats = reading
+        publishWhenComplete()
+    }
+
+    /** The first state and the first reading of a connection make it [DaemonStatus.Connected]. */
+    private fun publishWhenComplete() {
+        val firstState = pendingState ?: return
+        val firstStats = pendingStats ?: return
+        pendingState = null
+        pendingStats = null
+        val stateFlow = MutableStateFlow(firstState)
+        val statsFlow = MutableStateFlow(firstStats)
+        state = stateFlow
+        stats = statsFlow
+        _status.value = DaemonStatus.Connected(stateFlow, statsFlow)
+    }
+
     override fun send(command: DaemonCommand) {
         optimistic(command)
         call { it.send(command) }
@@ -136,12 +187,14 @@ class BinderDaemonRepository(
 
     /** Commands whose effect sliders and switches must show at once, before the daemon echoes it. */
     private fun optimistic(c: DaemonCommand) {
-        val s = _state.value ?: return
-        _state.value = when (c) {
-            is DaemonCommand.SetLeds -> s.copy(leds = c.state)
-            is DaemonCommand.SetGameMode -> s.copy(game = s.game.copy(enabled = c.on))
-            is DaemonCommand.SetGameOptions -> s.copy(game = s.game.copy(options = c.options))
-            else -> return
+        val flow = state ?: return
+        flow.update { current ->
+            when (c) {
+                is DaemonCommand.SetLeds -> current.copy(leds = c.state)
+                is DaemonCommand.SetGameMode -> current.copy(game = current.game.copy(enabled = c.on))
+                is DaemonCommand.SetGameOptions -> current.copy(game = current.game.copy(options = c.options))
+                else -> return
+            }
         }
     }
 

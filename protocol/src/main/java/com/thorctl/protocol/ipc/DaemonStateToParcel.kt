@@ -4,7 +4,7 @@ import com.thorctl.protocol.model.DaemonState
 
 fun DaemonState.toParcel() = DaemonStateParcel().also {
     it.fanProfile = fanProfile
-    it.profiles = profiles.map { p -> p.toParcel() }.toTypedArray()
+    it.profiles = profiles.map { profile -> profile.toParcel() }.toTypedArray()
     it.brightnessTop = brightnessTop
     it.brightnessBottom = brightnessBottom
     it.controller = controller.wire

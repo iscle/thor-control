@@ -37,7 +37,7 @@ sealed interface DaemonEvent {
     data object RecentsClosed : DaemonEvent
 
     /** A Home press inside an app: zoom from [app] (the screen when Home went down) to [home]. */
-    data class HomeAnimation(val seq: Int, val displayId: Int, val app: Jpeg?, val home: Jpeg?) : DaemonEvent
+    data class HomeAnimation(val seq: Int, val displayId: Int, val appScreen: Jpeg?, val homeScreen: Jpeg?) : DaemonEvent
 
     /** A controller key for Thor Keyboard ("shift" for L1 / R1). */
     data class KeyboardKey(val key: String) : DaemonEvent

@@ -1,5 +1,6 @@
 package com.thorctl.platform.overlay
 
+import com.thorctl.domain.model.DaemonStatus
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.provider.Settings
@@ -25,8 +26,11 @@ class OverlayWindows(
 
     /** The bottom screen: the daemon's word for it, or else the smaller built-in non-default display. */
     fun bottomDisplay(): Display? {
-        val wanted = daemon.state.value?.bottomDisplayId ?: -1
-        if (wanted >= 0) displays.getDisplay(wanted)?.let { return it }
+        val status = daemon.status.value
+        val bottomId = if (status is DaemonStatus.Connected) status.state.value.bottomDisplayId else -1
+        if (bottomId >= 0) {
+            displays.getDisplay(bottomId)?.let { return it }
+        }
         return displays.displays
             .filter { it.displayId != Display.DEFAULT_DISPLAY }
             .minByOrNull { it.mode.physicalWidth * it.mode.physicalHeight }

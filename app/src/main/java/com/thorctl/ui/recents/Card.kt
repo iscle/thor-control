@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 data class Card(
     /** Task id, or a negative key for the home card / the app in a Home press. */
     val key: Int,
-    val pkg: String,
+    val packageName: String,
     val label: String,
     val icon: ImageBitmap? = null,
     val image: ImageBitmap? = null,

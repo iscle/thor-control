@@ -314,7 +314,7 @@ class Recents(
         openOn = displayId
         val cards = list.map { t ->
             val thumb = if (t.taskId == origin?.taskId && hero != null) null else thumb(t.taskId)
-            RecentTask(t.taskId, t.pkg, t.displayId, t.visible, t.running, thumb)
+            RecentTask(t.taskId, t.packageName, t.displayId, t.visible, t.running, thumb)
         }
         val homeImg = homeFile(displayId)
         send(
@@ -333,7 +333,7 @@ class Recents(
         dirs.clear()
         held = null
         val grabbed = input.grabController(::onPad)
-        Timber.i("recents: open on display $displayId from ${origin?.pkg ?: "home"}, ${list.size} apps (controller ${if (grabbed) "grabbed" else "not grabbed"})")
+        Timber.i("recents: open on display $displayId from ${origin?.packageName ?: "home"}, ${list.size} apps (controller ${if (grabbed) "grabbed" else "not grabbed"})")
         bumpIdle()
         if (others.isNotEmpty()) refreshThumbs(others.map { it.taskId }, requested, attempt = 0)
     }
@@ -365,7 +365,7 @@ class Recents(
             } else {
                 system.startFromRecents(id, display)
             }
-            Timber.i("recents: opened task $id (${t?.pkg}) on display $display")
+            Timber.i("recents: opened task $id (${t?.packageName}) on display $display")
         } catch (e: Throwable) {
             Timber.w(e, "recents: open task $id failed")
         }

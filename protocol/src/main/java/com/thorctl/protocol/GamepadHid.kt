@@ -150,6 +150,6 @@ object GamepadHid {
     /** Everything released, sticks centred. */
     fun neutral(): ByteArray = ByteArray(PAYLOAD).also {
         it[0] = 8
-        for (i in 3..6) it[i] = 128.toByte()
+        for (stick in 3..6) it[stick] = 128.toByte()
     }
 }

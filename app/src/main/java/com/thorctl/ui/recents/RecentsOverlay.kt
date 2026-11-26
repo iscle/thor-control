@@ -1,5 +1,6 @@
 package com.thorctl.ui.recents
 
+import com.thorctl.domain.model.DaemonStatus
 import android.app.ActivityOptions
 import android.app.Dialog
 import android.content.Context
@@ -98,7 +99,10 @@ class RecentsOverlay(
             daemon.send(DaemonCommand.RecentsClose)
             return
         }
-        val bottomId = daemon.state.value?.bottomDisplayId ?: -1
+        val bottomId = when (val status = daemon.status.value) {
+            DaemonStatus.Disconnected -> -1
+            is DaemonStatus.Connected -> status.state.value.bottomDisplayId
+        }
         scope.launch {
             val built = withContext(Dispatchers.Default) {
                 try {
@@ -123,9 +127,9 @@ class RecentsOverlay(
             val thumb = decode(t.thumb)
             Card(
                 key = t.id,
-                pkg = t.pkg,
-                label = apps.label(t.pkg),
-                icon = icons.icon(t.pkg)?.asImageBitmap(),
+                packageName = t.packageName,
+                label = apps.label(t.packageName),
+                icon = icons.icon(t.packageName)?.asImageBitmap(),
                 image = if (t.id == e.originTask && hero != null) hero else thumb,
                 onBottom = bottomId >= 0 && t.displayId == bottomId,
                 running = t.running,
@@ -145,8 +149,8 @@ class RecentsOverlay(
         scope.launch {
             val built = withContext(Dispatchers.Default) {
                 listOf(
-                    Card(Card.PRESS_APP_KEY, "", "", image = decode(e.app)),
-                    Card(Card.HOME_KEY, "", "Home", image = decode(e.home), isHome = true),
+                    Card(Card.PRESS_APP_KEY, "", "", image = decode(e.appScreen)),
+                    Card(Card.HOME_KEY, "", "Home", image = decode(e.homeScreen), isHome = true),
                 )
             }
             if (s != session) return@launch
@@ -278,8 +282,8 @@ class RecentsOverlay(
 
     /** Starts an app whose task is no longer running, like a launcher would, on the same screen. */
     private fun launch(c: Card) {
-        val intent = app.packageManager.getLaunchIntentForPackage(c.pkg) ?: run {
-            Timber.w("no launch intent for ${c.pkg}")
+        val intent = app.packageManager.getLaunchIntentForPackage(c.packageName) ?: run {
+            Timber.w("no launch intent for ${c.packageName}")
             return
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
@@ -288,7 +292,7 @@ class RecentsOverlay(
         try {
             app.startActivity(intent, opts.toBundle())
         } catch (e: Exception) {
-            Timber.w(e, "launch ${c.pkg} failed")
+            Timber.w(e, "launch ${c.packageName} failed")
         }
     }
 

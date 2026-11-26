@@ -4,7 +4,7 @@ import com.thorctl.protocol.ipc.GameOptionsParcel;
 
 parcelable GameStateParcel {
     boolean enabled;
-    String pkg;
+    String packageName;
     boolean boosted;
     int freedMb;
     GameOptionsParcel options;

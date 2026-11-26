@@ -12,25 +12,25 @@ data class FanProfile(
     /** Fan duty in percent for the given temperature (linear interpolation, clamped at the ends). */
     fun percentAt(temp: Float): Float {
         if (points.isEmpty()) return 0f
-        val p = points.sortedBy { it.temp }
-        if (temp <= p.first().temp) return p.first().pct
-        if (temp >= p.last().temp) return p.last().pct
-        for (i in 0 until p.size - 1) {
-            val a = p[i]
-            val b = p[i + 1]
-            if (temp in a.temp..b.temp) {
-                val f = if (b.temp == a.temp) 1f else (temp - a.temp) / (b.temp - a.temp)
-                return a.pct + (b.pct - a.pct) * f
+        val sorted = points.sortedBy { it.temp }
+        if (temp <= sorted.first().temp) return sorted.first().percent
+        if (temp >= sorted.last().temp) return sorted.last().percent
+        for (index in 0 until sorted.size - 1) {
+            val lower = sorted[index]
+            val upper = sorted[index + 1]
+            if (temp in lower.temp..upper.temp) {
+                val fraction = if (upper.temp == lower.temp) 1f else (temp - lower.temp) / (upper.temp - lower.temp)
+                return lower.percent + (upper.percent - lower.percent) * fraction
             }
         }
-        return p.last().pct
+        return sorted.last().percent
     }
 
     companion object {
         const val AUTO_ID = "auto"
         const val SMART_ID = "smart"
 
-        private fun curve(vararg p: Pair<Int, Int>) = p.map { FanPoint(it.first.toFloat(), it.second.toFloat()) }
+        private fun curve(vararg points: Pair<Int, Int>) = points.map { (temp, percent) -> FanPoint(temp.toFloat(), percent.toFloat()) }
 
         val BUILTINS = listOf(
             FanProfile(AUTO_ID, "Auto", emptyList()),

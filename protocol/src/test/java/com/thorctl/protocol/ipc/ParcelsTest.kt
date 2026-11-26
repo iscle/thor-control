@@ -31,55 +31,55 @@ class ParcelsTest {
             HudEvent.Game(GameHudState.OFF),
             HudEvent.Text("hello"),
         )
-        for (e in events) {
-            val p = e.toParcel(displayId = 7)
-            assertEquals(e, p.toModel())
-            assertEquals(7, p.displayId)
+        for (event in events) {
+            val parcel = event.toParcel(displayId = 7)
+            assertEquals(event, parcel.toModel())
+            assertEquals(7, parcel.displayId)
         }
     }
 
     @Test
     fun unknownValuesFromANewerPeerFallBackToDefaults() {
-        val p = Samples.state.toParcel().apply {
+        val parcel = Samples.state.toParcel().apply {
             controller = "sideways"
             leds.mode = "strobe"
             gamepad.transport = "serial"
             profiles = null
             fanProfile = null
         }
-        val s = p.toModel()
-        assertEquals(ControllerTarget.FREE, s.controller)
-        assertEquals(LedMode.SOLID, s.leds.mode)
-        assertEquals(Samples.state.gamepad.copy(transport = com.thorctl.protocol.model.GamepadTransport.USB), s.gamepad)
-        assertEquals(emptyList(), s.profiles)
-        assertEquals("auto", s.fanProfile)
+        val state = parcel.toModel()
+        assertEquals(ControllerTarget.FREE, state.controller)
+        assertEquals(LedMode.SOLID, state.leds.mode)
+        assertEquals(Samples.state.gamepad.copy(transport = com.thorctl.protocol.model.GamepadTransport.USB), state.gamepad)
+        assertEquals(emptyList(), state.profiles)
+        assertEquals("auto", state.fanProfile)
     }
 
     @Test
     fun ledsAreClampedToWhatTheHardwareTakes() {
-        val p = LedState(brightness = 400, speed = 10f, left = 0x7F123456).toParcel()
-        val l = p.toModel()
-        assertEquals(255, l.brightness)
-        assertEquals(LedState.MAX_SPEED, l.speed)
-        assertEquals(0x123456, l.left)
+        val parcel = LedState(brightness = 400, speed = 10f, left = 0x7F123456).toParcel()
+        val leds = parcel.toModel()
+        assertEquals(255, leds.brightness)
+        assertEquals(LedState.MAX_SPEED, leds.speed)
+        assertEquals(0x123456, leds.left)
     }
 
     @Test
     fun aMissingNestedParcelIsTheDefault() {
-        val p = Samples.state.toParcel().apply {
+        val parcel = Samples.state.toParcel().apply {
             leds = null
             game = null
             gamepad = null
         }
-        val s = p.toModel()
-        assertEquals(LedState(), s.leds)
-        assertEquals(com.thorctl.protocol.model.GameState(), s.game)
-        assertEquals(com.thorctl.protocol.model.GamepadState(), s.gamepad)
+        val state = parcel.toModel()
+        assertEquals(LedState(), state.leds)
+        assertEquals(com.thorctl.protocol.model.GameState(), state.game)
+        assertEquals(com.thorctl.protocol.model.GamepadState(), state.gamepad)
     }
 
     @Test
     fun fanCurvesWithUnevenArraysKeepTheCompletePoints() {
-        val p = Samples.custom.toParcel().apply { percents = floatArrayOf(10f) }
-        assertEquals(1, p.toModel().points.size)
+        val parcel = Samples.custom.toParcel().apply { percents = floatArrayOf(10f) }
+        assertEquals(1, parcel.toModel().points.size)
     }
 }

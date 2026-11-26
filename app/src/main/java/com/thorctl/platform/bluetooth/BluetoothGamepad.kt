@@ -1,5 +1,9 @@
 package com.thorctl.platform.bluetooth
 
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.thorctl.domain.model.DaemonStatus
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -67,10 +71,16 @@ class BluetoothGamepad(
     private val adapter: BluetoothAdapter?
         get() = app.getSystemService(BluetoothManager::class.java)?.adapter
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun start() {
         scope.launch {
-            daemon.state
-                .map { s -> s?.gamepad?.let { it.on && it.transport == GamepadTransport.BLUETOOTH } == true }
+            daemon.status
+                .flatMapLatest { status ->
+                    when (status) {
+                        DaemonStatus.Disconnected -> flowOf(false)
+                        is DaemonStatus.Connected -> status.state.map { it.gamepad.on && it.gamepad.transport == GamepadTransport.BLUETOOTH }
+                    }
+                }
                 .distinctUntilChanged()
                 .collect(::update)
         }

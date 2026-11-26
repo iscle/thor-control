@@ -2,7 +2,7 @@ package com.thorctl.protocol.ipc;
 
 parcelable RecentTaskParcel {
     int id;
-    String pkg;
+    String packageName;
     int displayId;
     boolean visible;
     boolean running;

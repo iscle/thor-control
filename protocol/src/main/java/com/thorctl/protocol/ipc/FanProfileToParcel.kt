@@ -10,6 +10,6 @@ import com.thorctl.protocol.model.FanProfile
 fun FanProfile.toParcel() = FanProfileParcel().also {
     it.id = id
     it.name = name
-    it.temps = points.map { p -> p.temp }.toFloatArray()
-    it.percents = points.map { p -> p.pct }.toFloatArray()
+    it.temps = points.map { point -> point.temp }.toFloatArray()
+    it.percents = points.map { point -> point.percent }.toFloatArray()
 }

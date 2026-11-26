@@ -10,7 +10,7 @@ parcelable HudParcel {
     /** Screen.wire: moved to, brightness of, nothing on */
     String screen;
     /** moved, game */
-    String pkg;
+    String packageName;
     /** brightness, 0..100 */
     int percent;
     /** GameHudState.wire */

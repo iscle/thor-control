@@ -5,7 +5,7 @@ fun DaemonEvent.closeImages() {
     when (this) {
         is DaemonEvent.RecentsOpened -> (listOf(hero, home) + tasks.map { it.thumb }).forEach { it?.close() }
         is DaemonEvent.RecentsThumb -> thumb.close()
-        is DaemonEvent.HomeAnimation -> listOf(app, home).forEach { it?.close() }
+        is DaemonEvent.HomeAnimation -> listOf(appScreen, homeScreen).forEach { it?.close() }
         else -> {}
     }
 }

@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class LayeringTest {
     private val root = File(System.getProperty("sources.path") ?: "src/main/java", "com/thorctl")
 
-    private fun files(pkg: String) = File(root, pkg).walkTopDown().filter { it.extension == "kt" }.toList()
+    private fun files(packageName: String) = File(root, packageName).walkTopDown().filter { it.extension == "kt" }.toList()
 
     /** Imports, and fully qualified class names in code (comments, strings and the package line removed). */
     private fun references(f: File): List<String> {
@@ -29,7 +29,7 @@ class LayeringTest {
         return imports + qualified
     }
 
-    private fun violations(pkg: String, forbidden: List<String>): List<String> = files(pkg).flatMap { f ->
+    private fun violations(packageName: String, forbidden: List<String>): List<String> = files(packageName).flatMap { f ->
         references(f).filter { ref -> forbidden.any { ref == it || ref.startsWith("$it.") } }.map { "${f.name}: $it" }
     }.distinct()
 

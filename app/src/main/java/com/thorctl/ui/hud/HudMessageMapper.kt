@@ -19,7 +19,7 @@ class HudMessageMapper(private val apps: AppInfoRepository) {
         )
         is HudEvent.Moved -> HudMessage(
             if (event.to == Screen.BOTTOM) HudIcon.MOVE_DOWN else HudIcon.MOVE_UP,
-            "${label(event.pkg)} → ${screen(event.to == Screen.BOTTOM)}",
+            "${label(event.packageName)} → ${screen(event.to == Screen.BOTTOM)}",
             displayId,
         )
         is HudEvent.Brightness -> HudMessage(
@@ -35,7 +35,7 @@ class HudMessageMapper(private val apps: AppInfoRepository) {
                 GameHudState.ON -> "Game mode on"
                 GameHudState.OFF -> "Game mode off"
                 GameHudState.BOTTOM_OFF -> "Bottom screen off · AYN turns it on"
-                GameHudState.STARTED -> "Game mode · ${label(event.pkg)}" +
+                GameHudState.STARTED -> "Game mode · ${label(event.packageName)}" +
                     if (event.freedMb >= 100) " · ${Format.gigabytes(event.freedMb)} freed" else ""
             },
             displayId,
@@ -45,5 +45,5 @@ class HudMessageMapper(private val apps: AppInfoRepository) {
 
     private fun screen(bottom: Boolean) = if (bottom) "bottom screen" else "top screen"
 
-    private fun label(pkg: String) = apps.label(pkg).ifBlank { "App" }
+    private fun label(packageName: String) = apps.label(packageName).ifBlank { "App" }
 }

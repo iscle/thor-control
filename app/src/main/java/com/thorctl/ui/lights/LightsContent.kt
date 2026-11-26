@@ -3,7 +3,7 @@ package com.thorctl.ui.lights
 import com.thorctl.protocol.model.LedMode
 import com.thorctl.protocol.model.LedState
 
-data class LightsUiState(val leds: LedState = LedState(), val target: StickTarget = StickTarget.BOTH) {
+data class LightsContent(val leds: LedState, val target: StickTarget) {
     /** Rainbow picks its own colors. */
     val colorEditable: Boolean get() = leds.mode != LedMode.RAINBOW
 

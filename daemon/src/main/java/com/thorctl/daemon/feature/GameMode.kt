@@ -56,8 +56,8 @@ class GameMode(
 ) {
     private fun onChanged() = notifier.stateChanged()
 
-    private fun onStarted(pkg: String, freedMb: Int) =
-        notifier.hud(HudEvent.Game(GameHudState.STARTED, pkg, freedMb), displays.topId)
+    private fun onStarted(packageName: String, freedMb: Int) =
+        notifier.hud(HudEvent.Game(GameHudState.STARTED, packageName, freedMb), displays.topId)
 
     private fun onBottomOff() = notifier.hud(HudEvent.Game(GameHudState.BOTTOM_OFF), displays.topId)
 
@@ -167,18 +167,18 @@ class GameMode(
         }
 
         val g = game
-        if (g != null && running.none { g in it.pkgs }) {
+        if (g != null && running.none { g in it.packageNames }) {
             Timber.i("game mode: $g closed, waiting for the next game")
             game = null
             freedMb = 0
             keepBottomOn = false
         }
         if (game == null) {
-            pickGame()?.let { pkg ->
-                game = pkg
-                Timber.i("game mode: game is $pkg")
-                freedMb = if (options.closeApps) closeOthers(pkg, running) else 0
-                onStarted(pkg, freedMb)
+            pickGame()?.let { packageName ->
+                game = packageName
+                Timber.i("game mode: game is $packageName")
+                freedMb = if (options.closeApps) closeOthers(packageName, running) else 0
+                onStarted(packageName, freedMb)
             }
         } else if (options.closeApps && ++ticks % TRIM_EVERY_TICKS == 0) {
             trimCached(running)
@@ -203,7 +203,7 @@ class GameMode(
         }
         val g = game
         val inFront = g != null && options.bottomOff && !keepBottomOn && displays.bottomId >= 0 &&
-            (try { system.topAppTask(displays.topId)?.pkg } catch (_: Throwable) { null }) == g
+            (try { system.topAppTask(displays.topId)?.packageName } catch (_: Throwable) { null }) == g
         if (!inFront) {
             frontTicks = 0
             return bottomOn()
@@ -239,7 +239,7 @@ class GameMode(
             if (g in system.visiblePackages(b)) return true
         } catch (_: Throwable) {
         }
-        val uids = running.filter { g in it.pkgs }.map { it.uid }.toSet()
+        val uids = running.filter { g in it.packageNames }.map { it.uid }.toSet()
         if (uids.isEmpty()) return false
         val dump = sys.sh("dumpsys SurfaceFlinger", 4000) ?: return false
         var inBottom = false
@@ -260,15 +260,15 @@ class GameMode(
     private fun pickGame(): String? {
         val d = displays.topId
         if (d < 0) return null
-        val pkg = try {
-            system.topAppTask(d)?.pkg
+        val packageName = try {
+            system.topAppTask(d)?.packageName
         } catch (_: Throwable) {
             null
         } ?: return null
-        if (pkg == Proto.PACKAGE || pkg == system.homePackage()) return null
-        val flags = system.appFlags(pkg) ?: return null
+        if (packageName == Proto.PACKAGE || packageName == system.homePackage()) return null
+        val flags = system.appFlags(packageName) ?: return null
         // Settings, the browser, ... are not games; wait for a user-installed app.
-        return if (flags and ApplicationInfo.FLAG_SYSTEM != 0) null else pkg
+        return if (flags and ApplicationInfo.FLAG_SYSTEM != 0) null else packageName
     }
 
     // ---- Memory ---------------------------------------------------------------------------
@@ -280,20 +280,20 @@ class GameMode(
         val home = system.homePackage()
         var stopped = 0
         var trimmed = 0
-        val pkgs = running.filter { it.uid >= FIRST_APP_UID }.flatMap { it.pkgs }.toSet() - keep
-        for (pkg in pkgs) {
+        val packageNames = running.filter { it.uid >= FIRST_APP_UID }.flatMap { it.packageNames }.toSet() - keep
+        for (packageName in packageNames) {
             try {
-                val flags = system.appFlags(pkg) ?: continue
-                if (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_PERSISTENT) != 0 || pkg == home) {
+                val flags = system.appFlags(packageName) ?: continue
+                if (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_PERSISTENT) != 0 || packageName == home) {
                     // System apps: only their background processes, never the app itself.
-                    system.killBackground(pkg)
+                    system.killBackground(packageName)
                     trimmed++
                 } else {
-                    system.forceStop(pkg)
+                    system.forceStop(packageName)
                     stopped++
                 }
             } catch (e: Throwable) {
-                Timber.w(e, "game mode: closing $pkg failed")
+                Timber.w(e, "game mode: closing $packageName failed")
             }
         }
         sys.write("/proc/sys/vm/compact_memory", "1")
@@ -306,18 +306,18 @@ class GameMode(
     /** Clears background processes that came back (or were opened and left) while playing. */
     private fun trimCached(running: List<SystemServices.AppProcess>) {
         val g = game ?: return
-        val pkgs = running
-            .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && g !in it.pkgs }
-            .flatMap { it.pkgs }
+        val packageNames = running
+            .filter { it.uid >= FIRST_APP_UID && it.importance >= RunningAppProcessInfo.IMPORTANCE_CACHED && g !in it.packageNames }
+            .flatMap { it.packageNames }
             .toSet() - ALWAYS_KEEP - Proto.PACKAGE - g
-        if (pkgs.isEmpty()) return
-        for (p in pkgs) {
+        if (packageNames.isEmpty()) return
+        for (p in packageNames) {
             try {
                 system.killBackground(p)
             } catch (_: Throwable) {
             }
         }
-        Timber.i("game mode: cleared ${pkgs.size} background apps (${pkgs.joinToString(limit = 6)})")
+        Timber.i("game mode: cleared ${packageNames.size} background apps (${packageNames.joinToString(limit = 6)})")
     }
 
     private fun keepSet(game: String): Set<String> {

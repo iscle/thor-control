@@ -49,6 +49,8 @@ class StatsCollector(private val sys: Sys, private val fan: FanController) {
 
     private fun meminfo(): Pair<Int, Int> = parseMeminfo(sys.read("/proc/meminfo"))
 
+    /** Called from the stats tick and from binder threads (a new subscriber): CPU load is a delta since the last call. */
+    @Synchronized
     fun collect(): Stats {
         val freqs = policies.map { (sys.readInt("$it/scaling_cur_freq") ?: 0) / 1000 }
         val gpuBusy = sys.read("$KGSL/gpu_busy_percentage")?.filter { it.isDigit() }?.toIntOrNull() ?: 0
