@@ -53,25 +53,25 @@ class LightsViewModel(private val daemon: DaemonRepository) : ViewModel() {
     fun setMode(mode: LedMode) = update { it.copy(mode = mode, enabled = true) }
 
     /** Both sticks share the left one's color; one stick alone unlinks them. */
-    fun setTarget(t: StickTarget) {
-        target.value = t
-        update { l ->
+    fun setTarget(stick: StickTarget) {
+        target.value = stick
+        update { leds ->
             when {
-                t == StickTarget.BOTH && !l.sync -> l.copy(sync = true, right = l.left)
-                t != StickTarget.BOTH && l.sync -> l.copy(sync = false, right = l.left)
-                else -> l
+                stick == StickTarget.BOTH && !leds.sync -> leds.copy(sync = true, right = leds.left)
+                stick != StickTarget.BOTH && leds.sync -> leds.copy(sync = false, right = leds.left)
+                else -> leds
             }
         }
     }
 
     /** [rgb] is 0xRRGGBB (anything above is ignored). */
     fun setColor(rgb: Int) {
-        val c = rgb and 0xFFFFFF
-        update { l ->
+        val color = rgb and 0xFFFFFF
+        update { leds ->
             when (target.value) {
-                StickTarget.BOTH -> l.copy(left = c, right = c, sync = true)
-                StickTarget.LEFT -> l.copy(left = c, right = l.rightColor, sync = false)
-                StickTarget.RIGHT -> l.copy(right = c, sync = false)
+                StickTarget.BOTH -> leds.copy(left = color, right = color, sync = true)
+                StickTarget.LEFT -> leds.copy(left = color, right = leds.rightColor, sync = false)
+                StickTarget.RIGHT -> leds.copy(right = color, sync = false)
             }
         }
     }

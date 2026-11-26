@@ -37,7 +37,7 @@ class BlackoutWindow(
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private var view: View? = null
-    private var wm: WindowManager? = null
+    private var windowManager: WindowManager? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun start() {
@@ -57,12 +57,12 @@ class BlackoutWindow(
     private fun show() {
         if (view != null) return
         val display = windows.bottomDisplay() ?: return
-        val oc = windows.contextFor(display) ?: return
-        val v = View(oc.context).apply { setBackgroundColor(Color.BLACK) }
-        val lp = WindowManager.LayoutParams(
+        val overlayContext = windows.contextFor(display) ?: return
+        val blackView = View(overlayContext.context).apply { setBackgroundColor(Color.BLACK) }
+        val layoutParams = WindowManager.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
-            oc.type,
+            overlayContext.type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -72,23 +72,23 @@ class BlackoutWindow(
             title = "ThorControlBlackout"
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
-        val w = oc.context.getSystemService(WindowManager::class.java)
+        val displayWindowManager = overlayContext.context.getSystemService(WindowManager::class.java)
         try {
-            w.addView(v, lp)
-            view = v
-            wm = w
-        } catch (e: Exception) {
-            Timber.w(e, "black window failed")
+            displayWindowManager.addView(blackView, layoutParams)
+            view = blackView
+            windowManager = displayWindowManager
+        } catch (error: Exception) {
+            Timber.w(error, "black window failed")
         }
     }
 
     private fun hide() {
-        val v = view ?: return
+        val shownView = view ?: return
         try {
-            wm?.removeView(v)
+            windowManager?.removeView(shownView)
         } catch (_: Exception) {
         }
         view = null
-        wm = null
+        windowManager = null
     }
 }

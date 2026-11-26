@@ -34,31 +34,31 @@ import com.thorctl.ui.theme.qsColors
 
 /** A row that opens something (a page, a prompt). */
 @Composable
-fun NavTile(icon: ImageVector, title: String, desc: String, active: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
-    val qs = qsColors()
+fun NavTile(icon: ImageVector, title: String, description: String, active: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    val shade = qsColors()
     val motion = MaterialTheme.motionScheme
     val corner by animateFloatAsState(if (active) 29f else 50f, motion.defaultSpatialSpec(), label = "navCorner")
-    val iconBg by animateColorAsState(if (active) qs.iconActive else qs.iconInactive, motion.defaultEffectsSpec(), label = "navBg")
-    val iconFg by animateColorAsState(if (active) qs.onIconActive else qs.onIconInactive, motion.defaultEffectsSpec(), label = "navFg")
+    val iconBackground by animateColorAsState(if (active) shade.iconActive else shade.iconInactive, motion.defaultEffectsSpec(), label = "navBg")
+    val iconForeground by animateColorAsState(if (active) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "navFg")
     Row(
         Modifier
             .fillMaxWidth()
             .height(72.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(qs.container)
+            .background(shade.container)
             .clickable(enabled = enabled, onClick = onClick)
             .graphicsLayer { alpha = if (enabled) 1f else 0.5f }
             .padding(start = 8.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBg), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = iconFg)
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBackground), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = iconForeground)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = qs.text, maxLines = 1)
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = qs.textSecondary, maxLines = 2)
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text, maxLines = 1)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary, maxLines = 2)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = qs.textSecondary)
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = shade.textSecondary)
     }
 }

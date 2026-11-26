@@ -165,32 +165,32 @@ private fun Header(
     onOpenApp: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val ctx = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val now by produceState(Date()) {
         while (true) {
             value = Date()
             delay(1000L - System.currentTimeMillis() % 1000L)
         }
     }
-    val is24 = DateFormat.is24HourFormat(ctx)
-    val time = DateFormat.format(if (is24) "HH:mm" else "h:mm", now).toString()
+    val uses24HourClock = DateFormat.is24HourFormat(context)
+    val time = DateFormat.format(if (uses24HourClock) "HH:mm" else "h:mm", now).toString()
     val date = DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEMMMd"), now).toString()
     val textStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp)
 
     Row(modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(time, style = textStyle.copy(fontWeight = FontWeight.Medium), color = cs.onSurface)
+        Text(time, style = textStyle.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
         Spacer(Modifier.width(10.dp))
-        Text(date, style = textStyle, color = cs.onSurface)
+        Text(date, style = textStyle, color = colors.onSurface)
         Spacer(Modifier.weight(1f))
         if (!connected) {
             Text(
                 "Service offline",
                 style = MaterialTheme.typography.labelMedium,
-                color = cs.onErrorContainer,
+                color = colors.onErrorContainer,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(cs.errorContainer)
+                    .background(colors.errorContainer)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             )
             Spacer(Modifier.width(10.dp))
@@ -198,12 +198,12 @@ private fun Header(
         BatteryPill(battery.level, battery.charging)
         Spacer(Modifier.width(6.dp))
         IconButton(onClick = onTurnOffBottom, enabled = connected, modifier = Modifier.size(34.dp)) {
-            Icon(Icons.Rounded.DesktopAccessDisabled, "Turn off bottom screen", tint = cs.onSurface, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.DesktopAccessDisabled, "Turn off bottom screen", tint = colors.onSurface, modifier = Modifier.size(20.dp))
         }
         if (onOpenApp != null) {
             Spacer(Modifier.width(6.dp))
             IconButton(onClick = onOpenApp, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Rounded.Settings, "Open Thor Control", tint = cs.onSurface, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.Settings, "Open Thor Control", tint = colors.onSurface, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -222,14 +222,14 @@ private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
         StatTile(
             Icons.Rounded.Memory, "CPU",
             value = Format.percent(stats.cpuLoad),
-            sub = Format.cpuDetail(stats, unit),
+            detail = Format.cpuDetail(stats, unit),
             progress = stats.cpuLoad, accent = colors.primary,
             modifier = Modifier.weight(1f).enter(7, entered),
         )
         StatTile(
             Icons.Rounded.DeveloperBoard, "GPU",
             value = Format.percent(stats.gpuLoad),
-            sub = Format.gpuDetail(stats, unit),
+            detail = Format.gpuDetail(stats, unit),
             progress = stats.gpuLoad, accent = colors.tertiary,
             modifier = Modifier.weight(1f).enter(8, entered),
         )
@@ -239,7 +239,7 @@ private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
         StatTile(
             Icons.Rounded.Storage, "Memory",
             value = Format.memoryValue(stats),
-            sub = Format.memoryDetail(stats),
+            detail = Format.memoryDetail(stats),
             progress = stats.ramUsedFraction,
             accent = colors.secondary,
             modifier = Modifier.weight(1f).enter(9, entered),
@@ -247,7 +247,7 @@ private fun StatsGrid(stats: Stats, entered: Boolean, unit: TemperatureUnit) {
         StatTile(
             Icons.Rounded.Bolt, "Power",
             value = Format.powerValue(stats),
-            sub = Format.powerDetail(stats, unit),
+            detail = Format.powerDetail(stats, unit),
             progress = stats.batteryLevel / 100f, accent = powerAccent,
             modifier = Modifier.weight(1f).enter(10, entered),
         )

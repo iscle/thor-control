@@ -16,24 +16,24 @@ import androidx.compose.ui.geometry.Rect
 @Stable
 internal class KeyPopup {
     var options by mutableStateOf<List<String>>(emptyList())
-    var x by mutableFloatStateOf(0f)
-    var y by mutableFloatStateOf(0f)
-    var cellW by mutableFloatStateOf(0f)
-    var cellH by mutableFloatStateOf(0f)
+    var left by mutableFloatStateOf(0f)
+    var top by mutableFloatStateOf(0f)
+    var cellWidth by mutableFloatStateOf(0f)
+    var cellHeight by mutableFloatStateOf(0f)
     var selected by mutableIntStateOf(0)
-    var panelW = 0f
+    var panelWidth = 0f
 
-    fun indexAt(rootX: Float): Int = ((rootX - x) / cellW).toInt().coerceIn(0, (options.size - 1).coerceAtLeast(0))
+    fun indexAt(rootX: Float): Int = ((rootX - left) / cellWidth).toInt().coerceIn(0, (options.size - 1).coerceAtLeast(0))
 
-    fun show(opts: List<String>, face: Rect, fingerX: Float, gap: Float) {
-        cellW = face.width
-        cellH = face.height
-        val total = cellW * opts.size
+    fun show(accentOptions: List<String>, face: Rect, fingerX: Float, gap: Float) {
+        cellWidth = face.width
+        cellHeight = face.height
+        val total = cellWidth * accentOptions.size
         // Grow to the right of the key, or to the left when that would leave the screen.
-        x = if (face.left + total <= panelW - gap) face.left else face.right - total
-        x = x.coerceIn(gap, (panelW - total - gap).coerceAtLeast(gap))
-        y = (face.top - cellH - gap).coerceAtLeast(0f)
-        options = opts
+        left = if (face.left + total <= panelWidth - gap) face.left else face.right - total
+        left = left.coerceIn(gap, (panelWidth - total - gap).coerceAtLeast(gap))
+        top = (face.top - cellHeight - gap).coerceAtLeast(0f)
+        options = accentOptions
         selected = indexAt(fingerX)
     }
 }

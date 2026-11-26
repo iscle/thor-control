@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 /** AYN-button shortcut reference. */
 @Composable
 fun ShortcutList() {
-    val cs = MaterialTheme.colorScheme
+    val colors = MaterialTheme.colorScheme
     val rows = listOf(
         "AYN + ▲" to "Controller → top screen",
         "AYN + ▼" to "Controller → bottom screen",
@@ -37,16 +37,16 @@ fun ShortcutList() {
                 Text(
                     keys,
                     style = MaterialTheme.typography.labelLarge,
-                    color = cs.onSecondaryContainer,
+                    color = colors.onSecondaryContainer,
                     modifier = Modifier
                         .width(124.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(cs.secondaryContainer)
+                        .background(colors.secondaryContainer)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(what, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                Text(what, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             }
         }
     }

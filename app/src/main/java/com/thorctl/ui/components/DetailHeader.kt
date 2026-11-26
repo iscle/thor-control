@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 /** Shared header for detail pages: tonal back button (morphs on press) + title. */
 @Composable
 fun DetailHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
-    val cs = MaterialTheme.colorScheme
+    val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
         FilledTonalIconButton(
             onClick = onBack,
@@ -32,7 +32,7 @@ fun DetailHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> 
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
         }
         Spacer(Modifier.width(14.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = cs.onSurface)
+        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
         Spacer(Modifier.weight(1f))
         trailing()
     }

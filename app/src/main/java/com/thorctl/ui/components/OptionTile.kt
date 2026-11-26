@@ -32,30 +32,30 @@ import com.thorctl.ui.theme.qsColors
 
 /** Selectable row in the QS tile style; the icon container morphs circle -> rounded square. */
 @Composable
-fun OptionTile(icon: ImageVector, title: String, desc: String, selected: Boolean, onClick: () -> Unit) {
-    val qs = qsColors()
+fun OptionTile(icon: ImageVector, title: String, description: String, selected: Boolean, onClick: () -> Unit) {
+    val shade = qsColors()
     val motion = MaterialTheme.motionScheme
     val corner by animateFloatAsState(if (selected) 29f else 50f, motion.defaultSpatialSpec(), label = "optCorner")
-    val iconBg by animateColorAsState(if (selected) qs.iconActive else qs.iconInactive, motion.defaultEffectsSpec(), label = "optBg")
-    val iconFg by animateColorAsState(if (selected) qs.onIconActive else qs.onIconInactive, motion.defaultEffectsSpec(), label = "optFg")
+    val iconBackground by animateColorAsState(if (selected) shade.iconActive else shade.iconInactive, motion.defaultEffectsSpec(), label = "optBg")
+    val iconForeground by animateColorAsState(if (selected) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "optFg")
     Row(
         Modifier
             .fillMaxWidth()
             .height(72.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(qs.container)
+            .background(shade.container)
             .clickable(onClick = onClick)
             .padding(start = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBg),
+            Modifier.size(56.dp).clip(RoundedCornerShape(CornerSize(corner))).background(iconBackground),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = iconFg) }
+        ) { Icon(icon, null, tint = iconForeground) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = qs.text)
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = qs.textSecondary)
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium), color = shade.text)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = shade.textSecondary)
         }
         RadioButton(selected = selected, onClick = onClick)
     }

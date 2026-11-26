@@ -14,6 +14,6 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 @ViewModelKey
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 class KeyboardViewModel(editor: KeyboardEditor) : ViewModel(), KeyboardActions by editor {
-    val ui = editor.ui
+    val uiState = editor.ui
     val visible = editor.visible
 }

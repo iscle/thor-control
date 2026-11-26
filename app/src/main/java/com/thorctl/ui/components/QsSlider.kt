@@ -62,8 +62,8 @@ fun QsSlider(
     enabled: Boolean = true,
     trackBrush: Brush? = null,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val qs = qsColors()
+    val colors = MaterialTheme.colorScheme
+    val shade = qsColors()
     val view = LocalView.current
     var dragging by remember { mutableStateOf(false) }
     var local by remember { mutableFloatStateOf(value) }
@@ -72,10 +72,10 @@ fun QsSlider(
     val onChange by rememberUpdatedState(onValueChange)
     val onFinished by rememberUpdatedState(onValueChangeFinished)
     val shown by animateFloatAsState(local, if (dragging) snap() else spring(stiffness = 500f), label = "slider")
-    val handleW by animateDpAsState(if (dragging) 2.dp else 4.dp, spring(stiffness = 1400f), label = "handle")
+    val handleWidth by animateDpAsState(if (dragging) 2.dp else 4.dp, spring(stiffness = 1400f), label = "handle")
 
-    val active = if (enabled) cs.primary else cs.onSurface.copy(alpha = 0.28f)
-    val onActive = if (enabled) cs.onPrimary else cs.surface
+    val active = if (enabled) colors.primary else colors.onSurface.copy(alpha = 0.28f)
+    val onActive = if (enabled) colors.onPrimary else colors.surface
     val textMeasurer = rememberTextMeasurer()
     val painter = rememberVectorPainter(icon)
     val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp)
@@ -88,15 +88,15 @@ fun QsSlider(
                 if (!enabled) return@pointerInput
                 val minX = 26.dp.toPx()
                 val maxX = size.width - 2.dp.toPx()
-                fun update(x: Float) {
-                    val v = ((x - minX) / (maxX - minX)).coerceIn(0f, 1f)
-                    local = v
-                    val step = (v * 20).roundToInt()
+                fun update(touchX: Float) {
+                    val fraction = ((touchX - minX) / (maxX - minX)).coerceIn(0f, 1f)
+                    local = fraction
+                    val step = (fraction * 20).roundToInt()
                     if (step != lastStep) {
                         lastStep = step
                         view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
                     }
-                    onChange(v)
+                    onChange(fraction)
                 }
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -111,33 +111,33 @@ fun QsSlider(
                 }
             },
     ) {
-        val w = size.width
-        val trackH = 40.dp.toPx()
-        val top = (size.height - trackH) / 2f
-        val bottom = top + trackH
+        val canvasWidth = size.width
+        val trackHeight = 40.dp.toPx()
+        val top = (size.height - trackHeight) / 2f
+        val bottom = top + trackHeight
         val outer = 12.dp.toPx()
         val inner = 2.dp.toPx()
-        val hw = handleW.toPx()
+        val handleWidthPx = handleWidth.toPx()
         val gap = 6.dp.toPx()
         val minX = 26.dp.toPx()
-        val maxX = w - 2.dp.toPx()
-        val hx = minX + (maxX - minX) * shown
-        val activeEnd = hx - hw / 2f - gap
-        val inactiveStart = hx + hw / 2f + gap
+        val maxX = canvasWidth - 2.dp.toPx()
+        val handleX = minX + (maxX - minX) * shown
+        val activeEnd = handleX - handleWidthPx / 2f - gap
+        val inactiveStart = handleX + handleWidthPx / 2f + gap
 
-        if (inactiveStart < w - 2f) {
-            val p = Path().apply {
+        if (inactiveStart < canvasWidth - 2f) {
+            val inactiveTrack = Path().apply {
                 addRoundRect(
                     RoundRect(
-                        Rect(inactiveStart, top, w, bottom),
+                        Rect(inactiveStart, top, canvasWidth, bottom),
                         topLeft = CornerRadius(inner), bottomLeft = CornerRadius(inner),
                         topRight = CornerRadius(outer), bottomRight = CornerRadius(outer),
                     ),
                 )
             }
-            if (trackBrush != null) drawPath(p, trackBrush, alpha = 0.45f) else drawPath(p, qs.container)
+            if (trackBrush != null) drawPath(inactiveTrack, trackBrush, alpha = 0.45f) else drawPath(inactiveTrack, shade.container)
         }
-        val ap = Path().apply {
+        val activeTrack = Path().apply {
             addRoundRect(
                 RoundRect(
                     Rect(0f, top, activeEnd.coerceAtLeast(outer * 1.2f), bottom),
@@ -146,29 +146,29 @@ fun QsSlider(
                 ),
             )
         }
-        if (trackBrush != null) drawPath(ap, trackBrush) else drawPath(ap, active)
+        if (trackBrush != null) drawPath(activeTrack, trackBrush) else drawPath(activeTrack, active)
         drawRoundRect(
-            color = if (trackBrush != null) cs.onSurface else active,
-            topLeft = Offset(hx - hw / 2f, 0f),
-            size = Size(hw, size.height),
-            cornerRadius = CornerRadius(hw / 2f),
+            color = if (trackBrush != null) colors.onSurface else active,
+            topLeft = Offset(handleX - handleWidthPx / 2f, 0f),
+            size = Size(handleWidthPx, size.height),
+            cornerRadius = CornerRadius(handleWidthPx / 2f),
         )
 
         // Icon inset at the end of the track.
         val iconSize = 24.dp.toPx()
-        val ix = w - 16.dp.toPx() - iconSize
-        val iy = (size.height - iconSize) / 2f
+        val iconX = canvasWidth - 16.dp.toPx() - iconSize
+        val iconY = (size.height - iconSize) / 2f
         clipRect(right = activeEnd) {
-            translate(ix, iy) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(onActive)) } }
+            translate(iconX, iconY) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(onActive)) } }
         }
         clipRect(left = activeEnd) {
-            translate(ix, iy) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(cs.onSurfaceVariant)) } }
+            translate(iconX, iconY) { with(painter) { draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(colors.onSurfaceVariant)) } }
         }
         // Label at the start.
         val text = textMeasurer.measure(label, labelStyle)
-        val tx = 18.dp.toPx()
-        val ty = (size.height - text.size.height) / 2f
-        clipRect(right = activeEnd) { drawText(text, color = onActive, topLeft = Offset(tx, ty)) }
-        clipRect(left = activeEnd) { drawText(text, color = cs.onSurface, topLeft = Offset(tx, ty)) }
+        val labelX = 18.dp.toPx()
+        val labelY = (size.height - text.size.height) / 2f
+        clipRect(right = activeEnd) { drawText(text, color = onActive, topLeft = Offset(labelX, labelY)) }
+        clipRect(left = activeEnd) { drawText(text, color = colors.onSurface, topLeft = Offset(labelX, labelY)) }
     }
 }

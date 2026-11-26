@@ -44,51 +44,51 @@ class KeyboardWindow(
     private fun show() {
         if (dialog != null) return
         val display = windows.bottomDisplay() ?: return
-        val oc = windows.contextFor(display) ?: run {
+        val overlayContext = windows.contextFor(display) ?: run {
             Timber.w("no way to show the keyboard overlay")
             return
         }
-        val d = Dialog(oc.context, R.style.Theme_ThorControl_Menu)
-        val w = d.window ?: return
-        w.setType(oc.type)
-        w.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-        w.setFormat(PixelFormat.TRANSLUCENT)
-        w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        val keyboardDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
+        val window = keyboardDialog.window ?: return
+        window.setType(overlayContext.type)
+        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setFormat(PixelFormat.TRANSLUCENT)
+        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         // Not focusable: the text field keeps focus, whichever screen it is on.
-        w.addFlags(
+        window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
-        w.attributes = w.attributes.apply {
+        window.attributes = window.attributes.apply {
             title = "ThorKeyboard"
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
             windowAnimations = 0
         }
-        val o = OverlayOwner()
-        val v = ComposeView(oc.context)
-        o.attach(v)
-        v.setContent { content { BottomKeyboard() } }
-        d.setContentView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        d.setCancelable(false)
+        val overlayOwner = OverlayOwner()
+        val composeView = ComposeView(overlayContext.context)
+        overlayOwner.attach(composeView)
+        composeView.setContent { content { BottomKeyboard() } }
+        keyboardDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        keyboardDialog.setCancelable(false)
         try {
-            d.show()
-            o.resume()
-            dialog = d
-            owner = o
-        } catch (e: Exception) {
-            Timber.w(e, "show keyboard failed")
-            o.destroy()
+            keyboardDialog.show()
+            overlayOwner.resume()
+            dialog = keyboardDialog
+            owner = overlayOwner
+        } catch (error: Exception) {
+            Timber.w(error, "show keyboard failed")
+            overlayOwner.destroy()
         }
     }
 
     private fun remove() {
-        val d = dialog ?: return
+        val shownDialog = dialog ?: return
         dialog = null
         try {
-            d.dismiss()
+            shownDialog.dismiss()
         } catch (_: Exception) {
         }
         owner?.destroy()

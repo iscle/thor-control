@@ -35,7 +35,7 @@ class HudWindow(
 ) {
     private val main = Handler(Looper.getMainLooper())
     private var view: ComposeView? = null
-    private var wm: WindowManager? = null
+    private var windowManager: WindowManager? = null
     private var owner: OverlayOwner? = null
     private var displayId = -1
     private val hud = MutableStateFlow<HudMessage?>(null)
@@ -47,23 +47,23 @@ class HudWindow(
         }
     }
 
-    private fun show(msg: HudMessage) {
-        val display = windows.display(msg.displayId) ?: windows.display(Display.DEFAULT_DISPLAY) ?: return
+    private fun show(message: HudMessage) {
+        val display = windows.display(message.displayId) ?: windows.display(Display.DEFAULT_DISPLAY) ?: return
         if (view != null && displayId != display.displayId) remove()
         if (view == null && !add(display)) return
         haptics.tick()
-        hud.value = msg
+        hud.value = message
         main.removeCallbacks(hide)
         main.postDelayed(hide, 1800)
     }
 
     private fun add(display: Display): Boolean {
-        val oc = windows.contextFor(display) ?: return false
-        val windowManager = oc.context.getSystemService(WindowManager::class.java)
-        val lp = WindowManager.LayoutParams(
+        val overlayContext = windows.contextFor(display) ?: return false
+        val displayWindowManager = overlayContext.context.getSystemService(WindowManager::class.java)
+        val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            oc.type,
+            overlayContext.type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -72,39 +72,39 @@ class HudWindow(
         ).apply {
             title = "ThorControlHud"
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (28 * oc.context.resources.displayMetrics.density).toInt()
+            y = (28 * overlayContext.context.resources.displayMetrics.density).toInt()
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
         }
-        val o = OverlayOwner()
-        val v = ComposeView(oc.context)
-        o.attach(v)
-        v.setContent { ThorTheme { HudPill(hud, onGone = { remove() }) } }
+        val overlayOwner = OverlayOwner()
+        val composeView = ComposeView(overlayContext.context)
+        overlayOwner.attach(composeView)
+        composeView.setContent { ThorTheme { HudPill(hud, onGone = { remove() }) } }
         return try {
-            windowManager.addView(v, lp)
-            o.resume()
-            view = v
-            wm = windowManager
-            owner = o
+            displayWindowManager.addView(composeView, layoutParams)
+            overlayOwner.resume()
+            view = composeView
+            windowManager = displayWindowManager
+            owner = overlayOwner
             displayId = display.displayId
             true
-        } catch (e: Exception) {
-            Timber.w(e, "add HUD failed")
-            o.destroy()
+        } catch (error: Exception) {
+            Timber.w(error, "add HUD failed")
+            overlayOwner.destroy()
             false
         }
     }
 
     private fun remove() {
-        val v = view ?: return
+        val shownView = view ?: return
         view = null
         try {
-            wm?.removeViewImmediate(v)
+            windowManager?.removeViewImmediate(shownView)
         } catch (_: Exception) {
         }
         owner?.destroy()
         owner = null
-        wm = null
+        windowManager = null
         displayId = -1
     }
 }

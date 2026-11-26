@@ -54,7 +54,7 @@ import timber.log.Timber
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 class MenuWindow(
-    private val app: Context,
+    private val context: Context,
     private val daemon: DaemonRepository,
     private val windows: OverlayWindows,
     private val accessibility: AccessibilityConnection,
@@ -133,77 +133,77 @@ class MenuWindow(
     }
 
     private fun tryAdd(display: Display, layer: OverlayLayer): Boolean {
-        val oc = windows.contextFor(display, layer) ?: return false
-        val blur = oc.context.getSystemService(WindowManager::class.java).isCrossWindowBlurEnabled
-        val d = Dialog(oc.context, R.style.Theme_ThorControl_Menu)
-        val w = d.window ?: return false
-        w.setType(oc.type)
-        w.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-        w.setFormat(PixelFormat.TRANSLUCENT)
-        w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        val overlayContext = windows.contextFor(display, layer) ?: return false
+        val blur = overlayContext.context.getSystemService(WindowManager::class.java).isCrossWindowBlurEnabled
+        val menuDialog = Dialog(overlayContext.context, R.style.Theme_ThorControl_Menu)
+        val window = menuDialog.window ?: return false
+        window.setType(overlayContext.type)
+        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setFormat(PixelFormat.TRANSLUCENT)
+        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         // Not focusable: tapping the menu must not steal window focus from the game on top.
-        w.addFlags(
+        window.addFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
         )
-        w.attributes = w.attributes.apply {
+        window.attributes = window.attributes.apply {
             title = "ThorControlMenu"
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
             windowAnimations = 0
         }
-        w.setBackgroundBlurRadius(0)
+        window.setBackgroundBlurRadius(0)
 
-        val o = OverlayOwner()
-        val v = ComposeView(oc.context)
-        o.attach(v)
-        v.setContent {
+        val overlayOwner = OverlayOwner()
+        val composeView = ComposeView(overlayContext.context)
+        overlayOwner.attach(composeView)
+        composeView.setContent {
             content {
                 MenuOverlay(
                     visible = visible,
                     blur = blur,
-                    onReveal = { p -> if (blur) setBlur(d, p) },
+                    onReveal = { progress -> if (blur) setBlur(menuDialog, progress) },
                     onExitFinished = { removeNow() },
                     onOpenApp = { openApp() },
                 )
             }
         }
-        d.setContentView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        d.setCancelable(false)
+        menuDialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        menuDialog.setCancelable(false)
         return try {
-            d.show()
-            o.resume()
-            dialog = d
-            view = v
-            owner = o
+            menuDialog.show()
+            overlayOwner.resume()
+            dialog = menuDialog
+            view = composeView
+            owner = overlayOwner
             Timber.i("menu shown on display ${display.displayId} as $layer (blur=$blur)")
             true
-        } catch (e: Exception) {
-            Timber.w(e, "show menu as $layer failed")
-            o.destroy()
+        } catch (error: Exception) {
+            Timber.w(error, "show menu as $layer failed")
+            overlayOwner.destroy()
             false
         }
     }
 
-    private fun setBlur(d: Dialog, progress: Float) {
-        if (dialog != null && dialog !== d) return
-        val r = (progress.coerceIn(0f, 1f) * MAX_BLUR_PX).toInt()
-        if (r == lastBlur) return
-        lastBlur = r
-        d.window?.setBackgroundBlurRadius(r)
+    private fun setBlur(sourceDialog: Dialog, progress: Float) {
+        if (dialog != null && dialog !== sourceDialog) return
+        val blurRadius = (progress.coerceIn(0f, 1f) * MAX_BLUR_PX).toInt()
+        if (blurRadius == lastBlur) return
+        lastBlur = blurRadius
+        sourceDialog.window?.setBackgroundBlurRadius(blurRadius)
     }
 
     private fun removeNow() {
-        val d = dialog ?: return
+        val shownDialog = dialog ?: return
         dialog = null
         view = null
         lastBlur = -1
         try {
-            d.dismiss()
-        } catch (e: Exception) {
-            Timber.w(e, "dismiss")
+            shownDialog.dismiss()
+        } catch (error: Exception) {
+            Timber.w(error, "dismiss")
         }
         owner?.destroy()
         owner = null
@@ -214,13 +214,13 @@ class MenuWindow(
     /** The full app, on the top screen. */
     private fun openApp() {
         hide()
-        val i = Intent().setClassName(app, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val opts = ActivityOptions.makeBasic()
-        daemon.status.value.ifConnected { state -> if (state.topDisplayId >= 0) opts.launchDisplayId = state.topDisplayId }
+        val intent = Intent().setClassName(context, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val options = ActivityOptions.makeBasic()
+        daemon.status.value.ifConnected { state -> if (state.topDisplayId >= 0) options.launchDisplayId = state.topDisplayId }
         try {
-            app.startActivity(i, opts.toBundle())
-        } catch (e: Exception) {
-            Timber.w(e, "open app")
+            context.startActivity(intent, options.toBundle())
+        } catch (error: Exception) {
+            Timber.w(error, "open app")
         }
     }
 

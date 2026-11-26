@@ -21,29 +21,29 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun FanGlyph(speed: Float, color: Color, modifier: Modifier = Modifier.size(26.dp)) {
     var angle by remember { mutableFloatStateOf(0f) }
-    val sp by rememberUpdatedState(speed)
+    val currentSpeed by rememberUpdatedState(speed)
     LaunchedEffect(speed > 0.01f) {
-        if (sp <= 0.01f) return@LaunchedEffect
+        if (currentSpeed <= 0.01f) return@LaunchedEffect
         var last = 0L
         while (true) {
-            withFrameNanos { t ->
-                if (last != 0L) angle = (angle + (t - last) / 1e9f * (90f + 900f * sp)) % 360f
-                last = t
+            withFrameNanos { frameNanos ->
+                if (last != 0L) angle = (angle + (frameNanos - last) / 1e9f * (90f + 900f * currentSpeed)) % 360f
+                last = frameNanos
             }
         }
     }
     Canvas(modifier) {
-        val s = size.minDimension / 24f
+        val gridUnit = size.minDimension / 24f
         val blade = Path().apply {
-            moveTo(12f * s, 12f * s)
-            cubicTo(10.4f * s, 9.2f * s, 8.6f * s, 5.4f * s, 10.9f * s, 3.7f * s)
-            cubicTo(13.1f * s, 2.3f * s, 16.1f * s, 4.1f * s, 15.0f * s, 7.4f * s)
-            cubicTo(14.4f * s, 9.4f * s, 12.9f * s, 10.9f * s, 12f * s, 12f * s)
+            moveTo(12f * gridUnit, 12f * gridUnit)
+            cubicTo(10.4f * gridUnit, 9.2f * gridUnit, 8.6f * gridUnit, 5.4f * gridUnit, 10.9f * gridUnit, 3.7f * gridUnit)
+            cubicTo(13.1f * gridUnit, 2.3f * gridUnit, 16.1f * gridUnit, 4.1f * gridUnit, 15.0f * gridUnit, 7.4f * gridUnit)
+            cubicTo(14.4f * gridUnit, 9.4f * gridUnit, 12.9f * gridUnit, 10.9f * gridUnit, 12f * gridUnit, 12f * gridUnit)
             close()
         }
         rotate(angle) {
-            repeat(3) { i -> rotate(i * 120f) { drawPath(blade, color) } }
+            repeat(3) { bladeIndex -> rotate(bladeIndex * 120f) { drawPath(blade, color) } }
         }
-        drawCircle(color, radius = 2.4f * s)
+        drawCircle(color, radius = 2.4f * gridUnit)
     }
 }

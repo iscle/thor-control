@@ -40,13 +40,13 @@ fun MenuOverlay(
     onExitFinished: () -> Unit,
     onOpenApp: () -> Unit,
 ) {
-    val vis by visible.collectAsState()
+    val isVisible by visible.collectAsState()
     val reveal = remember { Animatable(0f) }
     val exitDone by rememberUpdatedState(onExitFinished)
-    val revealCb by rememberUpdatedState(onReveal)
+    val revealCallback by rememberUpdatedState(onReveal)
     var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(vis) {
-        if (vis) {
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
             shown = true
             reveal.animateTo(1f, tween(260, easing = EmphasizedDecelerate))
         } else if (shown) {
@@ -54,10 +54,10 @@ fun MenuOverlay(
             exitDone()
         }
     }
-    LaunchedEffect(Unit) { snapshotFlow { reveal.value }.collect { revealCb(it) } }
+    LaunchedEffect(Unit) { snapshotFlow { reveal.value }.collect { revealCallback(it) } }
 
-    val qs = qsColors()
-    val scrim = if (blur) qs.scrim else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.95f)
+    val shade = qsColors()
+    val scrim = if (blur) shade.scrim else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.95f)
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -67,6 +67,6 @@ fun MenuOverlay(
                 // Taps on the backdrop are swallowed; the menu closes only with the AYN button.
                 .pointerInput(Unit) { detectTapGestures { } },
         )
-        MenuPanel(entered = vis, onOpenApp = onOpenApp, modifier = Modifier.fillMaxSize())
+        MenuPanel(entered = isVisible, onOpenApp = onOpenApp, modifier = Modifier.fillMaxSize())
     }
 }

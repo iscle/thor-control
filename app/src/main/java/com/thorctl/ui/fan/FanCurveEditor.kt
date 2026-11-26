@@ -96,8 +96,8 @@ import kotlin.math.hypot
 import com.thorctl.domain.model.TemperatureUnit
 import com.thorctl.ui.format.Format
 
-private const val T_MIN = 25f
-private const val T_MAX = 95f
+private const val MIN_TEMP = 25f
+private const val MAX_TEMP = 95f
 
 @Composable
 fun FanCurveEditor(
@@ -105,15 +105,15 @@ fun FanCurveEditor(
     editable: Boolean,
     liveTemp: Float?,
     unit: TemperatureUnit,
-    livePct: Int?,
+    livePercent: Int?,
     onChange: (FanProfile) -> Unit,
     onCommit: (FanProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val tm = rememberTextMeasurer()
+    val colors = MaterialTheme.colorScheme
+    val textMeasurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelSmall
-    val cur by rememberUpdatedState(profile)
+    val currentProfile by rememberUpdatedState(profile)
     val change by rememberUpdatedState(onChange)
     val commit by rememberUpdatedState(onCommit)
     var dragIndex by remember { mutableIntStateOf(-1) }
@@ -128,33 +128,33 @@ fun FanCurveEditor(
                 val right = 20.dp.toPx()
                 val top = 20.dp.toPx()
                 val bottom = 30.dp.toPx()
-                val pw = size.width - left - right
-                val ph = size.height - top - bottom
-                fun px(t: Float) = left + (t - T_MIN) / (T_MAX - T_MIN) * pw
-                fun py(p: Float) = top + (1f - p / 100f) * ph
+                val plotWidth = size.width - left - right
+                val plotHeight = size.height - top - bottom
+                fun xForTemp(temp: Float) = left + (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP) * plotWidth
+                fun yForPercent(percent: Float) = top + (1f - percent / 100f) * plotHeight
                 detectDragGestures(
-                    onDragStart = { pos ->
-                        val pts = cur.points
-                        val (i, d) = pts.indices.map { it to hypot(px(pts[it].temp) - pos.x, py(pts[it].percent) - pos.y) }
+                    onDragStart = { startPosition ->
+                        val points = currentProfile.points
+                        val (nearestIndex, nearestDistance) = points.indices.map { it to hypot(xForTemp(points[it].temp) - startPosition.x, yForPercent(points[it].percent) - startPosition.y) }
                             .minByOrNull { it.second } ?: (-1 to Float.MAX_VALUE)
-                        dragIndex = if (d < 40.dp.toPx()) i else -1
+                        dragIndex = if (nearestDistance < 40.dp.toPx()) nearestIndex else -1
                     },
                     onDragEnd = {
-                        if (dragIndex >= 0) commit(cur)
+                        if (dragIndex >= 0) commit(currentProfile)
                         dragIndex = -1
                     },
                     onDragCancel = { dragIndex = -1 },
-                    onDrag = { c, _ ->
-                        val i = dragIndex
-                        if (i < 0) return@detectDragGestures
-                        c.consume()
-                        val pts = cur.points.toMutableList()
-                        val lo = if (i > 0) pts[i - 1].temp + 2f else T_MIN
-                        val hi = if (i < pts.size - 1) pts[i + 1].temp - 2f else T_MAX
-                        val t = (T_MIN + (c.position.x - left) / pw * (T_MAX - T_MIN)).coerceIn(lo, hi)
-                        val p = ((1f - (c.position.y - top) / ph) * 100f).coerceIn(0f, 100f)
-                        pts[i] = FanPoint(Math.round(t).toFloat(), Math.round(p).toFloat())
-                        change(cur.copy(points = pts))
+                    onDrag = { pointerChange, _ ->
+                        val index = dragIndex
+                        if (index < 0) return@detectDragGestures
+                        pointerChange.consume()
+                        val points = currentProfile.points.toMutableList()
+                        val lowestTemp = if (index > 0) points[index - 1].temp + 2f else MIN_TEMP
+                        val highestTemp = if (index < points.size - 1) points[index + 1].temp - 2f else MAX_TEMP
+                        val temp = (MIN_TEMP + (pointerChange.position.x - left) / plotWidth * (MAX_TEMP - MIN_TEMP)).coerceIn(lowestTemp, highestTemp)
+                        val percent = ((1f - (pointerChange.position.y - top) / plotHeight) * 100f).coerceIn(0f, 100f)
+                        points[index] = FanPoint(Math.round(temp).toFloat(), Math.round(percent).toFloat())
+                        change(currentProfile.copy(points = points))
                     },
                 )
             },
@@ -163,64 +163,64 @@ fun FanCurveEditor(
         val right = 20.dp.toPx()
         val top = 20.dp.toPx()
         val bottom = 30.dp.toPx()
-        val pw = size.width - left - right
-        val ph = size.height - top - bottom
-        fun px(t: Float) = left + (t - T_MIN) / (T_MAX - T_MIN) * pw
-        fun py(p: Float) = top + (1f - p / 100f) * ph
-        val grid = cs.outlineVariant.copy(alpha = 0.45f)
+        val plotWidth = size.width - left - right
+        val plotHeight = size.height - top - bottom
+        fun xForTemp(temp: Float) = left + (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP) * plotWidth
+        fun yForPercent(percent: Float) = top + (1f - percent / 100f) * plotHeight
+        val grid = colors.outlineVariant.copy(alpha = 0.45f)
 
-        for (p in 0..100 step 25) {
-            drawLine(grid, Offset(left, py(p.toFloat())), Offset(left + pw, py(p.toFloat())), 1.dp.toPx())
-            val l = tm.measure("$p%", labelStyle)
-            drawText(l, cs.onSurfaceVariant, Offset(left - l.size.width - 8.dp.toPx(), py(p.toFloat()) - l.size.height / 2))
+        for (percent in 0..100 step 25) {
+            drawLine(grid, Offset(left, yForPercent(percent.toFloat())), Offset(left + plotWidth, yForPercent(percent.toFloat())), 1.dp.toPx())
+            val label = textMeasurer.measure("$percent%", labelStyle)
+            drawText(label, colors.onSurfaceVariant, Offset(left - label.size.width - 8.dp.toPx(), yForPercent(percent.toFloat()) - label.size.height / 2))
         }
-        for (t in 30..90 step 10) {
-            drawLine(grid, Offset(px(t.toFloat()), top), Offset(px(t.toFloat()), top + ph), 1.dp.toPx())
-            val l = tm.measure(Format.temperature(t.toFloat(), unit), labelStyle)
-            drawText(l, cs.onSurfaceVariant, Offset(px(t.toFloat()) - l.size.width / 2, top + ph + 6.dp.toPx()))
+        for (temp in 30..90 step 10) {
+            drawLine(grid, Offset(xForTemp(temp.toFloat()), top), Offset(xForTemp(temp.toFloat()), top + plotHeight), 1.dp.toPx())
+            val label = textMeasurer.measure(Format.temperature(temp.toFloat(), unit), labelStyle)
+            drawText(label, colors.onSurfaceVariant, Offset(xForTemp(temp.toFloat()) - label.size.width / 2, top + plotHeight + 6.dp.toPx()))
         }
 
-        val pts = profile.points.sortedBy { it.temp }
-        if (pts.isNotEmpty()) {
+        val points = profile.points.sortedBy { it.temp }
+        if (points.isNotEmpty()) {
             val line = Path().apply {
-                moveTo(px(T_MIN), py(pts.first().percent))
-                pts.forEach { lineTo(px(it.temp.coerceIn(T_MIN, T_MAX)), py(it.percent)) }
-                lineTo(px(T_MAX), py(pts.last().percent))
+                moveTo(xForTemp(MIN_TEMP), yForPercent(points.first().percent))
+                points.forEach { lineTo(xForTemp(it.temp.coerceIn(MIN_TEMP, MAX_TEMP)), yForPercent(it.percent)) }
+                lineTo(xForTemp(MAX_TEMP), yForPercent(points.last().percent))
             }
             val area = Path().apply {
                 addPath(line)
-                lineTo(px(T_MAX), top + ph)
-                lineTo(px(T_MIN), top + ph)
+                lineTo(xForTemp(MAX_TEMP), top + plotHeight)
+                lineTo(xForTemp(MIN_TEMP), top + plotHeight)
                 close()
             }
-            drawPath(area, Brush.verticalGradient(listOf(cs.primary.copy(alpha = 0.32f), cs.primary.copy(alpha = 0.02f)), startY = top, endY = top + ph))
-            drawPath(line, cs.primary, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
-            pts.forEachIndexed { i, p ->
-                val c = Offset(px(p.temp), py(p.percent))
+            drawPath(area, Brush.verticalGradient(listOf(colors.primary.copy(alpha = 0.32f), colors.primary.copy(alpha = 0.02f)), startY = top, endY = top + plotHeight))
+            drawPath(line, colors.primary, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+            points.forEachIndexed { index, point ->
+                val pointCenter = Offset(xForTemp(point.temp), yForPercent(point.percent))
                 if (editable) {
-                    val r = 8.dp.toPx() + if (i == dragIndex) 5.dp.toPx() * pointGrow else 0f
-                    drawCircle(cs.surfaceContainerHigh, r + 3.dp.toPx(), c)
-                    drawCircle(cs.primary, r, c)
-                    if (i == dragIndex) {
-                        val l = tm.measure("${Format.temperature(p.temp, unit)} → ${p.percent.toInt()}%", labelStyle.copy(fontWeight = FontWeight.SemiBold))
-                        drawText(l, cs.onSurface, Offset((c.x - l.size.width / 2).coerceIn(left, left + pw - l.size.width), c.y - r - l.size.height - 6.dp.toPx()))
+                    val radius = 8.dp.toPx() + if (index == dragIndex) 5.dp.toPx() * pointGrow else 0f
+                    drawCircle(colors.surfaceContainerHigh, radius + 3.dp.toPx(), pointCenter)
+                    drawCircle(colors.primary, radius, pointCenter)
+                    if (index == dragIndex) {
+                        val label = textMeasurer.measure("${Format.temperature(point.temp, unit)} → ${point.percent.toInt()}%", labelStyle.copy(fontWeight = FontWeight.SemiBold))
+                        drawText(label, colors.onSurface, Offset((pointCenter.x - label.size.width / 2).coerceIn(left, left + plotWidth - label.size.width), pointCenter.y - radius - label.size.height - 6.dp.toPx()))
                     }
                 } else {
-                    drawCircle(cs.primary, 4.5.dp.toPx(), c)
+                    drawCircle(colors.primary, 4.5.dp.toPx(), pointCenter)
                 }
             }
         }
 
         if (liveTemp != null && liveTemp > 0f) {
-            val x = px(liveTemp.coerceIn(T_MIN, T_MAX))
+            val liveX = xForTemp(liveTemp.coerceIn(MIN_TEMP, MAX_TEMP))
             drawLine(
-                cs.tertiary, Offset(x, top), Offset(x, top + ph), 1.5.dp.toPx(),
+                colors.tertiary, Offset(liveX, top), Offset(liveX, top + plotHeight), 1.5.dp.toPx(),
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
             )
-            if (livePct != null) {
-                val c = Offset(x, py(livePct.toFloat()))
-                drawCircle(cs.surfaceContainerHigh, 9.dp.toPx(), c)
-                drawCircle(cs.tertiary, 6.dp.toPx(), c)
+            if (livePercent != null) {
+                val liveCenter = Offset(liveX, yForPercent(livePercent.toFloat()))
+                drawCircle(colors.surfaceContainerHigh, 9.dp.toPx(), liveCenter)
+                drawCircle(colors.tertiary, 6.dp.toPx(), liveCenter)
             }
         }
     }

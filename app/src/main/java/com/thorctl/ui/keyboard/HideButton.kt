@@ -19,14 +19,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun HideButton() {
-    val kb = LocalKeyboardActions.current
+    val actions = LocalKeyboardActions.current
     Box(
         Modifier
             .size(44.dp)
             .raised(22.dp, pressed = false)
             .clip(CircleShape)
             .background(KeyFill)
-            .pointerInput(Unit) { detectTapGestures(onTap = { kb.hideKeyboard() }) },
+            .pointerInput(Unit) { detectTapGestures(onTap = { actions.hideKeyboard() }) },
         contentAlignment = Alignment.Center,
     ) {
         Icon(Icons.Rounded.KeyboardHide, "Hide keyboard", tint = KeyInk, modifier = Modifier.size(22.dp))

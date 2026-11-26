@@ -62,39 +62,39 @@ class MenuViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BatteryStatus.UNKNOWN)
 
-    private fun content(s: DaemonState, stats: Stats, unit: TemperatureUnit): MenuContent {
-        val fanPct = stats.fanPercent
-        val profile = s.runningProfile
-        val gameLabel = apps.label(s.game.packageName)
+    private fun content(state: DaemonState, stats: Stats, unit: TemperatureUnit): MenuContent {
+        val fanPercent = stats.fanPercent
+        val profile = state.runningProfile
+        val gameLabel = apps.label(state.game.packageName)
         return MenuContent(
-            brightnessTop = BrightnessCurve.toPosition(s.brightnessTop),
-            brightnessBottom = BrightnessCurve.toPosition(s.brightnessBottom),
+            brightnessTop = BrightnessCurve.toPosition(state.brightnessTop),
+            brightnessBottom = BrightnessCurve.toPosition(state.brightnessBottom),
             fan = TileUi(
-                secondary = if (s.fanOverride.isNotEmpty()) "${profile.name} (game) · $fanPct%" else "${profile.name} · $fanPct%",
+                secondary = if (state.fanOverride.isNotEmpty()) "${profile.name} (game) · $fanPercent%" else "${profile.name} · $fanPercent%",
                 active = !profile.isAuto,
             ),
-            fanPercent = fanPct,
+            fanPercent = fanPercent,
             controller = TileUi(
                 secondary = when {
-                    !s.gamepad.on -> Format.controller(s.controller)
-                    s.gamepad.connected -> "Gamepad · connected"
+                    !state.gamepad.on -> Format.controller(state.controller)
+                    state.gamepad.connected -> "Gamepad · connected"
                     else -> "Gamepad · waiting"
                 },
-                active = s.controller != ControllerTarget.FREE || s.gamepad.on,
+                active = state.controller != ControllerTarget.FREE || state.gamepad.on,
             ),
             lights = TileUi(
-                secondary = if (s.leds.enabled) s.leds.mode.wire.replaceFirstChar { it.uppercase() } else "Off",
-                active = s.leds.enabled,
+                secondary = if (state.leds.enabled) state.leds.mode.wire.replaceFirstChar { it.uppercase() } else "Off",
+                active = state.leds.enabled,
             ),
-            leds = s.leds,
+            leds = state.leds,
             game = TileUi(
                 secondary = when {
-                    !s.game.enabled -> "Off"
-                    s.game.packageName.isEmpty() -> "Waiting for a game"
-                    !s.game.boosted -> "$gameLabel · paused"
+                    !state.game.enabled -> "Off"
+                    state.game.packageName.isEmpty() -> "Waiting for a game"
+                    !state.game.boosted -> "$gameLabel · paused"
                     else -> gameLabel
                 },
-                active = s.game.enabled,
+                active = state.game.enabled,
             ),
             stats = stats,
             unit = unit,

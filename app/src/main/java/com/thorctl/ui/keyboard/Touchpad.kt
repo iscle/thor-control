@@ -50,7 +50,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
-    val kb = LocalKeyboardActions.current
+    val actions = LocalKeyboardActions.current
     val stepPx = with(LocalDensity.current) { STEP.toPx() }
     var touching by remember { mutableStateOf(false) }
     val glow by animateFloatAsState(if (touching) 1f else 0f, tween(160), label = "pad")
@@ -63,24 +63,24 @@ internal fun Touchpad(state: KeyboardUi, modifier: Modifier) {
                 awaitEachGesture {
                     awaitFirstDown()
                     touching = true
-                    kb.beginSwipe()
-                    var acc = 0f
+                    actions.beginSwipe()
+                    var pendingDistance = 0f
                     while (true) {
-                        val ev = awaitPointerEvent()
-                        val ch = ev.changes.firstOrNull() ?: break
-                        if (!ch.pressed) break
-                        acc += ch.positionChange().x
-                        ch.consume()
-                        while (acc >= stepPx) {
-                            acc -= stepPx
-                            kb.move(1)
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull() ?: break
+                        if (!change.pressed) break
+                        pendingDistance += change.positionChange().x
+                        change.consume()
+                        while (pendingDistance >= stepPx) {
+                            pendingDistance -= stepPx
+                            actions.move(1)
                         }
-                        while (acc <= -stepPx) {
-                            acc += stepPx
-                            kb.move(-1)
+                        while (pendingDistance <= -stepPx) {
+                            pendingDistance += stepPx
+                            actions.move(-1)
                         }
                     }
-                    kb.endSwipe()
+                    actions.endSwipe()
                     touching = false
                 }
             },
@@ -137,15 +137,15 @@ private fun Flash(state: KeyboardUi, modifier: Modifier) {
         delay(1300)
         text = null
     }
-    val a by animateFloatAsState(if (text != null) 1f else 0f, tween(150), label = "flash")
-    if (a > 0f || text != null) {
+    val flashAlpha by animateFloatAsState(if (text != null) 1f else 0f, tween(150), label = "flash")
+    if (flashAlpha > 0f || text != null) {
         Text(
             text ?: "",
             color = Color.White,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             modifier = modifier
-                .graphicsLayer { alpha = a }
+                .graphicsLayer { alpha = flashAlpha }
                 .clip(RoundedCornerShape(14.dp))
                 .background(KeyInk.copy(alpha = 0.82f))
                 .padding(horizontal = 14.dp, vertical = 6.dp),

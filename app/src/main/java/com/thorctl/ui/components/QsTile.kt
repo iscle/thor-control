@@ -53,12 +53,12 @@ fun QsTile(
     toggleable: Boolean = true,
     enabled: Boolean = true,
 ) {
-    val qs = qsColors()
+    val shade = qsColors()
     val motion = MaterialTheme.motionScheme
-    val src = remember { MutableInteractionSource() }
-    val iconSrc = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val iconPressed by iconSrc.collectIsPressedAsState()
+    val tileInteractionSource = remember { MutableInteractionSource() }
+    val iconInteractionSource = remember { MutableInteractionSource() }
+    val pressed by tileInteractionSource.collectIsPressedAsState()
+    val iconPressed by iconInteractionSource.collectIsPressedAsState()
     val tileCorner by animateDpAsState(if (pressed) 14.dp else 24.dp, motion.fastSpatialSpec(), label = "tileCorner")
     val iconCorner by animateFloatAsState(
         when {
@@ -69,15 +69,15 @@ fun QsTile(
         motion.defaultSpatialSpec(), label = "iconCorner",
     )
     val iconScale by animateFloatAsState(if (iconPressed) 0.88f else 1f, motion.fastSpatialSpec(), label = "iconScale")
-    val iconBg by animateColorAsState(
+    val iconBackground by animateColorAsState(
         when {
-            active -> qs.iconActive
-            toggleable -> qs.iconInactive
+            active -> shade.iconActive
+            toggleable -> shade.iconInactive
             else -> Color.Transparent
         },
         motion.defaultEffectsSpec(), label = "iconBg",
     )
-    val iconFg by animateColorAsState(if (active) qs.onIconActive else qs.onIconInactive, motion.defaultEffectsSpec(), label = "iconFg")
+    val iconForeground by animateColorAsState(if (active) shade.onIconActive else shade.onIconInactive, motion.defaultEffectsSpec(), label = "iconFg")
     val alpha = if (enabled) 1f else 0.45f
 
     Row(
@@ -85,8 +85,8 @@ fun QsTile(
             .height(72.dp)
             .graphicsLayer { this.alpha = alpha }
             .clip(RoundedCornerShape(tileCorner))
-            .background(if (pressed) qs.containerPressed else qs.container)
-            .clickable(enabled = enabled, interactionSource = src, indication = ripple(), onClick = onClick)
+            .background(if (pressed) shade.containerPressed else shade.container)
+            .clickable(enabled = enabled, interactionSource = tileInteractionSource, indication = ripple(), onClick = onClick)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -98,15 +98,15 @@ fun QsTile(
                     scaleY = iconScale
                 }
                 .clip(RoundedCornerShape(CornerSize(iconCorner)))
-                .background(iconBg)
-                .clickable(enabled = enabled, interactionSource = iconSrc, indication = ripple(), onClick = onIconClick ?: onClick),
+                .background(iconBackground)
+                .clickable(enabled = enabled, interactionSource = iconInteractionSource, indication = ripple(), onClick = onIconClick ?: onClick),
             contentAlignment = Alignment.Center,
-        ) { icon(iconFg) }
+        ) { icon(iconForeground) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 label,
-                color = qs.text,
+                color = shade.text,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -114,7 +114,7 @@ fun QsTile(
             if (secondary != null) {
                 Text(
                     secondary,
-                    color = qs.textSecondary,
+                    color = shade.textSecondary,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

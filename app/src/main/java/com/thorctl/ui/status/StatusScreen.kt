@@ -38,8 +38,8 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewModel = metroViewModel()) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val cs = MaterialTheme.colorScheme
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = MaterialTheme.colorScheme
     Row(
         Modifier
             .fillMaxSize()
@@ -49,21 +49,21 @@ fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewMode
         horizontalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Column(Modifier.widthIn(max = 300.dp).fillMaxHeight()) {
-            Text("Thor Control", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = cs.onSurface)
+            Text("Thor Control", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
                 "Press the AYN button to open the menu on the bottom screen. Hold it with a button for shortcuts.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
             )
             Spacer(Modifier.height(10.dp))
             ShortcutList()
             Spacer(Modifier.height(16.dp))
-            StatusRow("Root service", if (ui.connected) "Running" else "Not running", ui.connected)
-            StatusRow("Menu layer", if (ui.accessibilityBound) "Accessibility overlay" else "App overlay (fallback)", ui.accessibilityBound)
-            StatusRow("System app", if (ui.systemApp) "Yes" else "No – install the Magisk module", ui.systemApp)
-            StatusRow("Persistent", if (ui.persistent) "Yes" else "No", ui.persistent)
-            ui.menuShownAs?.let { StatusRow("Last shown as", if (it == OverlayLayer.ACCESSIBILITY) "accessibility" else "application", true) }
+            StatusRow("Root service", if (uiState.connected) "Running" else "Not running", uiState.connected)
+            StatusRow("Menu layer", if (uiState.accessibilityBound) "Accessibility overlay" else "App overlay (fallback)", uiState.accessibilityBound)
+            StatusRow("System app", if (uiState.systemApp) "Yes" else "No – install the Magisk module", uiState.systemApp)
+            StatusRow("Persistent", if (uiState.persistent) "Yes" else "No", uiState.persistent)
+            uiState.menuShownAs?.let { StatusRow("Last shown as", if (it == OverlayLayer.ACCESSIBILITY) "accessibility" else "application", true) }
             Spacer(Modifier.weight(1f))
             Button(onClick = viewModel::showMenu, modifier = Modifier.fillMaxWidth()) {
                 Text("Show menu on bottom screen")
@@ -87,13 +87,13 @@ fun StatusScreen(onOpenControllerSettings: () -> Unit, viewModel: StatusViewMode
 
 @Composable
 private fun StatusRow(label: String, value: String, ok: Boolean) {
-    val cs = MaterialTheme.colorScheme
+    val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) Color(0xFF7BD88F) else cs.error))
+        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) Color(0xFF7BD88F) else colors.error))
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyLarge, color = cs.onSurface)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface)
         }
     }
 }

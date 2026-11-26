@@ -39,24 +39,24 @@ fun StatTile(
     icon: ImageVector,
     label: String,
     value: String,
-    sub: String,
+    detail: String,
     progress: Float,
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
-    val qs = qsColors()
-    val p by animateFloatAsState(progress.coerceIn(0f, 1f), spring(dampingRatio = 0.8f, stiffness = 120f), label = "stat")
+    val shade = qsColors()
+    val animatedProgress by animateFloatAsState(progress.coerceIn(0f, 1f), spring(dampingRatio = 0.8f, stiffness = 120f), label = "stat")
     Row(
         modifier
             .height(72.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(qs.container)
+            .background(shade.container)
             .padding(start = 8.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
             CircularWavyProgressIndicator(
-                progress = { p },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxSize(),
                 color = accent,
                 trackColor = accent.copy(alpha = 0.2f),
@@ -65,14 +65,14 @@ fun StatTile(
         }
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = qs.textSecondary, maxLines = 1)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = shade.textSecondary, maxLines = 1)
             Text(
                 value,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-                color = qs.text,
+                color = shade.text,
                 maxLines = 1,
             )
-            Text(sub, style = MaterialTheme.typography.labelSmall, color = qs.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = shade.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -131,8 +131,8 @@ fun RecentsStage(
     /** The row as of now (snapshot state, so writes made this frame are already visible). */
     fun current(): List<Card> = cards.value.filter { it.key !in removed }
 
-    val posA = remember { Animatable(session.start.toFloat()) }
-    val zoomA = remember { Animatable(1f) }
+    val positionAnimatable = remember { Animatable(session.start.toFloat()) }
+    val zoomAnimatable = remember { Animatable(1f) }
     val shift = remember { Animatable(0f) }
     var shiftRange by remember { mutableStateOf(IntRange.EMPTY) }
     val lift = remember { Animatable(0f) }
@@ -145,9 +145,9 @@ fun RecentsStage(
     // row slides one card right, and the home card coming in from the right grows to full screen.
     val press = remember { Animatable(0f) }
     val pressing = session.intro == Intro.HOME_PRESS
-    fun pressQ() = StrongInOut.transform(press.value)
-    fun posV(): Float = if (pressing) pressQ() * (cards.value.size - 1) else posA.value
-    fun zoomV(): Float = if (pressing) pressQ().let { q -> 1f - 4f * q * (1f - q) } else zoomA.value
+    fun pressProgress() = StrongInOut.transform(press.value)
+    fun positionNow(): Float = if (pressing) pressProgress() * (cards.value.size - 1) else positionAnimatable.value
+    fun zoomNow(): Float = if (pressing) pressProgress().let { progress -> 1f - 4f * progress * (1f - progress) } else zoomAnimatable.value
 
     // ---- Moves ------------------------------------------------------------------------------
 
@@ -158,67 +158,67 @@ fun RecentsStage(
         target = index
         onStart()
         // Gliding to the card and zooming into it are one camera move (same curve and timing).
-        val spec = tween<Float>(if (abs(posA.value - index) > 0.05f) 480 else 370, easing = StrongInOut)
-        scope.launch { posA.animateTo(index.toFloat(), spec) }
+        val spec = tween<Float>(if (abs(positionAnimatable.value - index) > 0.05f) 480 else 370, easing = StrongInOut)
+        scope.launch { positionAnimatable.animateTo(index.toFloat(), spec) }
         scope.launch {
-            zoomA.animateTo(1f, spec)
+            zoomAnimatable.animateTo(1f, spec)
             actions.finish(settleMs)
         }
     }
 
     fun openHome() {
-        val there = homeIsUnderneath()
-        zoomInto(current().lastIndex, if (there) 0 else 380) { actions.openHome(there) }
+        val alreadyThere = homeIsUnderneath()
+        zoomInto(current().lastIndex, if (alreadyThere) 0 else 380) { actions.openHome(alreadyThere) }
     }
 
     fun open(index: Int) {
-        val c = current().getOrNull(index) ?: return
-        if (c.isHome) return openHome()
-        val origin = session.intro == Intro.FROM_APP && c.key == session.originKey
-        zoomInto(index, if (origin) 0 else 380) { if (origin) actions.back() else actions.openApp(c) }
+        val card = current().getOrNull(index) ?: return
+        if (card.isHome) return openHome()
+        val origin = session.intro == Intro.FROM_APP && card.key == session.originKey
+        zoomInto(index, if (origin) 0 else 380) { if (origin) actions.back() else actions.openApp(card) }
     }
 
     fun back() {
-        val i = current().indexOfFirst { it.key == session.originKey }
-        if (session.intro == Intro.FROM_APP && i >= 0) open(i) else openHome()
+        val originIndex = current().indexOfFirst { it.key == session.originKey }
+        if (session.intro == Intro.FROM_APP && originIndex >= 0) open(originIndex) else openHome()
     }
 
-    fun glideTo(t: Int) {
-        if (current()[t].isHome) openHome() else scope.launch { posA.animateTo(t.toFloat(), spring(dampingRatio = 1f, stiffness = 380f)) }
+    fun glideTo(index: Int) {
+        if (current()[index].isHome) openHome() else scope.launch { positionAnimatable.animateTo(index.toFloat(), spring(dampingRatio = 1f, stiffness = 380f)) }
     }
 
-    fun move(d: Int) {
-        val t = (target + d).coerceIn(0, current().lastIndex)
-        if (t == target) return
-        target = t
+    fun move(delta: Int) {
+        val newTarget = (target + delta).coerceIn(0, current().lastIndex)
+        if (newTarget == target) return
+        target = newTarget
         actions.tick()
-        glideTo(t)
+        glideTo(newTarget)
     }
 
     /** Takes cards out of the row and closes the gap smoothly (or goes home if none are left). */
     fun drop(keysToDrop: Set<Int>) {
         val before = current()
-        val i = target
+        val targetIndex = target
         val after = before.filter { it.key !in keysToDrop }
-        val rightIsHome = before.getOrNull(i + 1)?.isHome == true
+        val rightIsHome = before.getOrNull(targetIndex + 1)?.isHome == true
         scope.launch {
             removed = removed + keysToDrop
             if (after.none { !it.isHome }) {
                 target = after.lastIndex
-                posA.snapTo(after.lastIndex.toFloat())
+                positionAnimatable.snapTo(after.lastIndex.toFloat())
                 openHome()
                 return@launch
             }
-            if (rightIsHome && i - 1 >= 0) {
+            if (rightIsHome && targetIndex - 1 >= 0) {
                 // The app next to home closed: its older neighbour slides right into its place.
-                target = i - 1
-                posA.snapTo((i - 1).toFloat())
-                shiftRange = 0..(i - 1)
+                target = targetIndex - 1
+                positionAnimatable.snapTo((targetIndex - 1).toFloat())
+                shiftRange = 0..(targetIndex - 1)
                 shift.snapTo(-1f)
             } else {
                 // The newer neighbour (and everything right of it) slides left into the gap.
-                target = i.coerceAtMost(after.lastIndex)
-                shiftRange = i..after.lastIndex
+                target = targetIndex.coerceAtMost(after.lastIndex)
+                shiftRange = targetIndex..after.lastIndex
                 shift.snapTo(1f)
             }
             locked = false
@@ -227,16 +227,16 @@ fun RecentsStage(
     }
 
     fun closeCurrent() {
-        val c = current().getOrNull(target) ?: return
-        if (c.isHome) return
+        val card = current().getOrNull(target) ?: return
+        if (card.isHome) return
         locked = true
         scope.launch {
-            liftKeys = setOf(c.key)
+            liftKeys = setOf(card.key)
             lift.animateTo(1f, tween(220, easing = Lift))
-            actions.remove(c)
+            actions.remove(card)
             liftKeys = emptySet()
             lift.snapTo(0f)
-            drop(setOf(c.key))
+            drop(setOf(card.key))
         }
     }
 
@@ -253,7 +253,7 @@ fun RecentsStage(
             liftKeys = emptySet()
             lift.snapTo(0f)
             target = 0
-            posA.snapTo(0f)
+            positionAnimatable.snapTo(0f)
             openHome()
         }
     }
@@ -263,7 +263,7 @@ fun RecentsStage(
     LaunchedEffect(Unit) {
         when (session.intro) {
             Intro.FROM_APP -> {
-                zoomA.animateTo(0f, tween(370, easing = StrongInOut))
+                zoomAnimatable.animateTo(0f, tween(370, easing = StrongInOut))
                 locked = false
             }
             Intro.FROM_HOME -> {
@@ -272,9 +272,9 @@ fun RecentsStage(
                 val spec = tween<Float>(510, easing = StrongInOut)
                 if (current().size > 1) {
                     target = current().lastIndex - 1
-                    launch { posA.animateTo(target.toFloat(), spec) }
+                    launch { positionAnimatable.animateTo(target.toFloat(), spec) }
                 }
-                zoomA.animateTo(0f, spec)
+                zoomAnimatable.animateTo(0f, spec)
                 locked = false
             }
             Intro.HOME_PRESS -> {
@@ -286,10 +286,10 @@ fun RecentsStage(
     }
 
     LaunchedEffect(Unit) {
-        keys.collect { k ->
+        keys.collect { button ->
             // Presses during an animation wait for it (a quick ◀ after opening still counts).
             if (locked) snapshotFlow { locked }.first { !it }
-            when (k) {
+            when (button) {
                 "left" -> move(-1)
                 "right" -> move(1)
                 "a" -> open(target)
@@ -305,73 +305,73 @@ fun RecentsStage(
 
     val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val w = constraints.maxWidth.toFloat()
-        val h = constraints.maxHeight.toFloat()
+        val stageWidth = constraints.maxWidth.toFloat()
+        val stageHeight = constraints.maxHeight.toFloat()
         val gap = with(density) { 36.dp.toPx() }
-        val step = w * CARD_SCALE + gap
+        val step = stageWidth * CARD_SCALE + gap
         val radius = 5f // px on screen: cards are only just rounded
         val elevation = with(density) { 10.dp.toPx() }
         val labelLift = with(density) { 46.dp.toPx() }
-        val band = h * (1f - CARD_SCALE) / 2f
+        val band = stageHeight * (1f - CARD_SCALE) / 2f
 
-        fun camera() = 1f + (1f / CARD_SCALE - 1f) * zoomV()
-        fun rel(i: Int) = i - posV() + (if (i in shiftRange) shift.value else 0f)
+        fun camera() = 1f + (1f / CARD_SCALE - 1f) * zoomNow()
+        fun offsetFromCamera(index: Int) = index - positionNow() + (if (index in shiftRange) shift.value else 0f)
 
         /** Index of the card under a point (at rest, zoom 0), or -1. */
-        fun cardAt(o: Offset): Int {
-            val cw = w * CARD_SCALE
-            val ch = h * CARD_SCALE
-            if (o.y < (h - ch) / 2 || o.y > (h + ch) / 2) return -1
-            for (i in current().indices) {
-                val cx = w / 2 + rel(i) * step
-                if (o.x >= cx - cw / 2 && o.x <= cx + cw / 2) return i
+        fun cardAt(point: Offset): Int {
+            val cardWidth = stageWidth * CARD_SCALE
+            val cardHeight = stageHeight * CARD_SCALE
+            if (point.y < (stageHeight - cardHeight) / 2 || point.y > (stageHeight + cardHeight) / 2) return -1
+            for (index in current().indices) {
+                val cardCenterX = stageWidth / 2 + offsetFromCamera(index) * step
+                if (point.x >= cardCenterX - cardWidth / 2 && point.x <= cardCenterX + cardWidth / 2) return index
             }
             return -1
         }
 
         // Backdrop: solid, the same gradient as the bottom screen (light or dark). At zoom 1 the
         // card covers it completely, so it simply appears around the card as the card shrinks.
-        val rc = recentsColors()
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(rc.backdropTop, rc.backdropBottom))))
+        val palette = recentsColors()
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.backdropTop, palette.backdropBottom))))
 
-        items.forEachIndexed { i, c ->
-            key(c.key) {
+        items.forEachIndexed { index, card ->
+            key(card.key) {
                 CardLayer(
-                    card = c,
+                    card = card,
                     layer = {
-                        val cam = camera()
-                        val s = CARD_SCALE * cam
-                        val r = rel(i)
-                        scaleX = s
-                        scaleY = s
-                        translationX = r * step * cam
-                        val lifted = c.key in liftKeys
-                        translationY = if (lifted) -lift.value * h * 0.9f else 0f
-                        alpha = if (abs(r) > 2.6f) 0f else if (lifted) 1f - lift.value else 1f
-                        shape = RoundedCornerShape(((radius * (1f - zoomV())) / s).toDp())
+                        val cameraScale = camera()
+                        val cardScale = CARD_SCALE * cameraScale
+                        val cardOffset = offsetFromCamera(index)
+                        scaleX = cardScale
+                        scaleY = cardScale
+                        translationX = cardOffset * step * cameraScale
+                        val lifted = card.key in liftKeys
+                        translationY = if (lifted) -lift.value * stageHeight * 0.9f else 0f
+                        alpha = if (abs(cardOffset) > 2.6f) 0f else if (lifted) 1f - lift.value else 1f
+                        shape = RoundedCornerShape(((radius * (1f - zoomNow())) / cardScale).toDp())
                         clip = true
-                        shadowElevation = elevation * (1f - zoomV()) / s
+                        shadowElevation = elevation * (1f - zoomNow()) / cardScale
                     },
-                    dim = { abs(rel(i)).coerceAtMost(1f) * 0.5f * (1f - zoomV()) },
+                    dim = { abs(offsetFromCamera(index)).coerceAtMost(1f) * 0.5f * (1f - zoomNow()) },
                 )
             }
         }
 
         if (chrome) {
             // Labels above the cards, drawn unscaled so the text stays sharp.
-            items.forEachIndexed { i, c ->
-                key("label${c.key}") {
+            items.forEachIndexed { index, card ->
+                key("label${card.key}") {
                     CardLabel(
-                        card = c,
-                        width = with(density) { (w * CARD_SCALE).toDp() },
+                        card = card,
+                        width = with(density) { (stageWidth * CARD_SCALE).toDp() },
                         modifier = Modifier.graphicsLayer {
-                            val r = rel(i)
-                            val cam = camera()
-                            translationX = w / 2 + r * step * cam - w * CARD_SCALE * cam / 2
-                            translationY = h / 2 - h * CARD_SCALE * cam / 2 - labelLift
-                            val lifted = c.key in liftKeys
-                            alpha = if (abs(r) > 2.6f) 0f else
-                                (1f - zoomV()) * (1f - abs(r).coerceAtMost(1f) * 0.5f) * (if (lifted) 1f - lift.value else 1f)
+                            val cardOffset = offsetFromCamera(index)
+                            val cameraScale = camera()
+                            translationX = stageWidth / 2 + cardOffset * step * cameraScale - stageWidth * CARD_SCALE * cameraScale / 2
+                            translationY = stageHeight / 2 - stageHeight * CARD_SCALE * cameraScale / 2 - labelLift
+                            val lifted = card.key in liftKeys
+                            alpha = if (abs(cardOffset) > 2.6f) 0f else
+                                (1f - zoomNow()) * (1f - abs(cardOffset).coerceAtMost(1f) * 0.5f) * (if (lifted) 1f - lift.value else 1f)
                         },
                     )
                 }
@@ -382,7 +382,7 @@ fun RecentsStage(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(with(density) { band.toDp() })
-                    .graphicsLayer { alpha = 1f - zoomV() },
+                    .graphicsLayer { alpha = 1f - zoomNow() },
                 contentAlignment = Alignment.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -392,7 +392,7 @@ fun RecentsStage(
                         Hint("X", "Close")
                         Hint("Y", "Close all")
                     } else {
-                        Text("No recent apps", style = MaterialTheme.typography.bodyMedium, color = rc.inkSecondary)
+                        Text("No recent apps", style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
                         Spacer(Modifier.width(24.dp))
                     }
                     Hint("B", "Back")
@@ -408,47 +408,47 @@ fun RecentsStage(
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         if (locked) return@awaitEachGesture
-                        val startPos = posA.value
+                        val startPosition = positionAnimatable.value
                         val hit = cardAt(down.position)
-                        val vt = VelocityTracker()
-                        vt.addPosition(down.uptimeMillis, down.position)
+                        val velocityTracker = VelocityTracker()
+                        velocityTracker.addPosition(down.uptimeMillis, down.position)
                         var total = Offset.Zero
                         var axis = 0
                         while (true) {
-                            val ev = awaitPointerEvent()
-                            val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!ch.pressed) break
-                            total += ch.positionChange()
-                            vt.addPosition(ch.uptimeMillis, ch.position)
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            total += change.positionChange()
+                            velocityTracker.addPosition(change.uptimeMillis, change.position)
                             if (axis == 0 && total.getDistance() > viewConfiguration.touchSlop) {
                                 axis = if (abs(total.x) >= abs(total.y)) 1 else 2
                             }
                             if (axis == 1) {
-                                ch.consume()
-                                val p = (startPos - total.x / step).coerceIn(-0.3f, current().lastIndex - 0.7f)
-                                scope.launch { posA.snapTo(p) }
+                                change.consume()
+                                val newPosition = (startPosition - total.x / step).coerceIn(-0.3f, current().lastIndex - 0.7f)
+                                scope.launch { positionAnimatable.snapTo(newPosition) }
                             } else if (axis == 2 && hit == target && current().getOrNull(hit)?.isHome == false) {
-                                ch.consume()
+                                change.consume()
                                 liftKeys = setOf(current()[hit].key)
-                                scope.launch { lift.snapTo((-total.y / (h * 0.9f)).coerceIn(0f, 1f)) }
+                                scope.launch { lift.snapTo((-total.y / (stageHeight * 0.9f)).coerceIn(0f, 1f)) }
                             }
                         }
-                        val v = vt.calculateVelocity()
+                        val velocity = velocityTracker.calculateVelocity()
                         when (axis) {
                             0 -> if (hit >= 0) open(hit) else back()
                             1 -> {
-                                val base = startPos.roundToInt()
-                                val t = when {
-                                    v.x < -500f -> base + 1
-                                    v.x > 500f -> base - 1
-                                    else -> posA.value.roundToInt()
+                                val base = startPosition.roundToInt()
+                                val newTarget = when {
+                                    velocity.x < -500f -> base + 1
+                                    velocity.x > 500f -> base - 1
+                                    else -> positionAnimatable.value.roundToInt()
                                 }.coerceIn(0, current().lastIndex)
-                                if (t != target) actions.tick()
-                                target = t
-                                glideTo(t)
+                                if (newTarget != target) actions.tick()
+                                target = newTarget
+                                glideTo(newTarget)
                             }
                             2 -> if (liftKeys.isNotEmpty()) {
-                                if (lift.value > 0.22f || v.y < -1400f) {
+                                if (lift.value > 0.22f || velocity.y < -1400f) {
                                     closeCurrent()
                                 } else {
                                     scope.launch {
@@ -466,17 +466,17 @@ fun RecentsStage(
 
 @Composable
 private fun CardLayer(card: Card, layer: GraphicsLayerScope.() -> Unit, dim: () -> Float) {
-    val rc = recentsColors()
+    val palette = recentsColors()
     Box(
         Modifier
             .fillMaxSize()
             .graphicsLayer(layer)
-            .background(rc.cardFill),
+            .background(palette.cardFill),
     ) {
-        val img = card.image
-        if (img != null) {
+        val image = card.image
+        if (image != null) {
             Image(
-                img,
+                image,
                 card.label,
                 Modifier.fillMaxSize(),
                 contentScale = if (card.onBottom) ContentScale.Fit else ContentScale.Crop,
@@ -489,31 +489,31 @@ private fun CardLayer(card: Card, layer: GraphicsLayerScope.() -> Unit, dim: () 
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = dim() }
-                .background(rc.backdropMid),
+                .background(palette.backdropMid),
         )
     }
 }
 
 @Composable
 private fun CardLabel(card: Card, width: Dp, modifier: Modifier) {
-    val cs = MaterialTheme.colorScheme
-    val qs = qsColors()
-    val rc = recentsColors()
+    val colors = MaterialTheme.colorScheme
+    val shade = qsColors()
+    val palette = recentsColors()
     Row(modifier.width(width).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         if (card.isHome) {
-            Box(Modifier.size(30.dp).clip(CircleShape).background(qs.iconActive), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Home, null, tint = qs.onIconActive, modifier = Modifier.size(18.dp))
+            Box(Modifier.size(30.dp).clip(CircleShape).background(shade.iconActive), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Home, null, tint = shade.onIconActive, modifier = Modifier.size(18.dp))
             }
         } else if (card.icon != null) {
             Image(card.icon, null, Modifier.size(30.dp))
         } else {
-            Box(Modifier.size(30.dp).clip(CircleShape).background(rc.chip))
+            Box(Modifier.size(30.dp).clip(CircleShape).background(palette.chip))
         }
         Spacer(Modifier.width(10.dp))
         Text(
             if (card.isHome) "Home" else card.label,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-            color = rc.ink,
+            color = palette.ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
@@ -523,9 +523,9 @@ private fun CardLabel(card: Card, width: Dp, modifier: Modifier) {
             Text(
                 "Bottom screen",
                 style = MaterialTheme.typography.labelSmall,
-                color = cs.onSecondaryContainer,
+                color = colors.onSecondaryContainer,
                 maxLines = 1,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(cs.secondaryContainer).padding(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.secondaryContainer).padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }
     }
@@ -533,24 +533,24 @@ private fun CardLabel(card: Card, width: Dp, modifier: Modifier) {
 
 @Composable
 private fun Hint(button: String, action: String) {
-    val rc = recentsColors()
+    val palette = recentsColors()
     Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
                 .height(28.dp)
                 .width(if (button.length > 1) 48.dp else 28.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(rc.chip),
+                .background(palette.chip),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 button,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = rc.ink,
+                color = palette.ink,
                 textAlign = TextAlign.Center,
             )
         }
         Spacer(Modifier.width(8.dp))
-        Text(action, style = MaterialTheme.typography.bodyMedium, color = rc.ink)
+        Text(action, style = MaterialTheme.typography.bodyMedium, color = palette.ink)
     }
 }
