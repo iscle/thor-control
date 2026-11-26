@@ -7,6 +7,7 @@ import com.thorctl.daemon.ipc.FakeClientLink
 import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.FakeInputService
 import com.thorctl.daemon.system.FakeTaskService
+import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.DaemonEvent
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -30,7 +31,9 @@ class HomeButtonTest {
     private val guard = CaptureGuard(clock)
     private var recentsOpen = false
     private var homeShown = 0
-    private val button = HomeButton(
+    private val button = buttonWith(taskService)
+
+    private fun buttonWith(taskService: TaskService) = HomeButton(
         displays, link, inputService, taskService, capturer, files, guard, RecentsThread(recentsExecutor), captureExecutor,
         isRecentsOpen = { recentsOpen },
         onHomeShown = { homeShown++ },
@@ -215,5 +218,85 @@ class HomeButtonTest {
         recentsExecutor.advanceBy(HomeButton.HOME_CAPTURE_DELAY_MS)
         captureExecutor.runDue()
         assertEquals(listOf(1 to "home-222.jpg"), capturer.captures)
+    }
+
+    /** A short press in an app, the animation shown and the app's word that its overlay covers the screen. */
+    private fun animateHome() {
+        inApp()
+        withHomePicture()
+        press()
+        assertTrue(button.short(0))
+        recentsExecutor.runDue()
+        button.goHome(1)
+        taskService.topTasks.clear() // home is in front now
+        assertEquals(1, capturer.captures.size) // the press's own
+    }
+
+    @Test
+    fun theHomePictureAfterTheAnimationWaitsForTheOverlayToGo() {
+        animateHome()
+        recentsExecutor.advanceBy(HomeButton.HOME_CAPTURE_DELAY_MS)
+        captureExecutor.runDue()
+        assertEquals(1, capturer.captures.size) // the overlay still covers home
+
+        button.overlayDone()
+        recentsExecutor.advanceBy(HomeButton.OVERLAY_SETTLE_MS - 1)
+        captureExecutor.runDue()
+        assertEquals(1, capturer.captures.size)
+        recentsExecutor.advanceBy(1)
+        captureExecutor.runDue()
+        assertEquals(0 to "home-111.jpg", capturer.captures.last())
+
+        // Taken once: the fallback for an app that never says finds nothing owed.
+        recentsExecutor.advanceBy(HomeButton.ANIMATION_MS)
+        captureExecutor.runDue()
+        assertEquals(2, capturer.captures.size)
+    }
+
+    @Test
+    fun theHomePictureAfterTheAnimationIsTakenWhenTheOverlayTimesOut() {
+        animateHome()
+        recentsExecutor.advanceBy(HomeButton.HOME_CAPTURE_DELAY_MS)
+        val overlayEnd = HomeButton.ANIMATION_MS - HomeButton.HOME_CAPTURE_DELAY_MS
+        recentsExecutor.advanceBy(overlayEnd + HomeButton.OVERLAY_SETTLE_MS - 1)
+        captureExecutor.runDue()
+        assertEquals(1, capturer.captures.size)
+        recentsExecutor.advanceBy(1)
+        captureExecutor.runDue()
+        assertEquals(listOf(0 to "screen.jpg", 0 to "home-111.jpg"), capturer.captures)
+    }
+
+    @Test
+    fun overlayDoneWithNothingOwedCapturesNothing() {
+        button.overlayDone()
+        recentsExecutor.advanceBy(1000)
+        captureExecutor.runDue()
+        assertTrue(capturer.captures.isEmpty())
+    }
+
+    @Test
+    fun aPressIsUsedOnceEvenByAHold() {
+        inApp()
+        withHomePicture()
+        press()
+        assertTrue(button.short(0))
+        button.hold(0) // a hold racing the short press finds no press and captures anew
+        assertEquals(listOf(0 to "screen.jpg", 0 to "screen.jpg"), capturer.captures)
+    }
+
+    @Test
+    fun anUnknownTopTaskCountsAsTheHomeScreenButIsNotPictured() {
+        val button = buttonWith(UnavailableTaskService())
+        button.down(0)
+        captureExecutor.runDue()
+        assertEquals(listOf(0 to "home-111.jpg"), capturer.captures)
+        assertEquals(HomeShot(null, files.home(0)), button.hold(0))
+
+        capturer.captures.clear()
+        button.maybeCaptureHome(interactive = true)
+        files.home(0).delete()
+        button.maybeCaptureHome(interactive = true)
+        captureExecutor.runDue()
+        assertTrue(capturer.captures.isEmpty())
     }
 }

@@ -3,6 +3,7 @@ package com.thorctl.daemon.feature.recents
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.hardware.DisplayController
+import com.thorctl.daemon.hardware.input.EvdevCodes
 import com.thorctl.daemon.hardware.input.InputWatcher
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.InputService
@@ -57,6 +58,8 @@ class Recents(
         onHomeShown = ::onHomeShown,
     )
     private val navigator = RecentsNavigator(thread, ::key)
+
+    /** Recents thread only (controller events are handed over to it, see [RecentsNavigator]). */
     private var idle: ScheduledFuture<*>? = null
 
     /** Display the recents screen is open on, or -1. */
@@ -106,7 +109,7 @@ class Recents(
                 return@run
             }
             DaemonCommand.OverlayDone -> {
-                guard.overlayDone()
+                homeButton.overlayDone()
                 return@run
             }
             else -> {}
@@ -147,8 +150,7 @@ class Recents(
             ),
         )
 
-        navigator.start(homeHeld = input.isDown(InputWatcher.KEY_HOME))
-        val grabbed = input.grabController(navigator::onEvent)
+        val grabbed = input.grabController(navigator.start(homeHeld = input.isDown(EvdevCodes.KEY_HOME)))
         Timber.i("recents: open on display $displayId from ${origin?.packageName ?: "home"}, ${cards.size} apps (controller ${if (grabbed) "grabbed" else "not grabbed"})")
         bumpIdle()
         if (previews.taskIds.isNotEmpty()) refreshThumbs(previews.taskIds, previews.since, attempt = 0)

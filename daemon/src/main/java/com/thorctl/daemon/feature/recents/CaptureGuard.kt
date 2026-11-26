@@ -18,6 +18,9 @@ class CaptureGuard(private val clock: Clock) {
     /** One of our full-screen animations is (or may still be) on screen. */
     val overlayShowing: Boolean get() = clock.elapsedRealtime() < busyUntil
 
+    /** Time left before an overlay counts as gone even if the app never said so; 0 when none shows. */
+    val overlayRemainingMs: Long get() = (busyUntil - clock.elapsedRealtime()).coerceAtLeast(0)
+
     /** The HUD was shown within the last [HUD_MS]. */
     val hudShowing: Boolean get() = clock.elapsedRealtime() - lastHud < HUD_MS
 

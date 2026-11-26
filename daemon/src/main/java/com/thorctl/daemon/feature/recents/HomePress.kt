@@ -2,8 +2,10 @@ package com.thorctl.daemon.feature.recents
 
 import com.thorctl.daemon.system.AppTask
 import java.io.File
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * A Home press, from the moment it went down: the display, the app it went down in (null on the
@@ -13,7 +15,12 @@ class HomePress(val display: Int, val origin: AppTask?, val file: File, private 
     /** Whether the capture succeeded, waiting for it at most [WAIT_MS]. */
     fun captured(): Boolean = try {
         shot.get(WAIT_MS, TimeUnit.MILLISECONDS)
-    } catch (_: Exception) {
+    } catch (_: TimeoutException) {
+        false
+    } catch (_: ExecutionException) {
+        false
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
         false
     }
 
