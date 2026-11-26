@@ -1,4 +1,4 @@
-package com.thorctl.daemon.feature
+package com.thorctl.daemon.feature.gamemode
 
 import com.thorctl.daemon.core.PeriodicTask
 import com.thorctl.daemon.di.DaemonScope

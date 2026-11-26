@@ -1,7 +1,5 @@
 package com.thorctl.daemon.hardware
 
-import android.os.SystemClock
-import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.InputService
@@ -9,7 +7,6 @@ import com.thorctl.protocol.model.Screen
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
-import java.io.File
 
 /**
  * Tracks which logical display is the top (6") and bottom (3.92") panel and controls their
@@ -17,13 +14,14 @@ import java.io.File
  *
  * Independent brightness requires the bottom panel to not be a "brightness follower" of the top
  * one; the Magisk module ships a display_layout_configuration.xml without leadDisplayAddress.
+ * Also watches over a bottom panel that comes back blank ([BottomPanelHealer]).
  */
 @Inject
 @SingleIn(DaemonScope::class)
 class DisplayController(
-    private val sys: Sys,
     private val displayService: DisplayService,
     private val inputService: InputService,
+    private val panelHealer: BottomPanelHealer,
 ) {
     @Volatile
     var topId = 0
@@ -161,59 +159,11 @@ class DisplayController(
         Timber.i("gamepad screens ${if (dark) "dark (top off, bottom black)" else "back on"}")
     }
 
-    // ---- Bottom panel watchdog ------------------------------------------------------------
-    // LineageOS sometimes boots with the bottom panel dark: the framework and SurfaceFlinger
-    // say the display is ON, but the kernel DSI connector never got enabled. A framework power
-    // cycle (off -> back to policy) makes HWC commit the panel again.
+    /** The device woke up: the bottom panel watchdog starts over. */
+    fun onWake() = panelHealer.onWake()
 
-    private val bottomConnector: String? = File("/sys/class/drm").listFiles()
-        ?.filter { it.name.matches(Regex("card\\d+-DSI-\\d+")) }
-        ?.sortedBy { it.name }
-        ?.takeIf { it.size >= 2 }
-        ?.last()?.path
-
-    private var stuckChecks = 0
-    private var lastHeal = 0L
-    private var healsThisWake = 0
-
-    fun onWake() {
-        stuckChecks = 0
-        healsThisWake = 0
-    }
-
-    /** Called every couple of seconds while the device is awake. */
-    fun healBottomPanel() {
-        val connector = bottomConnector ?: return
-        val id = bottomId
-        if (id < 0 || bottomForcedOff) {
-            stuckChecks = 0
-            return
-        }
-        val frameworkOn = try {
-            displayService.displays().firstOrNull { it.id == id }?.state == STATE_ON
-        } catch (_: Throwable) {
-            false
-        }
-        val panelEnabled = sys.read("$connector/enabled") == "enabled"
-        if (!frameworkOn || panelEnabled) {
-            stuckChecks = 0
-            return
-        }
-        if (++stuckChecks < 2) return
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastHeal < 15_000 || healsThisWake >= 3) return
-        lastHeal = now
-        healsThisWake++
-        stuckChecks = 0
-        Timber.i("bottom panel stuck (display ON, ${connector.substringAfterLast('/')} not enabled); power-cycling it")
-        try {
-            displayService.requestDisplayPower(id, STATE_OFF)
-            Thread.sleep(500)
-            displayService.requestDisplayPower(id, STATE_UNKNOWN)
-        } catch (e: Throwable) {
-            Timber.w(e, "bottom panel power cycle failed")
-        }
-    }
+    /** Called every couple of seconds while the device is awake; see [BottomPanelHealer]. */
+    fun healBottomPanel() = panelHealer.heal(bottomId, bottomForcedOff)
 
     /** Ignore touches on the dark panel so nothing invisible gets tapped. */
     fun setBottomTouch(enabled: Boolean) = setTouch(BOTTOM_TOUCH_NAME, enabled)

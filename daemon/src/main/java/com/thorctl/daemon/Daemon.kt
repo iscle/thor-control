@@ -5,8 +5,8 @@ import com.thorctl.daemon.control.ButtonHandler
 import com.thorctl.daemon.control.DaemonLock
 import com.thorctl.daemon.core.PeriodicTaskRunner
 import com.thorctl.daemon.di.DaemonScope
-import com.thorctl.daemon.feature.GameMode
 import com.thorctl.daemon.feature.Gamepad
+import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.hardware.InputRouter
 import com.thorctl.daemon.hardware.InputWatcher
