@@ -43,7 +43,7 @@ class ThorKeyboard : InputMethodService() {
     private val host = object : ImeHost {
         override val currentInputConnection: InputConnection? get() = this@ThorKeyboard.currentInputConnection
 
-        override fun sendKeyChar(charCode: Char) = this@ThorKeyboard.sendKeyChar(charCode)
+        override fun sendKeyChar(c: Char) = this@ThorKeyboard.sendKeyChar(c)
 
         override fun sendDownUpKeyEvents(keyCode: Int) = this@ThorKeyboard.sendDownUpKeyEvents(keyCode)
 
@@ -76,9 +76,9 @@ class ThorKeyboard : InputMethodService() {
     override fun onComputeInsets(outInsets: Insets) {
         super.onComputeInsets(outInsets)
         if (inline) return
-        val windowHeight = window?.window?.decorView?.height ?: 0
-        outInsets.contentTopInsets = windowHeight
-        outInsets.visibleTopInsets = windowHeight
+        val h = window?.window?.decorView?.height ?: 0
+        outInsets.contentTopInsets = h
+        outInsets.visibleTopInsets = h
         outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
         outInsets.touchableRegion.setEmpty()
     }
@@ -88,11 +88,11 @@ class ThorKeyboard : InputMethodService() {
         editor.onStartInput(attribute)
     }
 
-    override fun onStartInputView(editorInfo: EditorInfo, restarting: Boolean) {
-        super.onStartInputView(editorInfo, restarting)
+    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
         inline = uprightTopScreen()
         if (inline) showInline() else dropInline()
-        editor.onShow(editorInfo, inline)
+        editor.onShow(info, inline)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {

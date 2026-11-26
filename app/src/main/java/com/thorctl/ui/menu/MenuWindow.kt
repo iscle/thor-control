@@ -180,8 +180,8 @@ class MenuWindow(
             owner = overlayOwner
             Timber.i("menu shown on display ${display.displayId} as $layer (blur=$blur)")
             true
-        } catch (error: Exception) {
-            Timber.w(error, "show menu as $layer failed")
+        } catch (e: Exception) {
+            Timber.w(e, "show menu as $layer failed")
             overlayOwner.destroy()
             false
         }
@@ -202,8 +202,8 @@ class MenuWindow(
         lastBlur = -1
         try {
             shownDialog.dismiss()
-        } catch (error: Exception) {
-            Timber.w(error, "dismiss")
+        } catch (e: Exception) {
+            Timber.w(e, "dismiss")
         }
         owner?.destroy()
         owner = null
@@ -219,8 +219,8 @@ class MenuWindow(
         daemon.status.value.ifConnected { state -> if (state.topDisplayId >= 0) options.launchDisplayId = state.topDisplayId }
         try {
             context.startActivity(intent, options.toBundle())
-        } catch (error: Exception) {
-            Timber.w(error, "open app")
+        } catch (e: Exception) {
+            Timber.w(e, "open app")
         }
     }
 

@@ -306,13 +306,13 @@ fun RecentsStage(
     val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val stageWidth = constraints.maxWidth.toFloat()
-        val stageHeight = constraints.maxHeight.toFloat()
+        val h = constraints.maxHeight.toFloat()
         val gap = with(density) { 36.dp.toPx() }
         val step = stageWidth * CARD_SCALE + gap
         val radius = 5f // px on screen: cards are only just rounded
         val elevation = with(density) { 10.dp.toPx() }
         val labelLift = with(density) { 46.dp.toPx() }
-        val band = stageHeight * (1f - CARD_SCALE) / 2f
+        val band = h * (1f - CARD_SCALE) / 2f
 
         fun camera() = 1f + (1f / CARD_SCALE - 1f) * zoomNow()
         fun offsetFromCamera(index: Int) = index - positionNow() + (if (index in shiftRange) shift.value else 0f)
@@ -320,8 +320,8 @@ fun RecentsStage(
         /** Index of the card under a point (at rest, zoom 0), or -1. */
         fun cardAt(point: Offset): Int {
             val cardWidth = stageWidth * CARD_SCALE
-            val cardHeight = stageHeight * CARD_SCALE
-            if (point.y < (stageHeight - cardHeight) / 2 || point.y > (stageHeight + cardHeight) / 2) return -1
+            val cardHeight = h * CARD_SCALE
+            if (point.y < (h - cardHeight) / 2 || point.y > (h + cardHeight) / 2) return -1
             for (index in current().indices) {
                 val cardCenterX = stageWidth / 2 + offsetFromCamera(index) * step
                 if (point.x >= cardCenterX - cardWidth / 2 && point.x <= cardCenterX + cardWidth / 2) return index
@@ -346,7 +346,7 @@ fun RecentsStage(
                         scaleY = cardScale
                         translationX = cardOffset * step * cameraScale
                         val lifted = card.key in liftKeys
-                        translationY = if (lifted) -lift.value * stageHeight * 0.9f else 0f
+                        translationY = if (lifted) -lift.value * h * 0.9f else 0f
                         alpha = if (abs(cardOffset) > 2.6f) 0f else if (lifted) 1f - lift.value else 1f
                         shape = RoundedCornerShape(((radius * (1f - zoomNow())) / cardScale).toDp())
                         clip = true
@@ -368,7 +368,7 @@ fun RecentsStage(
                             val cardOffset = offsetFromCamera(index)
                             val cameraScale = camera()
                             translationX = stageWidth / 2 + cardOffset * step * cameraScale - stageWidth * CARD_SCALE * cameraScale / 2
-                            translationY = stageHeight / 2 - stageHeight * CARD_SCALE * cameraScale / 2 - labelLift
+                            translationY = h / 2 - h * CARD_SCALE * cameraScale / 2 - labelLift
                             val lifted = card.key in liftKeys
                             alpha = if (abs(cardOffset) > 2.6f) 0f else
                                 (1f - zoomNow()) * (1f - abs(cardOffset).coerceAtMost(1f) * 0.5f) * (if (lifted) 1f - lift.value else 1f)
@@ -430,7 +430,7 @@ fun RecentsStage(
                             } else if (axis == 2 && hit == target && current().getOrNull(hit)?.isHome == false) {
                                 change.consume()
                                 liftKeys = setOf(current()[hit].key)
-                                scope.launch { lift.snapTo((-total.y / (stageHeight * 0.9f)).coerceIn(0f, 1f)) }
+                                scope.launch { lift.snapTo((-total.y / (h * 0.9f)).coerceIn(0f, 1f)) }
                             }
                         }
                         val velocity = velocityTracker.calculateVelocity()

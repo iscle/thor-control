@@ -88,7 +88,7 @@ class BluetoothGamepad(
         scope.launch(Dispatchers.Default) { daemon.gamepadReports.collect(::send) }
         // Gamepad mode turns Bluetooth on if it was off: register once the adapter is up.
         context.registerReceiver(object : BroadcastReceiver() {
-            override fun onReceive(receiverContext: Context, intent: Intent) {
+            override fun onReceive(context: Context, intent: Intent) {
                 val adapterState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
                 if (adapterState == BluetoothAdapter.STATE_ON && wanted && proxy == null) open()
                 if (adapterState == BluetoothAdapter.STATE_OFF) {
@@ -110,8 +110,8 @@ class BluetoothGamepad(
         if (!bluetoothAdapter.isEnabled) return // the daemon is switching Bluetooth on; ACTION_STATE_CHANGED follows
         try {
             bluetoothAdapter.getProfileProxy(context, listener, BluetoothProfile.HID_DEVICE)
-        } catch (error: Exception) {
-            Timber.w(error, "no HID device profile")
+        } catch (e: Exception) {
+            Timber.w(e, "no HID device profile")
         }
     }
 
@@ -132,8 +132,8 @@ class BluetoothGamepad(
             )
             try {
                 if (!hidDevice.registerApp(sdpSettings, null, null, radioExecutor, callback)) Timber.w("registerApp refused")
-            } catch (error: Exception) {
-                Timber.w(error, "registerApp failed")
+            } catch (e: Exception) {
+                Timber.w(e, "registerApp failed")
             }
         }
 
@@ -154,8 +154,8 @@ class BluetoothGamepad(
             val target = pluggedDevice ?: lastHost() ?: return
             try {
                 proxy?.connect(target)
-            } catch (error: Exception) {
-                Timber.w(error, "reconnect failed")
+            } catch (e: Exception) {
+                Timber.w(e, "reconnect failed")
             }
         }
 
@@ -235,8 +235,8 @@ class BluetoothGamepad(
             val currentHost = host ?: return@execute
             try {
                 currentProxy.sendReport(currentHost, GamepadHid.REPORT_ID, report)
-            } catch (error: Exception) {
-                Timber.w(error, "sendReport failed")
+            } catch (e: Exception) {
+                Timber.w(e, "sendReport failed")
             }
         }
     }
@@ -252,8 +252,8 @@ class BluetoothGamepad(
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             context.startActivity(intent)
-        } catch (error: Exception) {
-            Timber.w(error, "discoverable prompt failed")
+        } catch (e: Exception) {
+            Timber.w(e, "discoverable prompt failed")
         }
     }
 }

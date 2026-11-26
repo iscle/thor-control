@@ -29,13 +29,13 @@ object Cli {
     private val gotState = CountDownLatch(1)
 
     @JvmStatic
-    fun main(arguments: Array<String>) {
-        if (arguments.isEmpty()) usage()
+    fun main(args: Array<String>) {
+        if (args.isEmpty()) usage()
         val waitMs = System.getenv("WAIT_MS")?.toLongOrNull() ?: 1500L
         val reply = try {
             SystemServices().callAppProvider(ThorIpc.METHOD_GET, Bundle())
-        } catch (error: Exception) {
-            System.err.println("can't reach the app's provider ${ThorIpc.AUTHORITY}: $error")
+        } catch (e: Exception) {
+            System.err.println("can't reach the app's provider ${ThorIpc.AUTHORITY}: $e")
             exitProcess(1)
         }
         val daemon = reply?.getBinder(ThorIpc.KEY_BINDER)?.let { IThorDaemon.Stub.asInterface(it) } ?: run {
@@ -47,7 +47,7 @@ object Cli {
         daemon.register(client)
         // Some commands change part of the state ("leds on"): wait for it.
         gotState.await(2, TimeUnit.SECONDS)
-        when (val request = CliCommands.parse(arguments.toList(), state) ?: usage()) {
+        when (val request = CliCommands.parse(args.toList(), state) ?: usage()) {
             CliRequest.State -> {}
             CliRequest.Stats -> daemon.setStatsSubscribed(client, true)
             is CliRequest.Send -> daemon.send(request.command)

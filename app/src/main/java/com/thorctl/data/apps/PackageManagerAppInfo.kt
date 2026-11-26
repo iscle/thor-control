@@ -19,8 +19,8 @@ class PackageManagerAppInfo(private val context: Context) : AppInfoRepository {
         if (packageName.isEmpty()) return ""
         return labels.getOrPut(packageName) {
             try {
-                val packageManager = context.packageManager
-                packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+                val pm = context.packageManager
+                pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
             } catch (_: Exception) {
                 packageName
             }

@@ -101,8 +101,8 @@ class InputWatcher(private val sys: Sys) {
         worker.execute {
             try {
                 block()
-            } catch (error: Throwable) {
-                Timber.w(error, "input handler failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "input handler failed")
             }
         }
     }
@@ -128,8 +128,8 @@ class InputWatcher(private val sys: Sys) {
                         if (type == EV_SW && code == SW_LID) setLidClosed(value != 0)
                     }
                 }
-            } catch (error: Exception) {
-                Timber.w(error, "AYN read failed")
+            } catch (e: Exception) {
+                Timber.w(e, "AYN read failed")
             }
             Thread.sleep(1000)
         }
@@ -185,8 +185,8 @@ class InputWatcher(private val sys: Sys) {
     /** Current lid switch state through EVIOCGSW, or null if it can't be read. */
     private fun lidClosedNow(fileDescriptor: FileDescriptor): Boolean? = try {
         ((IOCTL_INT.invoke(null, fileDescriptor, EVIOCGSW_4) as Int) and (1 shl SW_LID)) != 0
-    } catch (error: Throwable) {
-        Timber.w(error, "reading the lid switch failed")
+    } catch (e: Throwable) {
+        Timber.w(e, "reading the lid switch failed")
         null
     }
 
@@ -217,8 +217,8 @@ class InputWatcher(private val sys: Sys) {
         }
         val stream = try {
             FileInputStream(node).also { IOCTL_INT.invoke(null, it.fd, EVIOCGRAB) }
-        } catch (error: Throwable) {
-            Timber.w(error, "grabbing the power button failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "grabbing the power button failed")
             return
         }
         powerGrab = stream
@@ -278,8 +278,8 @@ class InputWatcher(private val sys: Sys) {
                             if (type == EV_KEY && value == 1 && (code == BTN_TL || code == BTN_TR)) post { listener.onShoulder() }
                         }
                     }
-                } catch (error: Exception) {
-                    Timber.w(error, "controller read failed")
+                } catch (e: Exception) {
+                    Timber.w(e, "controller read failed")
                 }
                 Thread.sleep(1000)
             }
@@ -320,13 +320,13 @@ class InputWatcher(private val sys: Sys) {
             synchronized(lock) { if (grab != null) return false }
             val stream = try {
                 FileInputStream(controllerNode)
-            } catch (error: Exception) {
+            } catch (e: Exception) {
                 return false
             }
             try {
                 IOCTL_INT.invoke(null, stream.fd, EVIOCGRAB)
-            } catch (error: Throwable) {
-                Timber.w(error, "EVIOCGRAB failed; combos will also reach apps")
+            } catch (e: Throwable) {
+                Timber.w(e, "EVIOCGRAB failed; combos will also reach apps")
                 stream.close()
                 return false
             }
@@ -465,8 +465,8 @@ class InputWatcher(private val sys: Sys) {
                 for (event in events) putEvent(buffer, event[0], event[1], event[2])
                 putEvent(buffer, EV_SYN, 0, 0)
                 FileOutputStream(controllerNode).use { it.write(buffer.array()) }
-            } catch (error: Exception) {
-                Timber.w(error, "controller resync failed")
+            } catch (e: Exception) {
+                Timber.w(e, "controller resync failed")
             }
         }
 
@@ -502,16 +502,16 @@ class InputWatcher(private val sys: Sys) {
 
     // ---- evdev helpers ----------------------------------------------------------------------------
 
-    class DevInfo(val name: String, val handler: String, private val keyBits: List<Long>) {
+    class InputDeviceInfo(val name: String, val handler: String, private val keyBits: List<Long>) {
         fun hasKey(code: Int): Boolean {
             val wordIndex = code / 64
             return wordIndex < keyBits.size && (keyBits[wordIndex] shr (code % 64)) and 1L == 1L
         }
     }
 
-    private fun devices(): List<DevInfo> = parseDevices(sys.read("/proc/bus/input/devices"))
+    private fun devices(): List<InputDeviceInfo> = parseDevices(sys.read("/proc/bus/input/devices"))
 
-    private fun findNode(match: (DevInfo) -> Boolean): String? =
+    private fun findNode(match: (InputDeviceInfo) -> Boolean): String? =
         devices().firstOrNull(match)?.let { "/dev/input/${it.handler}" }
 
     private inline fun readEvents(input: InputStream, onEvent: (Int, Int, Int) -> Unit) {
@@ -534,7 +534,7 @@ class InputWatcher(private val sys: Sys) {
 
     companion object {
         /** Input devices from /proc/bus/input/devices: name, event node and key bitmap. */
-        fun parseDevices(text: String?): List<DevInfo> {
+        fun parseDevices(text: String?): List<InputDeviceInfo> {
             if (text == null) return emptyList()
             return text.split(Regex("\n\\s*\n")).mapNotNull { block ->
                 val name = Regex("N: Name=\"([^\"]*)\"").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
@@ -542,7 +542,7 @@ class InputWatcher(private val sys: Sys) {
                 val bits = Regex("B: KEY=([0-9a-f ]+)").find(block)?.groupValues?.get(1)
                     ?.trim()?.split(' ')?.reversed()?.map { java.lang.Long.parseUnsignedLong(it, 16) }
                     ?: emptyList()
-                DevInfo(name, handler, bits)
+                InputDeviceInfo(name, handler, bits)
             }
         }
 

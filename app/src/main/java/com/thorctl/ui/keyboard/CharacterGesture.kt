@@ -3,7 +3,7 @@ package com.thorctl.ui.keyboard
 import androidx.compose.runtime.key
 
 /** What a finger on a character key is doing. */
-internal enum class CharGesture {
+internal enum class CharacterGesture {
     PRESS,
 
     /** Swiping down to type the key's second character. */

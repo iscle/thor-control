@@ -2,7 +2,7 @@ package com.thorctl.ui.controller
 
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStates
+import com.thorctl.ui.state.stateUiStates
 import com.thorctl.ui.state.currentUiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.stateIn
 class ControllerViewModel(private val daemon: DaemonRepository) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<ControllerContent>> = daemon.status
-        .flatMapLatest { status -> status.uiStates { state, _ -> ControllerContent(state.controller, state.gamepad) } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state, _ -> ControllerContent(state.controller, state.gamepad) })
+        .flatMapLatest { status -> status.stateUiStates { state -> ControllerContent(state.controller, state.gamepad) } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state -> ControllerContent(state.controller, state.gamepad) })
 
     fun setTarget(target: ControllerTarget) = daemon.send(DaemonCommand.SetController(target))
 }

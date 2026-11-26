@@ -18,19 +18,19 @@ class DaemonBinderProvider : ContentProvider() {
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         val uid = Binder.getCallingUid()
-        val providerContext = context ?: return null
+        val context = context ?: return null
         return when (method) {
             ThorIpc.METHOD_OFFER -> {
                 if (uid != ThorIpc.UID_ROOT) {
                     Timber.w("binder offered by uid $uid: ignored")
                     return null
                 }
-                extras?.getBinder(ThorIpc.KEY_BINDER)?.let { providerContext.graph.daemonConnection.onDaemonBinder(it) }
+                extras?.getBinder(ThorIpc.KEY_BINDER)?.let { context.graph.daemonConnection.onDaemonBinder(it) }
                 null
             }
             ThorIpc.METHOD_GET -> {
                 if (uid != ThorIpc.UID_ROOT && uid != ThorIpc.UID_SHELL) return null
-                Bundle().apply { putBinder(ThorIpc.KEY_BINDER, providerContext.graph.daemonConnection.currentBinder()) }
+                Bundle().apply { putBinder(ThorIpc.KEY_BINDER, context.graph.daemonConnection.currentBinder()) }
             }
             else -> null
         }

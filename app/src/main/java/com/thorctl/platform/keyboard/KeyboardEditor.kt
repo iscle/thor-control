@@ -41,8 +41,8 @@ class KeyboardEditor(
     private val haptics: Haptics,
     @ApplicationScope private val scope: CoroutineScope,
 ) : KeyboardActions {
-    private val _ui = MutableStateFlow(KeyboardUi())
-    val ui: StateFlow<KeyboardUi> = _ui
+    private val _uiState = MutableStateFlow(KeyboardUi())
+    val uiState: StateFlow<KeyboardUi> = _uiState
 
     /** The bottom-screen keys are up (drives their slide in / out). */
     private val _visible = MutableStateFlow(false)
@@ -98,19 +98,19 @@ class KeyboardEditor(
         setPanel(false, delayMs = 0)
     }
 
-    fun onStartInput(editorInfo: EditorInfo) {
-        editor = editorInfo
-        selectionStart = editorInfo.initialSelStart.coerceAtLeast(0)
-        selectionEnd = editorInfo.initialSelEnd.coerceAtLeast(0)
+    fun onStartInput(info: EditorInfo) {
+        editor = info
+        selectionStart = info.initialSelStart.coerceAtLeast(0)
+        selectionEnd = info.initialSelEnd.coerceAtLeast(0)
     }
 
     /**
      * Typing starts. [inline]: the keyboard service shows the keys itself, on the top screen (the
      * Thor is held upright); otherwise they go on the bottom screen.
      */
-    fun onShow(editorInfo: EditorInfo, inline: Boolean) {
-        editor = editorInfo
-        _ui.value = KeyboardUi(layer = KeyboardText.layerFor(editorInfo.inputType), enter = KeyboardText.enterFor(editorInfo.inputType, editorInfo.imeOptions))
+    fun onShow(info: EditorInfo, inline: Boolean) {
+        editor = info
+        _uiState.value = KeyboardUi(layer = KeyboardText.layerFor(info.inputType), enter = KeyboardText.enterFor(info.inputType, info.imeOptions))
         autoShift()
         refreshPreview()
         inlineShown = inline
@@ -127,7 +127,7 @@ class KeyboardEditor(
         inlineShown = false
         _visible.value = false
         daemon.send(DaemonCommand.KeyboardVisible(false))
-        _ui.value = _ui.value.copy(selecting = false)
+        _uiState.value = _uiState.value.copy(selecting = false)
         setPanel(false, delayMs = 400)
     }
 
@@ -170,10 +170,10 @@ class KeyboardEditor(
 
     override fun type(text: String) {
         val imeHost = ime ?: return
-        val keyboard = _ui.value
+        val keyboard = _uiState.value
         val out = KeyboardText.output(keyboard, text)
         if (out.length == 1) imeHost.sendKeyChar(out[0]) else inputConnection?.commitText(out, 1)
-        if (keyboard.shift && !keyboard.caps) _ui.value = _ui.value.copy(shift = false)
+        if (keyboard.shift && !keyboard.caps) _uiState.value = _uiState.value.copy(shift = false)
         endSelecting()
         autoShift()
     }
@@ -181,8 +181,8 @@ class KeyboardEditor(
     override fun typeExact(text: String) {
         val imeHost = ime ?: return
         if (text.length == 1) imeHost.sendKeyChar(text[0]) else inputConnection?.commitText(text, 1)
-        val keyboard = _ui.value
-        if (keyboard.shift && !keyboard.caps) _ui.value = keyboard.copy(shift = false)
+        val keyboard = _uiState.value
+        if (keyboard.shift && !keyboard.caps) _uiState.value = keyboard.copy(shift = false)
         endSelecting()
         autoShift()
     }
@@ -252,7 +252,7 @@ class KeyboardEditor(
     override fun enter() {
         val imeHost = ime ?: return
         val action = (editor?.imeOptions ?: 0) and EditorInfo.IME_MASK_ACTION
-        if (_ui.value.enter != EnterKey.RETURN && action != EditorInfo.IME_ACTION_NONE) {
+        if (_uiState.value.enter != EnterKey.RETURN && action != EditorInfo.IME_ACTION_NONE) {
             inputConnection?.performEditorAction(action)
         } else {
             imeHost.sendKeyChar('\n')
@@ -262,12 +262,12 @@ class KeyboardEditor(
 
     override fun shift() {
         val now = SystemClock.uptimeMillis()
-        _ui.value = KeyboardText.shifted(_ui.value, now - lastShiftTap)
+        _uiState.value = KeyboardText.shifted(_uiState.value, now - lastShiftTap)
         lastShiftTap = now
     }
 
     override fun layer(target: KeyboardLayer) {
-        _ui.value = _ui.value.copy(layer = target, shift = false)
+        _uiState.value = _uiState.value.copy(layer = target, shift = false)
     }
 
     override fun hideKeyboard() {
@@ -276,7 +276,7 @@ class KeyboardEditor(
 
     /** Capital letter at the start of a sentence, when the field asks for it. */
     private fun autoShift() {
-        val keyboard = _ui.value
+        val keyboard = _uiState.value
         if (keyboard.caps || keyboard.layer != KeyboardLayer.LETTERS) return
         val type = editor?.inputType ?: return
         val caps = try {
@@ -284,7 +284,7 @@ class KeyboardEditor(
         } catch (_: Exception) {
             0
         }
-        _ui.value = keyboard.copy(shift = caps != 0)
+        _uiState.value = keyboard.copy(shift = caps != 0)
     }
 
     // ---- Touchpad / selection -----------------------------------------------------------------
@@ -300,7 +300,7 @@ class KeyboardEditor(
         if (extracted != null) {
             selectionStart = extracted.selectionStart + textOffset
             selectionEnd = extracted.selectionEnd + textOffset
-            if (!_ui.value.selecting) moving = selectionEnd
+            if (!_uiState.value.selecting) moving = selectionEnd
         }
     }
 
@@ -311,7 +311,7 @@ class KeyboardEditor(
     override fun move(direction: Int): Boolean {
         val connection = inputConnection ?: return false
         val snapshot = text
-        val selecting = _ui.value.selecting
+        val selecting = _uiState.value.selecting
         if (snapshot == null) {
             // The field can't report its text: arrow keys (with shift while selecting).
             val keyCode = if (direction < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
@@ -346,18 +346,18 @@ class KeyboardEditor(
     }
 
     override fun toggleSelect() {
-        val on = !_ui.value.selecting
+        val on = !_uiState.value.selecting
         if (on) {
             beginSwipe()
             endSwipe()
             anchor = selectionStart
             moving = selectionEnd
         }
-        _ui.value = _ui.value.copy(selecting = on)
+        _uiState.value = _uiState.value.copy(selecting = on)
     }
 
     private fun endSelecting() {
-        if (_ui.value.selecting) _ui.value = _ui.value.copy(selecting = false)
+        if (_uiState.value.selecting) _uiState.value = _uiState.value.copy(selecting = false)
     }
 
     override fun copy() {
@@ -394,7 +394,7 @@ class KeyboardEditor(
     private fun clipboard(): ClipboardManager? = context.getSystemService(ClipboardManager::class.java)
 
     private fun flash(message: String) {
-        _ui.value = _ui.value.copy(flash = message, flashId = SystemClock.uptimeMillis())
+        _uiState.value = _uiState.value.copy(flash = message, flashId = SystemClock.uptimeMillis())
     }
 
     /** Text around the cursor for the touchpad preview (masked in password fields). */
@@ -407,9 +407,9 @@ class KeyboardEditor(
                 connection.getTextAfterCursor(KeyboardText.PREVIEW_CHARS, 0)?.toString().orEmpty(),
                 isPassword(),
             )
-            _ui.value = _ui.value.copy(before = before, selected = selected, after = after)
-        } catch (error: Exception) {
-            Timber.w(error, "preview")
+            _uiState.value = _uiState.value.copy(before = before, selected = selected, after = after)
+        } catch (e: Exception) {
+            Timber.w(e, "preview")
         }
     }
 }

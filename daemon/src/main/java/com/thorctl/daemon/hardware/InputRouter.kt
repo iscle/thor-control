@@ -50,8 +50,8 @@ class InputRouter(private val displays: DisplayController, private val system: S
             }
             target = newTarget
             Timber.i("controller -> ${newTarget.wire} ($deviceDescriptor)")
-        } catch (error: Throwable) {
-            Timber.w(error, "controller routing failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "controller routing failed")
         }
     }
 

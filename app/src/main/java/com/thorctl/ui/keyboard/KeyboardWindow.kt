@@ -78,8 +78,8 @@ class KeyboardWindow(
             overlayOwner.resume()
             dialog = keyboardDialog
             owner = overlayOwner
-        } catch (error: Exception) {
-            Timber.w(error, "show keyboard failed")
+        } catch (e: Exception) {
+            Timber.w(e, "show keyboard failed")
             overlayOwner.destroy()
         }
     }

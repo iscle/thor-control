@@ -84,15 +84,15 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
     private fun deliver(client: Client, event: DaemonEvent) {
         try {
             client.sender.send(event)
-        } catch (error: RemoteException) {
+        } catch (e: RemoteException) {
             // A oneway call also fails while the client's buffer is full; only a dead client goes
             // (its death recipient fires too). If it is dropped anyway, the next binder offer
             // makes the app register again.
-            Timber.w("client uid=${client.uid} unreachable: ${error.javaClass.simpleName}")
+            Timber.w("client uid=${client.uid} unreachable: ${e.javaClass.simpleName}")
             if (!client.binder.isBinderAlive) remove(client.binder)
-        } catch (error: RuntimeException) {
+        } catch (e: RuntimeException) {
             // A parcel too large or a bug in one event must not take the caller's thread down.
-            Timber.w(error, "sending ${event.javaClass.simpleName} to uid=${client.uid} failed")
+            Timber.w(e, "sending ${event.javaClass.simpleName} to uid=${client.uid} failed")
         }
     }
 }

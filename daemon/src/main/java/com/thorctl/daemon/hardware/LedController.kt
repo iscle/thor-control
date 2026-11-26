@@ -118,10 +118,10 @@ class LedController(private val sys: Sys) : Thread("leds") {
                         while (!dirty) changed.await()
                     }
                 }
-            } catch (error: InterruptedException) {
+            } catch (e: InterruptedException) {
                 return
-            } catch (error: Exception) {
-                Timber.w(error, "led loop")
+            } catch (e: Exception) {
+                Timber.w(e, "led loop")
                 sleep(1000)
             }
         }

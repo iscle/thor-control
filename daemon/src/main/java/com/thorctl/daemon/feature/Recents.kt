@@ -83,12 +83,12 @@ class Recents(
 
     // ---- Home button ------------------------------------------------------------------------
 
-    private class Press(val display: Int, val origin: SystemServices.TaskDesc?, val file: File, val shot: Future<Boolean>)
+    private class Press(val display: Int, val origin: SystemServices.TaskInfo?, val file: File, val shot: Future<Boolean>)
 
     @Volatile
     private var press: Press? = null
     private var homeSequence = 0
-    private var pendingHome: Pair<Int, Int>? = null // seq to display
+    private var pendingHome: Pair<Int, Int>? = null // sequence number to display
 
     /** Home went down: capture the screen now, in case this becomes the zoom-out of a press or hold. */
     fun homeDown(display: Int) {
@@ -204,8 +204,8 @@ class Recents(
                 if (busy() || SystemClock.elapsedRealtime() - lastHud < 3000) return@execute
                 if (system.topAppTask(display) != null) return@execute
                 if (capture(display, homeFile(display))) Timber.i("recents: home screen of display $display captured")
-            } catch (error: Throwable) {
-                Timber.w(error, "home capture failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "home capture failed")
             }
         }
     }
@@ -287,13 +287,13 @@ class Recents(
         executor.execute {
             try {
                 block()
-            } catch (error: Throwable) {
-                Timber.w(error, "recents failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "recents failed")
             }
         }
     }
 
-    private fun open(displayId: Int, origin: SystemServices.TaskDesc?, hero: File?) {
+    private fun open(displayId: Int, origin: SystemServices.TaskInfo?, hero: File?) {
         val list = system.recentTasks(MAX_TASKS).toMutableList()
         // The app you came from is "the most recent" one, right next to the home screen.
         if (origin != null) {
@@ -306,8 +306,8 @@ class Recents(
         others.forEach {
             try {
                 system.takeSnapshot(it.taskId)
-            } catch (error: Throwable) {
-                Timber.w(error, "snapshot of task ${it.taskId} failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "snapshot of task ${it.taskId} failed")
             }
         }
         tasks = list
@@ -366,8 +366,8 @@ class Recents(
                 system.startFromRecents(id, display)
             }
             Timber.i("recents: opened task $id (${task?.packageName}) on display $display")
-        } catch (error: Throwable) {
-            Timber.w(error, "recents: open task $id failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "recents: open task $id failed")
         }
     }
 

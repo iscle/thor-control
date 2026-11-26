@@ -49,8 +49,8 @@ class ConfigStore(@ConfigFile private val file: File) {
             gamepadScreensOff = stored.gamepad.screensOff
             if (profile(fanProfile) == null) fanProfile = FanProfile.SMART_ID
             Timber.i("config loaded: fan=$fanProfile controller=${controller.wire} custom=${customProfiles.size}")
-        } catch (error: Exception) {
-            Timber.w(error, "config load failed, using defaults")
+        } catch (e: Exception) {
+            Timber.w(e, "config load failed, using defaults")
         }
     }
 
@@ -71,8 +71,8 @@ class ConfigStore(@ConfigFile private val file: File) {
             val tempFile = File(file.path + ".tmp")
             tempFile.writeText(FORMAT.encodeToString(StoredConfig.serializer(), stored))
             if (!tempFile.renameTo(file)) Timber.w("config save: rename failed")
-        } catch (error: Exception) {
-            Timber.w(error, "config save failed")
+        } catch (e: Exception) {
+            Timber.w(e, "config save failed")
         }
     }
 

@@ -90,8 +90,8 @@ class BinderDaemonRepository(
             // dropped us (a failed call), so register again. Registering twice changes nothing.
             try {
                 daemon?.register(client)
-            } catch (error: RemoteException) {
-                Timber.w("registering again failed: ${error.javaClass.simpleName}")
+            } catch (e: RemoteException) {
+                Timber.w("registering again failed: ${e.javaClass.simpleName}")
                 disconnected("register failed")
             }
             return
@@ -114,8 +114,8 @@ class BinderDaemonRepository(
             if (statsWanted > 0) newDaemon.setStatsSubscribed(client, true)
             registered = true
             Timber.i("connected to the daemon")
-        } catch (error: RemoteException) {
-            Timber.w(error, "connecting to the daemon failed")
+        } catch (e: RemoteException) {
+            Timber.w(e, "connecting to the daemon failed")
             disconnected("connect failed")
         }
     }
@@ -208,10 +208,10 @@ class BinderDaemonRepository(
             val currentDaemon = daemon ?: return@execute
             try {
                 block(currentDaemon)
-            } catch (error: RemoteException) {
+            } catch (e: RemoteException) {
                 // A oneway call fails when the daemon's buffer is full too: only a dead binder
                 // ends the connection (its death recipient then fires as well).
-                Timber.w("call to the daemon failed: ${error.javaClass.simpleName}")
+                Timber.w("call to the daemon failed: ${e.javaClass.simpleName}")
                 if (binder?.isBinderAlive != true) disconnected("daemon gone")
             }
         }

@@ -88,8 +88,8 @@ class DaemonActions(
         if (from < 0 || destination < 0) return
         val task = try {
             system.topAppTask(from)
-        } catch (error: Throwable) {
-            Timber.w(error, "topAppTask failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "topAppTask failed")
             null
         }
         if (task == null) {
@@ -103,8 +103,8 @@ class DaemonActions(
             if (router.target == ControllerTarget.FREE) system.focusTopTask(destination)
             Timber.i("moved task ${task.taskId} (${task.packageName}) to display $destination")
             notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), destination)
-        } catch (error: Throwable) {
-            Timber.w(error, "move task failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "move task failed")
         }
     }
 

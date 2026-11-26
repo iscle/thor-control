@@ -67,8 +67,8 @@ class GameMode(
         scheduler.schedule({
             try {
                 tick(system.isInteractive())
-            } catch (error: Throwable) {
-                Timber.w(error, "game mode tick failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "game mode tick failed")
             }
         }, delayMs, TimeUnit.MILLISECONDS)
     }
@@ -161,8 +161,8 @@ class GameMode(
         val before = state()
         val running = try {
             system.runningApps()
-        } catch (error: Throwable) {
-            Timber.w(error, "game mode: listing processes failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "game mode: listing processes failed")
             return
         }
 
@@ -292,8 +292,8 @@ class GameMode(
                     system.forceStop(packageName)
                     stopped++
                 }
-            } catch (error: Throwable) {
-                Timber.w(error, "game mode: closing $packageName failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "game mode: closing $packageName failed")
             }
         }
         sys.write("/proc/sys/vm/compact_memory", "1")

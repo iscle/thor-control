@@ -2,7 +2,7 @@ package com.thorctl.ui.gamepad
 
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStates
+import com.thorctl.ui.state.stateUiStates
 import com.thorctl.ui.state.currentUiState
 import com.thorctl.ui.state.DaemonUiState
 import androidx.compose.material.icons.rounded.Bluetooth
@@ -26,8 +26,8 @@ import kotlinx.coroutines.flow.stateIn
 class GamepadViewModel(private val daemon: DaemonRepository, private val pairing: GamepadPairing) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<GamepadContent>> = daemon.status
-        .flatMapLatest { status -> status.uiStates { state, _ -> GamepadContent(state.gamepad) } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state, _ -> GamepadContent(state.gamepad) })
+        .flatMapLatest { status -> status.stateUiStates { state -> GamepadContent(state.gamepad) } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state -> GamepadContent(state.gamepad) })
 
     fun setOn(on: Boolean) = daemon.send(DaemonCommand.SetGamepad(on))
 

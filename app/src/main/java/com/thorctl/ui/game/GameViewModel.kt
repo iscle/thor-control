@@ -3,8 +3,8 @@ package com.thorctl.ui.game
 import com.thorctl.protocol.model.DaemonState
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStates
-import com.thorctl.ui.state.currentUiState
+import com.thorctl.ui.state.uiStatesWithStats
+import com.thorctl.ui.state.currentUiStateWithStats
 import com.thorctl.domain.model.ifConnected
 import com.thorctl.protocol.model.Stats
 import com.thorctl.ui.state.DaemonUiState
@@ -28,8 +28,8 @@ import kotlinx.coroutines.flow.stateIn
 class GameViewModel(private val daemon: DaemonRepository, private val apps: AppInfoRepository) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<GameContent>> = daemon.status
-        .flatMapLatest { status -> status.uiStates(::content) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState(::content))
+        .flatMapLatest { status -> status.uiStatesWithStats(::content) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiStateWithStats(::content))
 
     private fun content(state: DaemonState, stats: Stats) = GameContent(state.game, stats, apps.label(state.game.packageName))
 

@@ -175,8 +175,8 @@ class RecentsOverlay(
         return try {
             val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
             jpeg.open().use { BitmapFactory.decodeStream(it, null, options) }?.asImageBitmap()
-        } catch (error: Exception) {
-            Timber.w(error, "decode failed")
+        } catch (e: Exception) {
+            Timber.w(e, "decode failed")
             null
         } finally {
             jpeg.close()
@@ -238,8 +238,8 @@ class RecentsOverlay(
             view = composeView
             owner = overlayOwner
             true
-        } catch (error: Exception) {
-            Timber.w(error, "show failed")
+        } catch (e: Exception) {
+            Timber.w(e, "show failed")
             overlayOwner.destroy()
             false
         }
@@ -270,8 +270,8 @@ class RecentsOverlay(
         view = null
         try {
             shownDialog.dismiss()
-        } catch (error: Exception) {
-            Timber.w(error, "dismiss")
+        } catch (e: Exception) {
+            Timber.w(e, "dismiss")
         }
         owner?.destroy()
         owner = null
@@ -291,8 +291,8 @@ class RecentsOverlay(
         if (displayId >= 0) options.launchDisplayId = displayId
         try {
             context.startActivity(intent, options.toBundle())
-        } catch (error: Exception) {
-            Timber.w(error, "launch ${card.packageName} failed")
+        } catch (e: Exception) {
+            Timber.w(e, "launch ${card.packageName} failed")
         }
     }
 

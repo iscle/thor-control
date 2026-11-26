@@ -77,8 +77,8 @@ class BlackoutWindow(
             displayWindowManager.addView(blackView, layoutParams)
             view = blackView
             windowManager = displayWindowManager
-        } catch (error: Exception) {
-            Timber.w(error, "black window failed")
+        } catch (e: Exception) {
+            Timber.w(e, "black window failed")
         }
     }
 

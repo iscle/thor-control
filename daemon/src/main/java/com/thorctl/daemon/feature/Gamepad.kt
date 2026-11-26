@@ -67,8 +67,8 @@ class Gamepad(
             if (id < 0) continue
             try {
                 system.userActivity(id)
-            } catch (error: Throwable) {
-                Timber.w(error, "gamepad: user activity on display $id failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "gamepad: user activity on display $id failed")
             }
         }
     }
@@ -297,7 +297,7 @@ class Gamepad(
                 usbPending = report
                 (usbLock as Object).notifyAll()
             }
-            else -> btSubmit(report)
+            else -> bluetoothSubmit(report)
         }
     }
 
@@ -526,8 +526,8 @@ class Gamepad(
             File(functionDirectory, "subclass").writeText("0")
             File(functionDirectory, "report_length").writeText((1 + GamepadHid.PAYLOAD).toString())
             FileOutputStream(File(functionDirectory, "report_desc")).use { it.write(GamepadHid.DESCRIPTOR) }
-        } catch (error: Exception) {
-            Timber.w(error, "gamepad: HID function set-up failed")
+        } catch (e: Exception) {
+            Timber.w(e, "gamepad: HID function set-up failed")
             return "USB HID set-up failed"
         }
         val udc = udcName()
@@ -538,8 +538,8 @@ class Gamepad(
         setGamepadIds()
         try {
             Os.symlink(functionDirectory.path, File(configDirectory, LINK_NAME).path)
-        } catch (error: Exception) {
-            Timber.w(error, "gamepad: linking the HID function failed")
+        } catch (e: Exception) {
+            Timber.w(e, "gamepad: linking the HID function failed")
             restoreIds()
             bind(udc)
             return "USB HID set-up failed"
@@ -559,8 +559,8 @@ class Gamepad(
             if (usbLinked()) {
                 try {
                     Os.remove(link.path)
-                } catch (error: Exception) {
-                    Timber.w(error, "gamepad: unlinking the HID function failed")
+                } catch (e: Exception) {
+                    Timber.w(e, "gamepad: unlinking the HID function failed")
                 }
             }
             restoreIds()
@@ -622,26 +622,26 @@ class Gamepad(
     private var bluetoothLastSent = 0L
     private var bluetoothScheduled = false
 
-    private fun btSubmit(report: ByteArray) {
+    private fun bluetoothSubmit(report: ByteArray) {
         synchronized(bluetoothLock) {
             bluetoothPending = report
             val wait = bluetoothLastSent + BLUETOOTH_INTERVAL_MS - SystemClock.uptimeMillis()
             if (wait <= 0) {
-                btFlushLocked()
+                bluetoothFlushLocked()
             } else if (!bluetoothScheduled) {
                 bluetoothScheduled = true
                 thread(name = "gamepad-bt-tx", isDaemon = true) {
                     Thread.sleep(wait)
                     synchronized(bluetoothLock) {
                         bluetoothScheduled = false
-                        btFlushLocked()
+                        bluetoothFlushLocked()
                     }
                 }
             }
         }
     }
 
-    private fun btFlushLocked() {
+    private fun bluetoothFlushLocked() {
         val report = bluetoothPending ?: return
         bluetoothPending = null
         bluetoothLastSent = SystemClock.uptimeMillis()

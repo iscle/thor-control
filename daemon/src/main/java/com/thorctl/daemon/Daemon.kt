@@ -89,8 +89,8 @@ class Daemon(
         scheduler.scheduleWithFixedDelay({
             try {
                 block()
-            } catch (error: Throwable) {
-                Timber.w(error, "periodic task failed")
+            } catch (e: Throwable) {
+                Timber.w(e, "periodic task failed")
             }
         }, intervalMs, intervalMs, TimeUnit.MILLISECONDS)
     }
@@ -137,8 +137,8 @@ class Daemon(
         try {
             leds.invalidate()
             router.apply(config.controller)
-        } catch (error: Throwable) {
-            Timber.w(error, "reapply failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "reapply failed")
         }
     }
 }

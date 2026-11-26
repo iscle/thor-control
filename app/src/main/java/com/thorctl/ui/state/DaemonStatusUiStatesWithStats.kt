@@ -7,8 +7,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 
-/** A screen's states for this connection: [content] again whenever the daemon's state or telemetry changes. */
-fun <T> DaemonStatus.uiStates(content: (DaemonState, Stats) -> T): Flow<DaemonUiState<T>> = when (this) {
+/**
+ * A screen's states for this connection, for screens that show telemetry: [content] again on
+ * every state change and every reading. Screens without telemetry use [stateUiStates].
+ */
+fun <T> DaemonStatus.uiStatesWithStats(content: (DaemonState, Stats) -> T): Flow<DaemonUiState<T>> = when (this) {
     DaemonStatus.Disconnected -> flowOf(DaemonUiState.Disconnected)
     is DaemonStatus.Connected -> combine(state, stats) { daemonState, reading -> DaemonUiState.Connected(content(daemonState, reading)) }
 }

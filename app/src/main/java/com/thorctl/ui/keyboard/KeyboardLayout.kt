@@ -17,22 +17,22 @@ internal object KeyboardLayout {
             Layer.SYMBOLS -> SYMBOL_ROWS to MORE_ROWS
             Layer.MORE -> MORE_ROWS to null
         }
-        fun row(rowIndex: Int): List<Ch> {
+        fun row(rowIndex: Int): List<CharacterKey> {
             val alternates = alternateRows?.get(rowIndex)?.split(' ')
-            return mainRows[rowIndex].split(' ').mapIndexed { keyIndex, character -> Ch(character, alternates?.getOrNull(keyIndex)) }
+            return mainRows[rowIndex].split(' ').mapIndexed { keyIndex, character -> CharacterKey(character, alternates?.getOrNull(keyIndex)) }
         }
         val secondRow = row(1).let { keys -> keys.mapIndexed { keyIndex, charKey -> charKey.copy(lead = if (keyIndex == 0) 0.5f else 0f, trail = if (keyIndex == keys.lastIndex) 0.5f else 0f) } }
         val bottomRow = row(3)
         val (thirdRowLeft, bottomRowLeft) = when (layer) {
-            Layer.LETTERS -> FnKind.SHIFT to FnKind.TO_SYMBOLS
-            Layer.SYMBOLS -> FnKind.TO_MORE to FnKind.TO_LETTERS
-            Layer.MORE -> FnKind.TO_SYMBOLS to FnKind.TO_LETTERS
+            Layer.LETTERS -> FunctionKind.SHIFT to FunctionKind.TO_SYMBOLS
+            Layer.SYMBOLS -> FunctionKind.TO_MORE to FunctionKind.TO_LETTERS
+            Layer.MORE -> FunctionKind.TO_SYMBOLS to FunctionKind.TO_LETTERS
         }
         return listOf(
             row(0),
             secondRow,
-            listOf(Fn(thirdRowLeft, 1.5f)) + row(2) + Fn(FnKind.BACK, 1.5f),
-            listOf(Fn(bottomRowLeft, 1.5f), bottomRow[0], Fn(FnKind.SPACE, 5f), bottomRow[1], Fn(FnKind.ENTER, 1.5f)),
+            listOf(FunctionKey(thirdRowLeft, 1.5f)) + row(2) + FunctionKey(FunctionKind.BACK, 1.5f),
+            listOf(FunctionKey(bottomRowLeft, 1.5f), bottomRow[0], FunctionKey(FunctionKind.SPACE, 5f), bottomRow[1], FunctionKey(FunctionKind.ENTER, 1.5f)),
         )
     }
 

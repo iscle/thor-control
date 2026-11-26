@@ -42,8 +42,8 @@ class DaemonEndpointImpl(
     override fun handle(command: DaemonCommand) {
         try {
             dispatcher.handle(command)
-        } catch (error: Exception) {
-            Timber.w(error, "command $command failed")
+        } catch (e: Exception) {
+            Timber.w(e, "command $command failed")
         }
     }
 }

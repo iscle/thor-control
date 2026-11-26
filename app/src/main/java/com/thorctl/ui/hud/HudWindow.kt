@@ -88,8 +88,8 @@ class HudWindow(
             owner = overlayOwner
             displayId = display.displayId
             true
-        } catch (error: Exception) {
-            Timber.w(error, "add HUD failed")
+        } catch (e: Exception) {
+            Timber.w(e, "add HUD failed")
             overlayOwner.destroy()
             false
         }

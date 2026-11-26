@@ -21,8 +21,8 @@ class AndroidSys : Sys {
     override fun write(path: String, value: String): Boolean = try {
         FileOutputStream(path).use { it.write(value.toByteArray()) }
         true
-    } catch (error: Exception) {
-        Timber.w("write $path <- '$value' failed: ${error.message}")
+    } catch (e: Exception) {
+        Timber.w("write $path <- '$value' failed: ${e.message}")
         false
     }
 
@@ -55,8 +55,8 @@ class AndroidSys : Sys {
         } else {
             output.trim()
         }
-    } catch (error: Exception) {
-        Timber.w("sh '$command' failed: ${error.message}")
+    } catch (e: Exception) {
+        Timber.w("sh '$command' failed: ${e.message}")
         null
     }
 }

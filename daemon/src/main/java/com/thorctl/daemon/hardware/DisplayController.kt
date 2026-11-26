@@ -49,8 +49,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
     fun refresh() {
         val internal = try {
             system.displays().filter { it.type == TYPE_INTERNAL }
-        } catch (error: Throwable) {
-            Timber.w(error, "display refresh failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "display refresh failed")
             return
         }
         when {
@@ -84,7 +84,7 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
         if (id < 0) return 0f
         return try {
             system.getBrightness(id)
-        } catch (error: Throwable) {
+        } catch (e: Throwable) {
             0f
         }
     }
@@ -94,8 +94,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
         if (id < 0) return
         try {
             system.setBrightness(id, value.coerceIn(MIN_BRIGHTNESS, 1f))
-        } catch (error: Throwable) {
-            Timber.w(error, "setBrightness($screen) failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "setBrightness($screen) failed")
         }
     }
 
@@ -109,8 +109,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
         }
         val succeeded = try {
             system.requestDisplayPower(id, if (on) STATE_UNKNOWN else STATE_OFF)
-        } catch (error: Throwable) {
-            Timber.w(error, "requestDisplayPower failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "requestDisplayPower failed")
             false
         }
         if (succeeded) {
@@ -146,8 +146,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
             if (topId >= 0) system.requestDisplayPower(topId, if (dark) STATE_OFF else STATE_UNKNOWN)
             // A bottom screen the user switched off has to be on while dark, and off again after.
             if (bottomForcedOff && bottomId >= 0) system.requestDisplayPower(bottomId, if (dark) STATE_UNKNOWN else STATE_OFF)
-        } catch (error: Throwable) {
-            Timber.w(error, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
         }
         setTouch(TOP_TOUCH_NAME, !dark)
         setBottomTouch(!dark && !bottomForcedOff)
@@ -203,8 +203,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
             system.requestDisplayPower(id, STATE_OFF)
             Thread.sleep(500)
             system.requestDisplayPower(id, STATE_UNKNOWN)
-        } catch (error: Throwable) {
-            Timber.w(error, "bottom panel power cycle failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "bottom panel power cycle failed")
         }
     }
 
@@ -216,8 +216,8 @@ class DisplayController(private val sys: Sys, private val system: SystemServices
             system.inputDevices()
                 .filter { it.name == name }
                 .forEach { system.setInputDeviceEnabled(it.id, enabled) }
-        } catch (error: Throwable) {
-            Timber.w(error, "toggle touch ($name) failed")
+        } catch (e: Throwable) {
+            Timber.w(e, "toggle touch ($name) failed")
         }
     }
 

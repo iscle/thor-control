@@ -2,7 +2,7 @@ package com.thorctl.ui.lights
 
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.thorctl.ui.state.uiStates
+import com.thorctl.ui.state.stateUiStates
 import com.thorctl.ui.state.currentUiState
 import com.thorctl.domain.model.ifConnected
 import com.thorctl.ui.state.DaemonUiState
@@ -38,8 +38,8 @@ class LightsViewModel(private val daemon: DaemonRepository) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DaemonUiState<LightsContent>> =
         combine(daemon.status, target) { status, stick -> status to stick }
-            .flatMapLatest { (status, stick) -> status.uiStates { state, _ -> LightsContent(state.leds, stick) } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state, _ -> LightsContent(state.leds, target.value) })
+            .flatMapLatest { (status, stick) -> status.stateUiStates { state -> LightsContent(state.leds, stick) } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, daemon.status.value.currentUiState { state -> LightsContent(state.leds, target.value) })
 
     /** Changes the daemon's current lights; nothing while disconnected. */
     private fun update(change: (LedState) -> LedState) = daemon.status.value.ifConnected {
