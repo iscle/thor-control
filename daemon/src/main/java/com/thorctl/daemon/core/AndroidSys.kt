@@ -1,5 +1,6 @@
 package com.thorctl.daemon.core
 
+import android.system.Os
 import com.thorctl.daemon.di.DaemonScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
@@ -26,7 +27,17 @@ class AndroidSys : Sys {
         false
     }
 
+    override fun writeBytes(path: String, bytes: ByteArray): Boolean = try {
+        FileOutputStream(path).use { it.write(bytes) }
+        true
+    } catch (e: Exception) {
+        Timber.w("write $path <- ${bytes.size} bytes failed: ${e.message}")
+        false
+    }
+
     override fun exists(path: String): Boolean = File(path).exists()
+
+    override fun isDirectory(path: String): Boolean = File(path).isDirectory
 
     override fun list(directory: String): List<String> = File(directory).listFiles()?.map { it.path } ?: emptyList()
 
@@ -34,6 +45,27 @@ class AndroidSys : Sys {
         File(path).canonicalPath
     } catch (_: Exception) {
         null
+    }
+
+    override fun readLink(path: String): String? = try {
+        Os.readlink(path)
+    } catch (_: Exception) {
+        null
+    }
+
+    override fun symlink(target: String, path: String): Boolean = try {
+        Os.symlink(target, path)
+        true
+    } catch (e: Exception) {
+        Timber.w("symlink $path -> $target failed: ${e.message}")
+        false
+    }
+
+    override fun remove(path: String): Boolean = try {
+        Os.remove(path)
+        true
+    } catch (_: Exception) {
+        false
     }
 
     override fun mkdirs(directory: String): Boolean = File(directory).mkdirs()

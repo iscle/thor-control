@@ -18,13 +18,27 @@ interface Sys {
 
     fun write(path: String, value: String): Boolean
 
+    /** Writes raw bytes (a binary attribute, like a HID report descriptor). */
+    fun writeBytes(path: String, bytes: ByteArray): Boolean
+
     fun exists(path: String): Boolean
+
+    fun isDirectory(path: String): Boolean
 
     /** Paths of the entries of a directory (empty if it isn't one). */
     fun list(directory: String): List<String>
 
     /** Where a symlink points, fully resolved; null if it doesn't resolve. */
     fun canonical(path: String): String?
+
+    /** Where a symlink points, as stored in the link (not resolved); null if it isn't one. */
+    fun readLink(path: String): String?
+
+    /** Creates the symlink [path], pointing at [target]. */
+    fun symlink(target: String, path: String): Boolean
+
+    /** Removes a file, a symlink or an empty directory (rmdir); false if that failed. */
+    fun remove(path: String): Boolean
 
     fun mkdirs(directory: String): Boolean
 
