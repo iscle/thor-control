@@ -8,6 +8,7 @@ import com.thorctl.daemon.hardware.input.EvdevCodes.SW_LID
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
+import java.io.IOException
 import kotlin.concurrent.thread
 
 /**
@@ -59,8 +60,12 @@ class AynButton(
                         if (type == EV_SW && code == SW_LID) lidPowerKey.setLidClosed(value != 0)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 Timber.w(e, "AYN read failed")
+            } catch (e: RuntimeException) {
+                // Thread boundary: an exception escaping the reader would make app_process kill
+                // the daemon; log it and reopen the node like after a read failure.
+                Timber.e(e, "AYN event handling failed")
             }
             Thread.sleep(1000)
         }

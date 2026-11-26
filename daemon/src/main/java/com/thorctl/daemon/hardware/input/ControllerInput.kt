@@ -11,6 +11,7 @@ import com.thorctl.daemon.hardware.input.EvdevCodes.SYN_REPORT
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
+import java.io.IOException
 import kotlin.concurrent.thread
 
 /**
@@ -75,8 +76,12 @@ class ControllerInput(
                         if (type == EV_KEY && value == 1 && (code == BTN_TL || code == BTN_TR)) worker.post { listener.onShoulder() }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 Timber.w(e, "controller read failed")
+            } catch (e: RuntimeException) {
+                // Thread boundary: an exception escaping the reader would make app_process kill
+                // the daemon; log it and reopen the node like after a read failure.
+                Timber.e(e, "controller event handling failed")
             }
             Thread.sleep(1000)
         }
@@ -108,49 +113,64 @@ class ControllerInput(
      */
     fun beginGrab(who: GrabOwner, handler: EventHandler, timeoutMs: Long = 0, onTimeout: () -> Unit = {}): Boolean {
         val controllerNode = node ?: return false
-        synchronized(lock) { if (grab != null) return false }
-        val device = try {
-            evdev.open(controllerNode)
-        } catch (e: Exception) {
-            return false
-        }
-        try {
-            device.grab()
-        } catch (e: Throwable) {
-            Timber.w(e, "EVIOCGRAB failed; combos will also reach apps")
-            device.close()
-            return false
-        }
+        // All under the lock: two owners can't both get past the check, and endGrab() always
+        // finds the reader thread (and the timeout) of the grab it ends.
         synchronized(lock) {
+            if (grab != null) return false
+            val device = try {
+                evdev.open(controllerNode)
+            } catch (_: IOException) {
+                return false
+            }
+            try {
+                device.grab()
+            } catch (e: IOException) {
+                Timber.w(e, "EVIOCGRAB failed; combos will also reach apps")
+                device.closeQuietly()
+                return false
+            }
             grab = device
             owner = who
             grabStart = state.snapshot()
             combos.arm(grabStart)
-        }
-        grabThread = thread(name = "pad-grab", isDaemon = true) {
-            try {
-                device.readEvents { type, code, value ->
-                    track(type, code, value)
-                    handler(type, code, value)
-                }
-            } catch (_: Exception) {
-                // closed by endGrab()
-            }
-        }
-        if (timeoutMs > 0) {
-            grabTimeout = worker.schedule(timeoutMs) {
-                Timber.w("$who held the controller for ${timeoutMs}ms, releasing it")
-                onTimeout()
-                endGrab(who)
-            }
+            grabThread = thread(name = "pad-grab", isDaemon = true) { readGrabbed(device, handler) }
+            grabTimeout = if (timeoutMs > 0) scheduleTimeout(who, device, timeoutMs, onTimeout) else null
         }
         return true
     }
+
+    private fun readGrabbed(device: EvdevDevice, handler: EventHandler) {
+        try {
+            device.readEvents { type, code, value ->
+                track(type, code, value)
+                handler(type, code, value)
+            }
+        } catch (_: IOException) {
+            // closed by endGrab(), or the node went away
+        } catch (e: RuntimeException) {
+            // Thread boundary: the handler is feature code, and an exception escaping the reader
+            // would make app_process kill the daemon. The reader stops; holds() then says so.
+            Timber.e(e, "controller grab handler failed")
+        }
+    }
+
+    private fun scheduleTimeout(who: GrabOwner, device: EvdevDevice, timeoutMs: Long, onTimeout: () -> Unit): Cancellable =
+        worker.schedule(timeoutMs) {
+            synchronized(lock) {
+                // That grab ended (and the controller may be grabbed again) before this ran.
+                if (grab !== device) return@schedule
+                grabTimeout = null
+            }
+            Timber.w("$who held the controller for ${timeoutMs}ms, releasing it")
+            onTimeout()
+            endGrab(who)
+        }
 
     /** Releases the grab if [who] holds it, then gives Android back what it missed. */
     fun endGrab(who: GrabOwner) {
         val device: EvdevDevice
         val reader: Thread?
+        val timeout: Cancellable?
         synchronized(lock) {
             if (owner != who) return
             device = grab ?: return
@@ -158,12 +178,11 @@ class ControllerInput(
             owner = GrabOwner.NONE
             reader = grabThread
             grabThread = null
+            timeout = grabTimeout
+            grabTimeout = null
         }
-        grabTimeout?.cancel()
-        try {
-            device.close() // wakes the blocked reader; the grab is released with the last file reference
-        } catch (_: Exception) {
-        }
+        timeout?.cancel()
+        device.closeQuietly() // wakes the blocked reader; the grab is released with the last file reference
         reader?.join(300)
         resync()
         home?.resetIfReleased { isDown(KEY_HOME) }
@@ -175,7 +194,7 @@ class ControllerInput(
         if (events.isEmpty()) return
         try {
             evdev.write(controllerNode, events + EvdevEvent(EV_SYN, SYN_REPORT, 0))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Timber.w(e, "controller resync failed")
         }
     }

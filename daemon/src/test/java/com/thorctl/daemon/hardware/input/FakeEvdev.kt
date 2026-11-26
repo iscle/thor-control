@@ -1,5 +1,6 @@
 package com.thorctl.daemon.hardware.input
 
+import java.io.FileNotFoundException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.fail
 
@@ -7,6 +8,10 @@ import kotlin.test.fail
 class FakeEvdev : Evdev {
     val opened = CopyOnWriteArrayList<FakeEvdevDevice>()
     val writes = CopyOnWriteArrayList<Pair<String, List<EvdevEvent>>>()
+
+    /** Opening a node fails from now on. */
+    @Volatile
+    var failOpen = false
 
     /** Grabs of nodes opened from now on fail. */
     @Volatile
@@ -16,7 +21,10 @@ class FakeEvdev : Evdev {
     @Volatile
     var switches: Int? = 0
 
-    override fun open(path: String): EvdevDevice = FakeEvdevDevice(path, failGrab, switches).also { opened += it }
+    override fun open(path: String): EvdevDevice {
+        if (failOpen) throw FileNotFoundException(path)
+        return FakeEvdevDevice(path, failGrab, switches).also { opened += it }
+    }
 
     override fun write(path: String, events: List<EvdevEvent>) {
         writes += path to events

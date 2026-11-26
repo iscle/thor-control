@@ -51,6 +51,20 @@ class LidPowerKeyTest {
     }
 
     @Test
+    fun aFailedGrabClosesTheNodeAndIsRetriedLater() {
+        evdev.failGrab = true
+        lidPowerKey.setLidClosed(true)
+        val failed = evdev.awaitOpened(POWER_NODE)
+        assertFalse(failed.grabbed)
+        assertTrue(failed.closed)
+        assertTrue(lidPowerKey.lidClosed)
+
+        evdev.failGrab = false
+        lidPowerKey.setPowerKeyHandler { presses += it }
+        assertTrue(evdev.awaitOpened(POWER_NODE, 2).grabbed)
+    }
+
+    @Test
     fun fallsBackToAnotherPwrkeyNode() {
         TestInputDevices.install(sys, entry("pm8550_pwrkey", "event8", "10000000000000 0"))
         lidPowerKey.setLidClosed(true)

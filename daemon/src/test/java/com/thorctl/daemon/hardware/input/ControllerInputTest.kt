@@ -13,6 +13,9 @@ import com.thorctl.daemon.hardware.input.EvdevCodes.KEY_HOME
 import com.thorctl.daemon.hardware.input.TestInputDevices.CONTROLLER
 import com.thorctl.daemon.hardware.input.TestInputDevices.CONTROLLER_NODE
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -171,4 +174,105 @@ class ControllerInputTest {
         device.send(EV_KEY, KEY_HOME, 0)
         assertEquals(listOf("homeDown"), listener.calls)
     }
+
+    @Test
+    fun concurrentGrabsHaveExactlyOneWinner() {
+        val (controller, _) = started()
+        val owners = listOf(GrabOwner.AYN, GrabOwner.RECENTS, GrabOwner.GAMEPAD) * 4
+        val ready = CyclicBarrier(owners.size)
+        val winners = AtomicInteger()
+        val threads = owners.map { owner ->
+            thread {
+                ready.await()
+                if (controller.beginGrab(owner, handler)) winners.incrementAndGet()
+            }
+        }
+        threads.forEach { it.join(2000) }
+        assertEquals(1, winners.get())
+        assertEquals(2, evdev.openedCount(CONTROLLER_NODE)) // the reader's node and the one grab
+    }
+
+    @Test
+    fun endGrabWaitsForTheGrabReader() {
+        val (controller, _) = started()
+        controller.beginGrab(GrabOwner.RECENTS, handler)
+        val grab = evdev.awaitOpened(CONTROLLER_NODE, 2)
+        controller.endGrab(GrabOwner.RECENTS)
+        assertTrue(grab.readerDone)
+    }
+
+    @Test
+    fun aTimeoutIsDroppedWithItsGrab() {
+        val (controller, _) = started()
+        var timeouts = 0
+        controller.beginGrab(GrabOwner.AYN, handler, 8000, onTimeout = { timeouts++ })
+        worker.advance(5000)
+        controller.endGrab(GrabOwner.AYN)
+        controller.beginGrab(GrabOwner.AYN, handler, 8000, onTimeout = { timeouts++ })
+        worker.advance(3000)
+        assertEquals(0, timeouts)
+        assertTrue(controller.holds(GrabOwner.AYN))
+        worker.advance(5000)
+        assertEquals(1, timeouts)
+        assertFalse(controller.holds(GrabOwner.AYN))
+    }
+
+    @Test
+    fun aTimeoutAlreadyRunningWhenItsGrabEndedLeavesTheNextGrabAlone() {
+        val (controller, _) = started()
+        worker.cancelTooLate = true
+        var timeouts = 0
+        controller.beginGrab(GrabOwner.AYN, handler, 8000, onTimeout = { timeouts++ })
+        controller.endGrab(GrabOwner.AYN)
+        controller.beginGrab(GrabOwner.AYN, handler, 20_000, onTimeout = { timeouts++ })
+        worker.advance(8000)
+        assertEquals(0, timeouts)
+        assertTrue(controller.holds(GrabOwner.AYN))
+    }
+
+    @Test
+    fun noGrabWhenTheNodeCannotBeOpened() {
+        val (controller, _) = started()
+        evdev.failOpen = true
+        assertFalse(controller.beginGrab(GrabOwner.RECENTS, handler))
+        evdev.failOpen = false
+        assertTrue(controller.beginGrab(GrabOwner.RECENTS, handler))
+    }
+
+    @Test
+    fun aFailingGrabHandlerStopsItsReaderWithoutEscaping() {
+        val uncaught = CopyOnWriteArrayList<Throwable>()
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { _, e -> uncaught += e }
+        try {
+            val (controller, _) = started()
+            controller.beginGrab(GrabOwner.GAMEPAD, { _, _, _ -> throw IllegalStateException("feature bug") })
+            val grab = evdev.awaitOpened(CONTROLLER_NODE, 2)
+            grab.send(EV_KEY, BTN_EAST, 1)
+            val deadline = System.currentTimeMillis() + 2000
+            while (controller.holds(GrabOwner.GAMEPAD) && System.currentTimeMillis() < deadline) Thread.sleep(5)
+            assertFalse(controller.holds(GrabOwner.GAMEPAD))
+            assertTrue(grab.readerDone)
+            assertTrue(uncaught.isEmpty())
+        } finally {
+            Thread.setDefaultUncaughtExceptionHandler(previous)
+        }
+    }
+
+    @Test
+    fun theReaderReopensTheNodeAfterAListenerFailure() {
+        val controller = ControllerInput(sys, InputNodes(sys), evdev, worker)
+        controller.start(
+            object : InputWatcher.Listener by listener {
+                override fun onShoulder() = throw IllegalStateException("listener bug")
+            },
+        )
+        val first = evdev.awaitOpened(CONTROLLER_NODE)
+        first.send(EV_KEY, BTN_TL, 1)
+        val second = evdev.awaitOpened(CONTROLLER_NODE, 2)
+        second.send(EV_KEY, BTN_SOUTH, 1)
+        assertTrue(controller.isDown(BTN_SOUTH))
+    }
+
+    private operator fun <T> List<T>.times(count: Int): List<T> = List(count) { this }.flatten()
 }
