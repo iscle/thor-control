@@ -19,7 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -44,10 +43,10 @@ class BlackoutWindow(
         scope.launch {
             // Every state push, not only changes: a show that failed (no overlay layer yet) is retried.
             daemon.status
-                .mapLatest { status ->
+                .flatMapLatest { status ->
                     when (status) {
-                        DaemonStatus.Disconnected -> false
-                        is DaemonStatus.Connected -> status.state.value.let { state -> state.gamepad.on && state.gamepad.dark }
+                        DaemonStatus.Disconnected -> flowOf(false)
+                        is DaemonStatus.Connected -> status.state.map { it.gamepad.on && it.gamepad.dark }
                     }
                 }
                 .collect { dark -> if (dark) show() else hide() }
