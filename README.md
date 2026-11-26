@@ -143,7 +143,7 @@ services for hardware the Thor doesn't have are stopped, and swap compresses bet
    adb shell ime set com.thorctl/.app.ThorKeyboard
    ```
 
-Everything else happens on its own: the menu's accessibility service is switched on (and kept on),
+Everything else happens on its own: the menu's accessibility service is switched on at every boot,
 the memory savings are applied on every boot, and the app shows up as **Thor Control** in your
 launcher.
 
@@ -287,8 +287,7 @@ While you hold **AYN** the game doesn't see any of these buttons.
 ## Troubleshooting
 
 **The menu doesn't open.** Thor Control draws the menu through an accessibility service. Check
-**Settings › Accessibility › Thor Control menu** is on. Thor Control turns it back on by itself
-within half a minute.
+**Settings › Accessibility › Thor Control menu** is on. Thor Control turns it on at every boot.
 
 **The keyboard on the bottom screen doesn't show up.** Thor Keyboard has to be chosen as your
 keyboard once (see [Install](#install), step 5).
