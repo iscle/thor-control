@@ -15,10 +15,10 @@ import com.thorctl.daemon.ipc.BinderPublisher
 import com.thorctl.daemon.system.SystemReadiness
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import timber.log.Timber
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import timber.log.Timber
 
 /**
  * The daemon's startup: restore the saved settings, start the periodic work and the input
@@ -74,12 +74,8 @@ class Daemon(
     }
 
     private fun reapplyOverVendorDefaults() {
-        try {
-            leds.invalidate()
-            router.apply(config.controller)
-        } catch (e: Throwable) {
-            Timber.w(e, "reapply failed")
-        }
+        leds.invalidate()
+        router.apply(config.controller)
     }
 
     private companion object {

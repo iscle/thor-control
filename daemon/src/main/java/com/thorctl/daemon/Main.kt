@@ -4,9 +4,10 @@ import android.os.Process
 import com.thorctl.daemon.core.DaemonLogTree
 import com.thorctl.daemon.di.DaemonGraph
 import dev.zacsweers.metro.createGraph
-import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import kotlin.system.exitProcess
+import timber.log.Timber
 
 /**
  * Root daemon entry point. Started by the Magisk module's service.sh supervisor:
@@ -41,7 +42,7 @@ object Main {
     private fun protectFromOomKiller() {
         try {
             File("/proc/self/oom_score_adj").writeText(OOM_SCORE_ADJ_NEVER_KILL)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Timber.w(e, "could not set oom_score_adj")
         }
     }

@@ -43,6 +43,7 @@ class DaemonEndpointImpl(
         try {
             dispatcher.handle(command)
         } catch (e: Exception) {
+            // Binder boundary: a oneway call's exception would otherwise vanish in the binder thread.
             Timber.w(e, "command $command failed")
         }
     }

@@ -25,9 +25,9 @@ class HiddenApiAppProviderClient : AppProviderClient {
     override fun call(method: String, extras: Bundle): Bundle? {
         val token = Binder()
         val holder = activityManager.getContentProviderExternal(ThorIpc.AUTHORITY, USER_SYSTEM, token, tag = ThorIpc.AUTHORITY)
-            ?: throw IllegalStateException("provider ${ThorIpc.AUTHORITY} not found")
+            ?: throw AppProviderUnavailableException("provider ${ThorIpc.AUTHORITY} not found")
         try {
-            val provider = holder.contentProvider() ?: throw IllegalStateException("provider ${ThorIpc.AUTHORITY} has no binder")
+            val provider = holder.contentProvider() ?: throw AppProviderUnavailableException("provider ${ThorIpc.AUTHORITY} has no binder")
             val source = AttributionSource.Builder(Process.myUid()).build()
             return provider.callProvider(source, ThorIpc.AUTHORITY, method, arg = null, extras)
         } finally {

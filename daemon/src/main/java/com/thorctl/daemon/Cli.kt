@@ -3,6 +3,7 @@ package com.thorctl.daemon
 import android.os.Bundle
 import com.thorctl.daemon.cli.CliCommands
 import com.thorctl.daemon.cli.CliRequest
+import com.thorctl.daemon.system.AppProviderUnavailableException
 import com.thorctl.daemon.system.HiddenApiAppProviderClient
 import com.thorctl.protocol.ipc.ClientBinder
 import com.thorctl.protocol.ipc.IThorDaemon
@@ -34,9 +35,10 @@ object Cli {
         val waitMs = System.getenv("WAIT_MS")?.toLongOrNull() ?: 1500L
         val reply = try {
             HiddenApiAppProviderClient().call(ThorIpc.METHOD_GET, Bundle())
-        } catch (e: Exception) {
-            System.err.println("can't reach the app's provider ${ThorIpc.AUTHORITY}: $e")
-            exitProcess(1)
+        } catch (e: AppProviderUnavailableException) {
+            providerUnreachable(e)
+        } catch (e: ReflectiveOperationException) {
+            providerUnreachable(e)
         }
         val daemon = reply?.getBinder(ThorIpc.KEY_BINDER)?.let { IThorDaemon.Stub.asInterface(it) } ?: run {
             System.err.println("the app has no connection to the daemon")
@@ -55,6 +57,11 @@ object Cli {
         Thread.sleep(waitMs)
         daemon.unregister(client)
         exitProcess(0)
+    }
+
+    private fun providerUnreachable(e: Exception): Nothing {
+        System.err.println("can't reach the app's provider ${ThorIpc.AUTHORITY}: ${e.cause ?: e}")
+        exitProcess(1)
     }
 
     private fun usage(): Nothing {

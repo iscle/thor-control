@@ -10,8 +10,8 @@ import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.Stats
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import timber.log.Timber
 import java.util.concurrent.CopyOnWriteArrayList
+import timber.log.Timber
 
 /** The registered [IThorClient]s. A client is dropped when its process dies or a call to it fails. */
 @Inject
@@ -55,7 +55,8 @@ class ClientRegistry(private val jpegs: JpegExporter, private val uids: UidPolic
         if (clients.remove(client)) {
             try {
                 binder.unlinkToDeath(client, 0)
-            } catch (_: Exception) {
+            } catch (_: NoSuchElementException) {
+                // It was never linked (it died while registering).
             }
             Timber.i("client uid=${client.uid} gone (${clients.size} left)")
         }

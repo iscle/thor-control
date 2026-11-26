@@ -11,10 +11,12 @@ import com.thorctl.protocol.model.GamepadTransport
 import com.thorctl.protocol.model.LedState
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import java.io.File
+import java.io.IOException
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import timber.log.Timber
-import java.io.File
 
 /**
  * Persistent daemon settings in /data/adb/thorctl/config.json (root-only directory), as
@@ -50,8 +52,10 @@ class ConfigStore(@ConfigFile private val file: File) {
             gamepadScreensOff = stored.gamepad.screensOff
             if (profile(fanProfile) == null) fanProfile = FanProfile.SMART_ID
             Timber.i("config loaded: fan=$fanProfile controller=${controller.wire} custom=${customProfiles.size}")
-        } catch (e: Exception) {
-            Timber.w(e, "config load failed, using defaults")
+        } catch (e: IOException) {
+            Timber.w(e, "config unreadable, using defaults")
+        } catch (e: SerializationException) {
+            Timber.w(e, "config malformed, using defaults")
         }
     }
 
@@ -72,7 +76,7 @@ class ConfigStore(@ConfigFile private val file: File) {
             val tempFile = File(file.path + ".tmp")
             tempFile.writeText(FORMAT.encodeToString(StoredConfig.serializer(), stored))
             if (!tempFile.renameTo(file)) Timber.w("config save: rename failed")
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Timber.w(e, "config save failed")
         }
     }

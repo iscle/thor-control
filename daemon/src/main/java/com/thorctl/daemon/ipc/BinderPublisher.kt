@@ -3,13 +3,14 @@ package com.thorctl.daemon.ipc
 import android.os.Bundle
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.AppProviderClient
+import com.thorctl.daemon.system.AppProviderUnavailableException
 import com.thorctl.protocol.ipc.DaemonBinder
 import com.thorctl.protocol.ipc.ThorIpc
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import timber.log.Timber
 
 /**
  * Hands the daemon's binder to the app ([ThorIpc]): at start, and again on every housekeeping
@@ -52,11 +53,17 @@ class BinderPublisher(
             appProvider.call(ThorIpc.METHOD_OFFER, Bundle().apply { putBinder(ThorIpc.KEY_BINDER, binder.value) })
             if (lastFailure != null) Timber.i("binder offered to the app again")
             lastFailure = null
-        } catch (e: Throwable) {
-            // Logged once per kind of failure: the app may be missing for a while (reinstall).
-            val kind = (e.cause ?: e).toString()
-            if (kind != lastFailure) Timber.w(e, "offering the binder to the app failed")
-            lastFailure = kind
+        } catch (e: AppProviderUnavailableException) {
+            offerFailed(e)
+        } catch (e: ReflectiveOperationException) {
+            offerFailed(e)
         }
+    }
+
+    /** Logged once per kind of failure: the app may be missing for a while (reinstall). */
+    private fun offerFailed(e: Exception) {
+        val kind = (e.cause ?: e).toString()
+        if (kind != lastFailure) Timber.w(e, "offering the binder to the app failed")
+        lastFailure = kind
     }
 }

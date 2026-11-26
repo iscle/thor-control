@@ -1,5 +1,6 @@
 package com.thorctl.daemon.ipc
 
+import android.system.ErrnoException
 import android.system.Os
 import com.thorctl.protocol.Proto
 import dev.zacsweers.metro.Inject
@@ -8,7 +9,7 @@ import dev.zacsweers.metro.Inject
 class DataDirAppUidLookup : AppUidLookup {
     override fun appUid(): Int = try {
         Os.stat("/data/data/${Proto.PACKAGE}").st_uid
-    } catch (_: Exception) {
+    } catch (_: ErrnoException) {
         -1
     }
 }
