@@ -35,7 +35,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -79,10 +81,10 @@ class MenuWindow(
 
     private fun watchWhileOpen(): Job = scope.launch {
         // The daemon turned the bottom screen off: nothing to show the menu on.
-        launch { bottomScreenOff().collect { off -> if (off) removeNow() } }
+        bottomScreenOff().onEach { off -> if (off) removeNow() }.launchIn(this)
         // The accessibility service came or went (not its value now: only changes count).
-        launch {
-            accessibility.bound.drop(1).collect { bound ->
+        accessibility.bound.drop(1)
+            .onEach { bound ->
                 if (bound && _shownAs.value != OverlayLayer.ACCESSIBILITY) {
                     // Re-host the menu in the stronger window layer.
                     removeNow()
@@ -91,7 +93,7 @@ class MenuWindow(
                     removeNow()
                 }
             }
-        }
+            .launchIn(this)
     }
 
     /** The daemon turned the bottom screen off (never while disconnected: then it's unknown). */

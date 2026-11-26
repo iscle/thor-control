@@ -23,6 +23,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.thorctl.ui.navigation.MenuPanel
 import com.thorctl.ui.theme.qsColors
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
@@ -54,7 +56,7 @@ fun MenuOverlay(
             exitDone()
         }
     }
-    LaunchedEffect(Unit) { snapshotFlow { reveal.value }.collect { revealCallback(it) } }
+    LaunchedEffect(Unit) { snapshotFlow { reveal.value }.onEach { revealCallback(it) }.launchIn(this) }
 
     val shade = qsColors()
     val scrim =

@@ -62,6 +62,8 @@ import com.thorctl.ui.theme.qsColors
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -307,19 +309,21 @@ fun RecentsStage(
     }
 
     LaunchedEffect(Unit) {
-        buttons.collect { action ->
-            // Presses during an animation wait for it (a quick ◀ after opening still counts).
-            if (locked) snapshotFlow { locked }.first { !it }
-            when (action) {
-                RecentsAction.PREVIOUS -> move(-1)
-                RecentsAction.NEXT -> move(1)
-                RecentsAction.OPEN -> open(target)
-                RecentsAction.BACK -> back()
-                RecentsAction.CLOSE -> closeCurrent()
-                RecentsAction.CLOSE_ALL -> closeAll()
-                RecentsAction.HOME -> openHome()
+        buttons
+            .onEach { action ->
+                // Presses during an animation wait for it (a quick ◀ after opening still counts).
+                if (locked) snapshotFlow { locked }.first { !it }
+                when (action) {
+                    RecentsAction.PREVIOUS -> move(-1)
+                    RecentsAction.NEXT -> move(1)
+                    RecentsAction.OPEN -> open(target)
+                    RecentsAction.BACK -> back()
+                    RecentsAction.CLOSE -> closeCurrent()
+                    RecentsAction.CLOSE_ALL -> closeAll()
+                    RecentsAction.HOME -> openHome()
+                }
             }
-        }
+            .launchIn(this)
     }
 
     // ---- Drawing ----------------------------------------------------------------------------

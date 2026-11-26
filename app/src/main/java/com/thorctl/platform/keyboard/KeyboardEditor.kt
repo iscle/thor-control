@@ -23,6 +23,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -87,10 +89,9 @@ class KeyboardEditor(
     fun attach(host: ImeHost, serviceScope: CoroutineScope) {
         ime = host
         // A daemon (re)start doesn't know the keyboard is up: L1 / R1 are shift only then.
-        serviceScope.launch {
-            daemon.status.filterIsInstance<DaemonStatus.Connected>()
-                .collect { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
-        }
+        daemon.status.filterIsInstance<DaemonStatus.Connected>()
+            .onEach { if (isShown) daemon.send(DaemonCommand.KeyboardVisible(true)) }
+            .launchIn(serviceScope)
     }
 
     fun detach(host: ImeHost) {

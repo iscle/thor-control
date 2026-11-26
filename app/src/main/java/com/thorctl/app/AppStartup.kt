@@ -5,7 +5,8 @@ import com.thorctl.domain.repository.DaemonRepository
 import com.thorctl.platform.startup.ProcessObserver
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 /**
  * What runs for the whole life of the process: the daemon's events, handled by [dispatcher],
@@ -20,7 +21,7 @@ class AppStartup(
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     fun start() {
-        scope.launch { daemon.events.collect(dispatcher::dispatch) }
+        daemon.events.onEach(dispatcher::dispatch).launchIn(scope)
         observers.forEach { it.observe(scope) }
     }
 }

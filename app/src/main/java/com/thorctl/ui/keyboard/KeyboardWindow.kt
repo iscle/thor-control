@@ -18,7 +18,9 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 
 /** Puts [BottomKeyboard] in a window on the bottom screen while [KeyboardEditor.panelWanted]. */
@@ -35,17 +37,11 @@ class KeyboardWindow(
 
     /** Shows the panel whenever the editor wants it, for as long as [serviceScope] (the keyboard service) lives. */
     fun attach(serviceScope: CoroutineScope) {
-        serviceScope.launch {
-            try {
-                // Also when the accessibility service binds: a window that couldn't be shown before can be now.
-                combine(
-                    editor.panelWanted,
-                    accessibility.bound
-                ) { wanted, _ -> wanted }.collect { if (it) show() else remove() }
-            } finally {
-                remove()
-            }
-        }
+        // Also when the accessibility service binds: a window that couldn't be shown before can be now.
+        combine(editor.panelWanted, accessibility.bound) { wanted, _ -> wanted }
+            .onEach { if (it) show() else remove() }
+            .onCompletion { remove() }
+            .launchIn(serviceScope)
     }
 
     private fun show() {

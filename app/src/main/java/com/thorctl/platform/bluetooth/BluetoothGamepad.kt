@@ -31,8 +31,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.plus
 import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
@@ -75,19 +77,18 @@ class BluetoothGamepad(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(scope: CoroutineScope) {
-        scope.launch {
-            daemon.status
-                .flatMapLatest { status ->
-                    when (status) {
-                        DaemonStatus.Disconnected -> flowOf(false)
-                        is DaemonStatus.Connected -> status.state.map { it.gamepad.on && it.gamepad.transport == GamepadTransport.BLUETOOTH }
-                    }
+        daemon.status
+            .flatMapLatest { status ->
+                when (status) {
+                    DaemonStatus.Disconnected -> flowOf(false)
+                    is DaemonStatus.Connected -> status.state.map { it.gamepad.on && it.gamepad.transport == GamepadTransport.BLUETOOTH }
                 }
-                .distinctUntilChanged()
-                .collect(::update)
-        }
+            }
+            .distinctUntilChanged()
+            .onEach(::update)
+            .launchIn(scope)
         // Reports go straight to the radio's thread, not through the main thread.
-        scope.launch(Dispatchers.Default) { daemon.gamepadReports.collect(::send) }
+        daemon.gamepadReports.onEach(::send).launchIn(scope + Dispatchers.Default)
     }
 
     /**
