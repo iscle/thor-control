@@ -1,10 +1,13 @@
 package android.hardware.display;
 
+import android.os.Binder;
+import android.os.IBinder;
+import android.os.IInterface;
 import android.os.RemoteException;
 import android.view.DisplayInfo;
 
 /** Hidden binder interface (compile-time stub; the framework's own class is used at runtime). */
-public interface IDisplayManager extends android.os.IInterface {
+public interface IDisplayManager extends IInterface {
     int[] getDisplayIds(boolean includeDisabled) throws RemoteException;
 
     DisplayInfo getDisplayInfo(int displayId) throws RemoteException;
@@ -15,8 +18,8 @@ public interface IDisplayManager extends android.os.IInterface {
 
     boolean requestDisplayPower(int displayId, int state) throws RemoteException;
 
-    abstract class Stub extends android.os.Binder implements IDisplayManager {
-        public static IDisplayManager asInterface(android.os.IBinder obj) {
+    abstract class Stub extends Binder implements IDisplayManager {
+        public static IDisplayManager asInterface(IBinder obj) {
             throw new RuntimeException("Stub!");
         }
     }

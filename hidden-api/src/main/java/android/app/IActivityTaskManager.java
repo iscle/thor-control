@@ -1,12 +1,15 @@
 package android.app;
 
 import android.content.pm.ParceledListSlice;
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.IInterface;
 import android.os.RemoteException;
 import java.util.List;
 
 /** Hidden binder interface (compile-time stub; the framework's own class is used at runtime). */
-public interface IActivityTaskManager extends android.os.IInterface {
+public interface IActivityTaskManager extends IInterface {
     ActivityTaskManager.RootTaskInfo getFocusedRootTaskInfo() throws RemoteException;
 
     void focusTopTask(int displayId) throws RemoteException;
@@ -21,8 +24,8 @@ public interface IActivityTaskManager extends android.os.IInterface {
 
     boolean removeTask(int taskId) throws RemoteException;
 
-    abstract class Stub extends android.os.Binder implements IActivityTaskManager {
-        public static IActivityTaskManager asInterface(android.os.IBinder obj) {
+    abstract class Stub extends Binder implements IActivityTaskManager {
+        public static IActivityTaskManager asInterface(IBinder obj) {
             throw new RuntimeException("Stub!");
         }
     }
