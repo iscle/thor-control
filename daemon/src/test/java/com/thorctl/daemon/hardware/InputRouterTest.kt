@@ -1,5 +1,6 @@
 package com.thorctl.daemon.hardware
 
+import com.thorctl.daemon.FakeClock
 import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.FakeDisplayService
@@ -18,7 +19,7 @@ class InputRouterTest {
         ),
     )
     private val inputService = FakeInputService()
-    private val displays = DisplayController(FakeSys(), displayService, inputService).apply { refresh() }
+    private val displays = DisplayController(displayService, inputService, BottomPanelHealer(FakeSys(), FakeClock(), displayService)).apply { refresh() }
     private val router = InputRouter(displays, inputService)
 
     @Test
