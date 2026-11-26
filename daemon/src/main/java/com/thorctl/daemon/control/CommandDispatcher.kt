@@ -98,10 +98,6 @@ class CommandDispatcher(
                 actions.saveSoon()
                 actions.fanTick()
             }
-            is DaemonCommand.SetKeepAccessibility -> {
-                config.keepAccessibility = command.on
-                actions.saveSoon()
-            }
             else -> return false
         }
         true

@@ -3,10 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission
-        android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Gamepad mode over Bluetooth: the Thor registers as a Bluetooth HID gamepad. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -72,16 +68,6 @@
                 android:resource="@xml/method" />
         </service>
 
-        <receiver
-            android:name=".app.CommandReceiver"
-            android:exported="false"
-            tools:ignore="Instantiatable">
-            <intent-filter>
-                <action android:name="com.thorctl.action.TOGGLE_MENU" />
-                <action android:name="com.thorctl.action.HIDE_MENU" />
-            </intent-filter>
-        </receiver>
-
         <!-- The root daemon hands its binder over here (only uid 0 is accepted). Root reaches
              it with getContentProviderExternal, so it can't be guarded by a permission. -->
         <provider
@@ -89,14 +75,5 @@
             android:authorities="com.thorctl.ipc"
             android:exported="true"
             tools:ignore="ExportedContentProvider,Instantiatable" />
-
-        <receiver
-            android:name=".app.BootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

@@ -8,7 +8,6 @@
 MODE=${1:-apply}
 
 LAUNCHER3=com.android.launcher3 # Trebuchet: only the gesture-nav / recents provider here
-SE=com.android.se               # Disabled by v1.7 builds; Android 17 restarts it anyway, so undone
 SERVICES="cameraserver wifidisplayhalservice" # no cameras; Wi-Fi Display (Miracast) casting
 
 disabled() { pm list packages -d 2>/dev/null | grep -qx "package:$1"; }
@@ -40,7 +39,6 @@ zram_zstd() {
 
 case "$MODE" in
   apply)
-    disabled $SE && pm enable $SE >/dev/null 2>&1
     if [ ! -f /data/adb/thorctl/keep-top-gestures ] && other_home; then
       disabled $LAUNCHER3 || { pm disable $LAUNCHER3 >/dev/null 2>&1 && echo "system-tweaks: disabled $LAUNCHER3"; }
     elif disabled $LAUNCHER3; then
@@ -52,7 +50,6 @@ case "$MODE" in
     zram_zstd
     ;;
   revert)
-    disabled $SE && pm enable $SE >/dev/null 2>&1
     disabled $LAUNCHER3 && pm enable $LAUNCHER3 >/dev/null 2>&1
     for s in $SERVICES; do
       [ "$(getprop init.svc.$s)" = stopped ] && start "$s"

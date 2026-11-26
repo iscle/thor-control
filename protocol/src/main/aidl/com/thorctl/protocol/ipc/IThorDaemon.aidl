@@ -43,8 +43,6 @@ interface IThorDaemon {
 
     oneway void setBottomPower(boolean on);
 
-    oneway void setKeepAccessibility(boolean on);
-
     oneway void setGameMode(boolean on);
 
     oneway void setGameOptions(in GameOptionsParcel options);

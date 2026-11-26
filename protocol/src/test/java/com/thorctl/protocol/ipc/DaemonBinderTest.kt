@@ -41,7 +41,6 @@ class DaemonBinderTest {
         DaemonCommand.MoveApp(Screen.BOTTOM),
         DaemonCommand.SetLeds(Samples.leds),
         DaemonCommand.SetBottomPower(false),
-        DaemonCommand.SetKeepAccessibility(true),
         DaemonCommand.SetGameMode(true),
         DaemonCommand.SetGameOptions(GameOptions(cpu = false)),
         DaemonCommand.RecentsOpen(12),

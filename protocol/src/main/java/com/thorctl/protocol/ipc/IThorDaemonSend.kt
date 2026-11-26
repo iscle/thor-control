@@ -13,7 +13,6 @@ fun IThorDaemon.send(command: DaemonCommand) {
         is DaemonCommand.MoveApp -> moveApp(command.to.wire)
         is DaemonCommand.SetLeds -> setLeds(command.state.toParcel())
         is DaemonCommand.SetBottomPower -> setBottomPower(command.on)
-        is DaemonCommand.SetKeepAccessibility -> setKeepAccessibility(command.on)
         is DaemonCommand.SetGameMode -> setGameMode(command.on)
         is DaemonCommand.SetGameOptions -> setGameOptions(command.options.toParcel())
         is DaemonCommand.RecentsOpen -> recentsOpen(command.taskId)

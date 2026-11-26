@@ -14,7 +14,7 @@ import com.thorctl.protocol.model.Screen
  *   fan <profile id> | fan-delete <id>
  *   brightness <top|bottom> <0..1>
  *   controller <free|top|bottom> | move <top|bottom>
- *   bottom-power <on|off> | game <on|off> | keep-accessibility <on|off>
+ *   bottom-power <on|off> | game <on|off>
  *   leds <on|off|solid|breathe|rainbow>
  *   gamepad <on|off> | gamepad-transport <usb|bt> | gamepad-screens-off <on|off>
  *   recents-close
@@ -25,7 +25,7 @@ object CliCommands {
   fan <profile id> | fan-delete <id>
   brightness <top|bottom> <0..1>
   controller <free|top|bottom> | move <top|bottom>
-  bottom-power <on|off> | game <on|off> | keep-accessibility <on|off>
+  bottom-power <on|off> | game <on|off>
   leds <on|off|solid|breathe|rainbow>
   gamepad <on|off> | gamepad-transport <usb|bt> | gamepad-screens-off <on|off>
   recents-close"""
@@ -54,7 +54,6 @@ object CliCommands {
             "move" -> send(Screen.fromWire(argument)?.let { DaemonCommand.MoveApp(it) })
             "bottom-power" -> send(onOff()?.let { DaemonCommand.SetBottomPower(it) })
             "game" -> send(onOff()?.let { DaemonCommand.SetGameMode(it) })
-            "keep-accessibility" -> send(onOff()?.let { DaemonCommand.SetKeepAccessibility(it) })
             "leds" -> {
                 val leds = state?.leds ?: return null
                 val mode = LedMode.fromWire(argument)

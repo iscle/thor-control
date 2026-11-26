@@ -23,8 +23,6 @@ sealed interface DaemonCommand {
 
     data class SetBottomPower(val on: Boolean) : DaemonCommand
 
-    data class SetKeepAccessibility(val on: Boolean) : DaemonCommand
-
     data class SetGameMode(val on: Boolean) : DaemonCommand
 
     data class SetGameOptions(val options: GameOptions) : DaemonCommand

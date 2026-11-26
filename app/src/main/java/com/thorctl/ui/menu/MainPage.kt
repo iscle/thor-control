@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,7 +63,6 @@ import com.thorctl.ui.state.DaemonUiState
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.delay
 import java.util.Date
-import java.util.Locale
 
 @Composable
 fun MainPage(
@@ -197,7 +197,7 @@ private fun Header(
     val uses24HourClock = DateFormat.is24HourFormat(context)
     val time = DateFormat.format(if (uses24HourClock) "HH:mm" else "h:mm", now).toString()
     val date =
-        DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEMMMd"), now)
+        DateFormat.format(DateFormat.getBestDateTimePattern(LocalConfiguration.current.locales[0], "EEEMMMd"), now)
             .toString()
     val textStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp)
 

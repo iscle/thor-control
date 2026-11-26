@@ -10,12 +10,20 @@ chmod 0700 $DATA
 
 until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 1; done
 
-# Permissions the app needs for its fallback overlay and to keep its accessibility service on.
-pm grant $PKG android.permission.WRITE_SECURE_SETTINGS 2>/dev/null
 # Gamepad mode over Bluetooth (registering as a HID device, the "make visible" prompt).
 pm grant $PKG android.permission.BLUETOOTH_CONNECT 2>/dev/null
 pm grant $PKG android.permission.BLUETOOTH_ADVERTISE 2>/dev/null
+# The fallback overlay layer, used while the accessibility service is off.
 appops set $PKG SYSTEM_ALERT_WINDOW allow 2>/dev/null
+# The overlays draw in the accessibility service's layer: above the status bar and the keyboard,
+# and out of reach of "hide overlays". Turned on at boot if it isn't; turning it off is up to you.
+A11Y=$PKG/$PKG.app.ThorAccessibilityService
+ENABLED=$(settings get secure enabled_accessibility_services 2>/dev/null)
+case ":$ENABLED:" in
+  *":$A11Y:"*) ;;
+  ::|:null:) settings put secure enabled_accessibility_services "$A11Y" && settings put secure accessibility_enabled 1 ;;
+  *) settings put secure enabled_accessibility_services "$ENABLED:$A11Y" && settings put secure accessibility_enabled 1 ;;
+esac
 # Thor Keyboard stays available in the keyboard list (choosing it as the keyboard is up to you).
 ime enable $PKG/.app.ThorKeyboard >/dev/null 2>&1
 

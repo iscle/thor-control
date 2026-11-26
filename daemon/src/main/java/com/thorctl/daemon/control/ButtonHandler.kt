@@ -1,7 +1,6 @@
 package com.thorctl.daemon.control
 
 import android.view.KeyEvent
-import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.feature.gamepad.Gamepad
@@ -14,7 +13,6 @@ import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.PowerService
 import com.thorctl.daemon.system.TaskService
-import com.thorctl.protocol.AppContract
 import com.thorctl.protocol.model.ControllerTarget
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.Screen
@@ -37,7 +35,6 @@ class ButtonHandler(
     private val inputService: InputService,
     private val powerService: PowerService,
     private val taskService: TaskService,
-    private val sys: Sys,
 ) : InputWatcher.Listener {
     override fun onAynTap() {
         // Gamepad mode with the screens dark (or asleep after all): AYN brings them back (the
@@ -55,12 +52,9 @@ class ButtonHandler(
             actions.setBottomPower(true)
             return
         }
-        if (link.appConnected) {
-            link.broadcast(DaemonEvent.MenuButton)
-        } else {
-            // App not connected (still starting, or crashed): wake it through an explicit broadcast.
-            sys.sh("am broadcast -a ${AppContract.ACTION_TOGGLE_MENU} -n ${AppContract.COMMAND_RECEIVER} --receiver-foreground")
-        }
+        // Without the app (still starting, or restarting) there is no menu to show; the daemon
+        // offers it the binder every 2 s, which also starts its process.
+        if (link.appConnected) link.broadcast(DaemonEvent.MenuButton)
     }
 
     override fun onCombo(combo: AynCombo) {

@@ -19,7 +19,6 @@ class StoredConfig(
     @SerialName("customProfiles") val customProfiles: List<StoredFanProfile> = emptyList(),
     @SerialName("controller") val controller: String = ControllerTarget.FREE.wire,
     @SerialName("leds") val leds: StoredLeds = StoredLeds(),
-    @SerialName("keepAccessibility") val keepAccessibility: Boolean = true,
     @SerialName("gameOptions") val gameOptions: StoredGameOptions = StoredGameOptions(),
     @SerialName("gamepad") val gamepad: StoredGamepad = StoredGamepad(),
 )

@@ -29,7 +29,6 @@ class ConfigStore(@ConfigFile private val file: File) {
     val customProfiles = ArrayList<FanProfile>()
     var controller: ControllerTarget = ControllerTarget.FREE
     var leds: LedState = LedState()
-    var keepAccessibility: Boolean = true
     var gameOptions: GameOptions = GameOptions()
 
     // Gamepad mode itself always starts off; how it connects is remembered.
@@ -46,7 +45,6 @@ class ConfigStore(@ConfigFile private val file: File) {
             customProfiles += stored.customProfiles.mapNotNull { FanProfiles.sanitize(it.toModel())?.takeIf { profile -> !profile.isBuiltin } }
             controller = ControllerTarget.fromWire(stored.controller) ?: ControllerTarget.FREE
             leds = stored.leds.toModel()
-            keepAccessibility = stored.keepAccessibility
             gameOptions = stored.gameOptions.toModel()
             gamepadTransport = GamepadTransport.fromWire(stored.gamepad.transport) ?: GamepadTransport.USB
             gamepadScreensOff = stored.gamepad.screensOff
@@ -68,7 +66,6 @@ class ConfigStore(@ConfigFile private val file: File) {
                 customProfiles = customProfiles.map(StoredFanProfile::of),
                 controller = controller.wire,
                 leds = StoredLeds.of(leds),
-                keepAccessibility = keepAccessibility,
                 gameOptions = StoredGameOptions.of(gameOptions),
                 gamepad = StoredGamepad(gamepadTransport.wire, gamepadScreensOff),
             )

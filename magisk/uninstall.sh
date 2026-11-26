@@ -8,7 +8,5 @@ rm -rf /data/adb/thorctl
 # disabled apps back once the package manager is up (the module files are gone by then).
 (
   until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 2; done
-  for p in com.android.launcher3 com.android.se; do
-    pm list packages -d | grep -qx "package:$p" && pm enable "$p"
-  done
+  pm list packages -d | grep -qx "package:com.android.launcher3" && pm enable com.android.launcher3
 ) >/dev/null 2>&1 &

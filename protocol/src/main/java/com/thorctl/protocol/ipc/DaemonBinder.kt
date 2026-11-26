@@ -53,8 +53,6 @@ class DaemonBinder(
 
     override fun setBottomPower(on: Boolean) = command(DaemonCommand.SetBottomPower(on))
 
-    override fun setKeepAccessibility(on: Boolean) = command(DaemonCommand.SetKeepAccessibility(on))
-
     override fun setGameMode(on: Boolean) = command(DaemonCommand.SetGameMode(on))
 
     override fun setGameOptions(options: GameOptionsParcel?) = command(options?.let { DaemonCommand.SetGameOptions(it.toModel()) })

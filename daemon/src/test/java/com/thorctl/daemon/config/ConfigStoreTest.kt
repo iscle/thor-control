@@ -39,7 +39,6 @@ class ConfigStoreTest {
             customProfiles += custom
             controller = ControllerTarget.BOTTOM
             leds = LedState(mode = LedMode.RAINBOW, brightness = 12, sync = false, right = 0xABCDEF)
-            keepAccessibility = false
             gameOptions = GameOptions(closeApps = false, fan = "max")
             gamepadTransport = GamepadTransport.BLUETOOTH
             gamepadScreensOff = false
@@ -51,7 +50,6 @@ class ConfigStoreTest {
         assertEquals(custom, store.profile(custom.id))
         assertEquals(ControllerTarget.BOTTOM, store.controller)
         assertEquals(LedState(mode = LedMode.RAINBOW, brightness = 12, sync = false, right = 0xABCDEF), store.leds)
-        assertEquals(false, store.keepAccessibility)
         assertEquals(GameOptions(closeApps = false, fan = "max"), store.gameOptions)
         assertEquals(GamepadTransport.BLUETOOTH, store.gamepadTransport)
         assertEquals(false, store.gamepadScreensOff)
