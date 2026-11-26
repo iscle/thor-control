@@ -9,6 +9,7 @@ import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeInputService
 import com.thorctl.daemon.system.InputDeviceInfo
 import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.ControllerTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,9 +50,9 @@ class InputRouterTest {
     @Test
     fun aDeadInputManagerLeavesTheTargetAsItWas() {
         val dead = object : InputService by inputService {
-            override fun devices(): List<InputDeviceInfo> = throw ReflectiveOperationException("input manager died")
+            override fun devices(): List<InputDeviceInfo> = throw SystemServiceException("input manager died")
 
-            override fun associate(descriptor: String, displayUniqueId: String) = throw ReflectiveOperationException("input manager died")
+            override fun associate(descriptor: String, displayUniqueId: String) = throw SystemServiceException("input manager died")
         }
         val router = InputRouter(displays, dead)
         router.apply(ControllerTarget.BOTTOM)

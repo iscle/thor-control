@@ -79,8 +79,9 @@ class ControllerInput(
             } catch (e: IOException) {
                 Timber.w(e, "controller read failed")
             } catch (e: RuntimeException) {
-                // Thread boundary: an exception escaping the reader would make app_process kill
-                // the daemon; log it and reopen the node like after a read failure.
+                // Thread boundary: an exception escaping would end this reader (Main's handler only
+                // logs it) and the controller with it; log it and reopen the node like after a
+                // read failure.
                 Timber.e(e, "controller event handling failed")
             }
             Thread.sleep(1000)
@@ -148,8 +149,8 @@ class ControllerInput(
         } catch (_: IOException) {
             // closed by endGrab(), or the node went away
         } catch (e: RuntimeException) {
-            // Thread boundary: the handler is feature code, and an exception escaping the reader
-            // would make app_process kill the daemon. The reader stops; holds() then says so.
+            // Thread boundary: the handler is feature code, and an exception escaping would end
+            // this reader with nobody told. The reader stops here; holds() then says so.
             Timber.e(e, "controller grab handler failed")
         }
     }

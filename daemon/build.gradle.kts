@@ -41,6 +41,7 @@ kotlin {
 
 dependencies {
     implementation(project(":protocol"))
+    compileOnly(project(":hidden-api"))
     implementation(libs.timber)
     implementation(libs.kotlinx.serialization.json)
 

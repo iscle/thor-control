@@ -7,6 +7,7 @@ import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayInfo
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.Screen
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,12 +24,12 @@ class DisplayControllerTest {
     fun aDeadDisplayManagerChangesNothing() {
         var dead = false
         val flaky = object : DisplayService by displayService {
-            override fun displays(): List<DisplayInfo> = if (dead) throw ReflectiveOperationException("gone") else displayService.displays()
+            override fun displays(): List<DisplayInfo> = if (dead) throw SystemServiceException("gone") else displayService.displays()
 
-            override fun brightness(displayId: Int): Float = if (dead) throw ReflectiveOperationException("gone") else displayService.brightness(displayId)
+            override fun brightness(displayId: Int): Float = if (dead) throw SystemServiceException("gone") else displayService.brightness(displayId)
 
             override fun requestDisplayPower(displayId: Int, state: Int): Boolean =
-                if (dead) throw ReflectiveOperationException("gone") else displayService.requestDisplayPower(displayId, state)
+                if (dead) throw SystemServiceException("gone") else displayService.requestDisplayPower(displayId, state)
         }
         val displays = DisplayController(flaky, touchscreens, BottomPanelHealer(FakeSys(), FakeClock(), flaky, FakeScheduledExecutor(FakeClock())))
         displays.refresh()

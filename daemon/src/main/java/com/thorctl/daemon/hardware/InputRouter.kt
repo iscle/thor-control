@@ -2,6 +2,7 @@ package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.ControllerTarget
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -27,7 +28,7 @@ class InputRouter(private val displays: DisplayController, private val inputServ
                     it.name == CONTROLLER_NAME && !it.isExternal && it.isGamepad
                 }?.descriptor
                 ?: KNOWN_DESCRIPTOR
-        } catch (_: ReflectiveOperationException) {
+        } catch (_: SystemServiceException) {
             KNOWN_DESCRIPTOR
         }
     }
@@ -48,7 +49,7 @@ class InputRouter(private val displays: DisplayController, private val inputServ
             }
             target = newTarget
             Timber.i("controller -> ${newTarget.wire} ($deviceDescriptor)")
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "controller routing failed")
         }
     }

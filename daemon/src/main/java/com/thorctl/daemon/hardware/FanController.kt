@@ -1,12 +1,12 @@
 package com.thorctl.daemon.hardware
 
-import timber.log.Timber
 import com.thorctl.daemon.core.Clock
 import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.protocol.model.FanProfile
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
 import kotlin.math.max
 import kotlin.math.roundToInt
 

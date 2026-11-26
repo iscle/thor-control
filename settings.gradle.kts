@@ -21,3 +21,5 @@ rootProject.name = "ThorControl"
 include(":app")
 include(":daemon")
 include(":protocol")
+// Compile-time stubs of the hidden framework APIs the daemon calls (never packaged).
+include(":hidden-api")

@@ -5,6 +5,7 @@ import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.ipc.ClientLink
 import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.InputService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.DaemonEvent
 import timber.log.Timber
@@ -151,8 +152,8 @@ class HomeButton(
 
     private fun captureHomeIfShowing(display: Int) {
         captureExecutor.execute {
-            // The capture thread's top: anything escaping here would reach Android's default
-            // uncaught exception handler, which ends the whole daemon.
+            // The capture thread's top: anything escaping here would end the thread (Main's
+            // handler only logs it); log it here and keep the thread.
             try {
                 captureHomeNow(display)
             } catch (e: Throwable) {
@@ -165,7 +166,7 @@ class HomeButton(
         if (busy() || guard.hudShowing) return
         val app = try {
             taskService.topAppTask(display)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "home capture: top task of display $display unknown")
             return
         }
@@ -175,7 +176,7 @@ class HomeButton(
 
     private fun topAppTask(display: Int): AppTask? = try {
         taskService.topAppTask(display)
-    } catch (_: ReflectiveOperationException) {
+    } catch (_: SystemServiceException) {
         null
     }
 

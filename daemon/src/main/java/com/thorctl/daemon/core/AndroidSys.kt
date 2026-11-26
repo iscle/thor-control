@@ -1,15 +1,16 @@
 package com.thorctl.daemon.core
 
+import android.os.SystemProperties
 import android.system.ErrnoException
 import android.system.Os
 import com.thorctl.daemon.di.DaemonScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
+import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import timber.log.Timber
 
 /** Small, allocation-light implementation on java.io. */
 @Inject
@@ -72,7 +73,7 @@ class AndroidSys : Sys {
 
     override fun mkdirs(directory: String): Boolean = File(directory).mkdirs()
 
-    override fun prop(name: String): String = systemProperty(name)
+    override fun prop(name: String): String = SystemProperties.get(name)
 
     override fun sh(command: String, timeoutMs: Long): String? = try {
         val process = ProcessBuilder("/system/bin/sh", "-c", command).redirectErrorStream(true).start()

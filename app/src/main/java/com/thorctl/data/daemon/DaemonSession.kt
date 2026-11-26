@@ -20,7 +20,11 @@ class DaemonSession(val daemon: IThorDaemon, val binder: IBinder) {
 
     private var firstState: DaemonState? = null
     private var firstStats: Stats? = null
+    /** Written under the session's lock on binder threads, read by [updateState] from any thread. */
+    @Volatile
     private var state: MutableStateFlow<DaemonState>? = null
+
+    @Volatile
     private var stats: MutableStateFlow<Stats>? = null
 
     /** Takes a state from the daemon; returns the connection when this completes it. */

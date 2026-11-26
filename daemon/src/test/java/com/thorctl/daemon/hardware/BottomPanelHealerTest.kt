@@ -6,6 +6,7 @@ import com.thorctl.daemon.FakeSys
 import com.thorctl.daemon.hardware.input.FakeTouchscreens
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
+import com.thorctl.daemon.system.SystemServiceException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -44,7 +45,7 @@ class BottomPanelHealerTest {
     @Test
     fun noHandBackWhenTurningThePanelOffFails() {
         val failing = object : DisplayService by displayService {
-            override fun requestDisplayPower(displayId: Int, state: Int): Boolean = throw ReflectiveOperationException("binder died")
+            override fun requestDisplayPower(displayId: Int, state: Int): Boolean = throw SystemServiceException("binder died")
         }
         val healer = BottomPanelHealer(sys, clock, failing, scheduler)
         repeat(2) { healer.heal(bottom, bottomForcedOff = false) }

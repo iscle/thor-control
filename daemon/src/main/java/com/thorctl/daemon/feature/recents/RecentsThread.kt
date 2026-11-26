@@ -24,8 +24,8 @@ class RecentsThread(private val executor: ScheduledExecutorService) {
 
     /**
      * The top of every task on this thread, so it catches everything: escaping from [run] it would
-     * reach Android's default uncaught exception handler, which ends the whole daemon, and from a
-     * scheduled task it would vanish silently (and stop a repeat).
+     * end the thread (Main's handler only logs it), and from a scheduled task it would vanish
+     * silently (and stop a repeat).
      */
     private fun logFailure(block: () -> Unit) {
         try {

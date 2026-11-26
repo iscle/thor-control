@@ -4,13 +4,14 @@ import android.os.Bundle
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.AppProviderClient
 import com.thorctl.daemon.system.AppProviderUnavailableException
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.ipc.DaemonBinder
 import com.thorctl.protocol.ipc.ThorIpc
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import timber.log.Timber
 
 /**
  * Hands the daemon's binder to the app ([ThorIpc]): at start, and again on every housekeeping
@@ -55,7 +56,7 @@ class BinderPublisher(
             lastFailure = null
         } catch (e: AppProviderUnavailableException) {
             offerFailed(e)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             offerFailed(e)
         }
     }

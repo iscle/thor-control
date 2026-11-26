@@ -4,6 +4,7 @@ import com.thorctl.daemon.core.Sys
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.system.AppProcess
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.daemon.system.TaskService
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -44,7 +45,7 @@ class BottomScreenPolicy(
             keepOn = true
         }
         val inFront = game != null && bottomOff && !keepOn && displays.bottomId >= 0 &&
-            (try { taskService.topAppTask(displays.topId)?.packageName } catch (_: ReflectiveOperationException) { null }) == game
+            (try { taskService.topAppTask(displays.topId)?.packageName } catch (_: SystemServiceException) { null }) == game
         if (!inFront) {
             frontTicks = 0
             return if (turnBackOn()) BottomScreenChange.TURNED_ON else BottomScreenChange.UNCHANGED
@@ -83,7 +84,7 @@ class BottomScreenPolicy(
         val bottomDisplay = displays.bottomId
         try {
             if (game in taskService.visiblePackages(bottomDisplay)) return true
-        } catch (_: ReflectiveOperationException) {
+        } catch (_: SystemServiceException) {
         }
         val uids = running.filter { game in it.packageNames }.map { it.uid }.toSet()
         if (uids.isEmpty()) return false

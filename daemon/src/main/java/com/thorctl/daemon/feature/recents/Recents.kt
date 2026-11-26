@@ -13,9 +13,9 @@ import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.RecentsAction
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
-import timber.log.Timber
 
 /**
  * The Home button's screens, replacing Trebuchet: recent apps (hold) and the animated way home

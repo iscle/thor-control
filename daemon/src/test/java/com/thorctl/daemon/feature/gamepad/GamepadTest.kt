@@ -20,13 +20,13 @@ import com.thorctl.daemon.system.FakePowerService
 import com.thorctl.protocol.GamepadHid
 import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.GamepadTransport
+import org.junit.After
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.junit.After
 
 /** The coordinator over fakes: Bluetooth to the app, USB through a fake gadget and /dev/hidg0. */
 class GamepadTest {

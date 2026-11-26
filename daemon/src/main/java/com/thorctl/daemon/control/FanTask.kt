@@ -11,6 +11,7 @@ import dev.zacsweers.metro.binding
 @ContributesIntoSet(DaemonScope::class, binding = binding<PeriodicTask>())
 class FanTask(private val actions: DaemonActions) : PeriodicTask {
     override val intervalMs = 1000L
+    override val ownThread = true
 
     override fun run() {
         actions.fanTick()

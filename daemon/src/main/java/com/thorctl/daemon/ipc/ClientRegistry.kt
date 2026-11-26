@@ -10,8 +10,8 @@ import com.thorctl.protocol.model.DaemonEvent
 import com.thorctl.protocol.model.Stats
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import java.util.concurrent.CopyOnWriteArrayList
 import timber.log.Timber
+import java.util.concurrent.CopyOnWriteArrayList
 
 /** The registered [IThorClient]s. A client is dropped when its process dies or a call to it fails. */
 @Inject

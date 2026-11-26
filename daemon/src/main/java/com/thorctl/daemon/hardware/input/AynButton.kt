@@ -63,8 +63,9 @@ class AynButton(
             } catch (e: IOException) {
                 Timber.w(e, "AYN read failed")
             } catch (e: RuntimeException) {
-                // Thread boundary: an exception escaping the reader would make app_process kill
-                // the daemon; log it and reopen the node like after a read failure.
+                // Thread boundary: an exception escaping would end this reader (Main's handler only
+                // logs it) and the AYN button with it; log it and reopen the node like after a
+                // read failure.
                 Timber.e(e, "AYN event handling failed")
             }
             Thread.sleep(1000)

@@ -2,6 +2,7 @@ package com.thorctl.daemon.feature.recents
 
 import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.RecentTaskEntry
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.Jpeg
 import com.thorctl.protocol.model.RecentTask
@@ -82,7 +83,7 @@ class RecentsSession(private val taskService: TaskService) {
                 taskService.startFromRecents(taskId, display)
             }
             Timber.i("recents: opened task $taskId (${task?.packageName}) on display $display")
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "recents: open task $taskId failed")
         }
     }

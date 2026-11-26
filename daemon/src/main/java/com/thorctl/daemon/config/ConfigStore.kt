@@ -11,12 +11,12 @@ import com.thorctl.protocol.model.GamepadTransport
 import com.thorctl.protocol.model.LedState
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import java.io.File
-import java.io.IOException
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.File
+import java.io.IOException
 
 /**
  * Persistent daemon settings in /data/adb/thorctl/config.json (root-only directory), as

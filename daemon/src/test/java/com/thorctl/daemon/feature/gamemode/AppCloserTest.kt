@@ -11,6 +11,7 @@ import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakePackageService
 import com.thorctl.daemon.system.FakeTaskService
 import com.thorctl.daemon.system.PackageService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.AppContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -84,7 +85,7 @@ class AppCloserTest {
         packageService.flags += mapOf("com.stuck" to 0, "com.other" to 0)
         val failing = object : PackageService by packageService {
             override fun forceStop(packageName: String) {
-                if (packageName == "com.stuck") throw ReflectiveOperationException("binder died")
+                if (packageName == "com.stuck") throw SystemServiceException("binder died")
                 packageService.forceStop(packageName)
             }
         }

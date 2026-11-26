@@ -4,6 +4,7 @@ import com.thorctl.daemon.config.ConfigStore
 import com.thorctl.daemon.control.ButtonHandler
 import com.thorctl.daemon.control.DaemonLock
 import com.thorctl.daemon.core.PeriodicTaskRunner
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.feature.gamepad.Gamepad
@@ -15,10 +16,10 @@ import com.thorctl.daemon.ipc.BinderPublisher
 import com.thorctl.daemon.system.SystemReadiness
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import timber.log.Timber
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
-import timber.log.Timber
 
 /**
  * The daemon's startup: restore the saved settings, start the periodic work and the input
@@ -48,7 +49,7 @@ class Daemon(
         restoreSettings()
         periodicTasks.start()
         // AynParts restores its own light and controller prefs on BOOT_COMPLETED; win that race.
-        scheduler.schedule(::reapplyOverVendorDefaults, REAPPLY_DELAY_S, TimeUnit.SECONDS)
+        scheduler.schedule(loggedRunnable("reapply", ::reapplyOverVendorDefaults), REAPPLY_DELAY_S, TimeUnit.SECONDS)
         input.start(buttons)
         publisher.offer()
         Timber.i("daemon ready (leds=${leds.available} top=${displays.topId} bottom=${displays.bottomId})")

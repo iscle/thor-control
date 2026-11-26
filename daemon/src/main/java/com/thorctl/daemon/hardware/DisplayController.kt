@@ -3,6 +3,7 @@ package com.thorctl.daemon.hardware
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.input.Touchscreens
 import com.thorctl.daemon.system.DisplayService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.Screen
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -54,7 +55,7 @@ class DisplayController(
     fun refresh() {
         val internal = try {
             displayService.displays().filter { it.type == TYPE_INTERNAL }
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "display refresh failed")
             return
         }
@@ -89,7 +90,7 @@ class DisplayController(
         if (id < 0) return 0f
         return try {
             displayService.brightness(id)
-        } catch (_: ReflectiveOperationException) {
+        } catch (_: SystemServiceException) {
             0f
         }
     }
@@ -99,7 +100,7 @@ class DisplayController(
         if (id < 0) return
         try {
             displayService.setBrightness(id, value.coerceIn(MIN_BRIGHTNESS, 1f))
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "setBrightness($screen) failed")
         }
     }
@@ -114,7 +115,7 @@ class DisplayController(
         }
         val succeeded = try {
             displayService.requestDisplayPower(id, if (on) STATE_UNKNOWN else STATE_OFF)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "requestDisplayPower failed")
             false
         }
@@ -134,7 +135,7 @@ class DisplayController(
             } else if (bottomForcedOff && bottomId >= 0) {
                 displayService.requestDisplayPower(bottomId, STATE_OFF)
             }
-        } catch (_: ReflectiveOperationException) {
+        } catch (_: SystemServiceException) {
         }
     }
 
@@ -151,7 +152,7 @@ class DisplayController(
             if (topId >= 0) displayService.requestDisplayPower(topId, if (dark) STATE_OFF else STATE_UNKNOWN)
             // A bottom screen the user switched off has to be on while dark, and off again after.
             if (bottomForcedOff && bottomId >= 0) displayService.requestDisplayPower(bottomId, if (dark) STATE_UNKNOWN else STATE_OFF)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "gamepad screens ${if (dark) "dark" else "back"}: display power failed")
         }
         touchscreens.setEnabled(TOP_TOUCH_NAME, !dark)

@@ -12,6 +12,7 @@ import dev.zacsweers.metro.binding
 @ContributesIntoSet(DaemonScope::class, binding = binding<PeriodicTask>())
 class StatsBroadcastTask(private val link: ClientLink, private val stats: StatsCollector) : PeriodicTask {
     override val intervalMs = 1000L
+    override val ownThread = true
 
     override fun run() {
         if (link.hasStatsSubscribers) link.broadcastStats(stats.collect())

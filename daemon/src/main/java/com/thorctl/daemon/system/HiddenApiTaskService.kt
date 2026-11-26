@@ -1,6 +1,7 @@
 package com.thorctl.daemon.system
 
 import android.app.ActivityOptions
+import android.app.IActivityTaskManager
 import android.app.TaskInfo
 import android.content.ComponentName
 import com.thorctl.daemon.di.DaemonScope
@@ -15,41 +16,41 @@ import java.io.File
 @SingleIn(DaemonScope::class)
 @ContributesBinding(DaemonScope::class)
 class HiddenApiTaskService : TaskService {
-    private val service = SystemServiceProxy(HiddenServiceNames.ACTIVITY_TASK_SERVICE, "android.app.IActivityTaskManager")
+    private val service = HiddenService(HiddenServiceNames.ACTIVITY_TASK_SERVICE, IActivityTaskManager.Stub::asInterface)
 
     override fun focusedDisplayId(): Int = try {
-        service.getFocusedRootTaskInfo()?.displayIdOrNone ?: -1
-    } catch (_: ReflectiveOperationException) {
+        service.call { getFocusedRootTaskInfo()?.displayIdOrNone } ?: -1
+    } catch (_: SystemServiceException) {
         -1
     }
 
-    override fun focusTopTask(displayId: Int) {
-        service.focusTopTask(displayId)
-    }
+    override fun focusTopTask(displayId: Int) = service.call { focusTopTask(displayId) }
 
-    override fun topAppTask(displayId: Int): AppTask? =
-        service.getAllRootTaskInfosOnDisplay(displayId)
+    override fun topAppTask(displayId: Int): AppTask? = service.call {
+        getAllRootTaskInfosOnDisplay(displayId)
             .firstOrNull { it.topActivityTypeOrNull == ACTIVITY_TYPE_STANDARD && it.isVisibleRootTask }
             ?.let { AppTask(it.taskId, it.topComponent()?.packageName) }
+    }
 
-    override fun visiblePackages(displayId: Int): Set<String> =
-        service.getAllRootTaskInfosOnDisplay(displayId)
+    override fun visiblePackages(displayId: Int): Set<String> = service.call {
+        getAllRootTaskInfosOnDisplay(displayId)
             .filter { it.isVisibleRootTask }
             .mapNotNullTo(HashSet()) { it.topComponent()?.packageName }
+    }
 
     override fun moveTaskToDisplay(taskId: Int, displayId: Int) {
-        service.moveRootTaskToDisplay(taskId, displayId)
+        service.call { moveRootTaskToDisplay(taskId, displayId) }
         // A raw reparent skips the "task to front" transition that Launcher tracks; without it
         // Launcher believes it is still visible and the next app-switch toggles the wrong state.
         try {
             startFromRecents(taskId, displayId)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "bring task $taskId to front failed")
         }
     }
 
-    override fun recentTasks(limit: Int): List<RecentTaskEntry> =
-        service.getRecentTasks(limit, RECENT_IGNORE_UNAVAILABLE, USER_SYSTEM).mapNotNull { info ->
+    override fun recentTasks(limit: Int): List<RecentTaskEntry> = service.call {
+        getRecentTasks(limit, RECENT_IGNORE_UNAVAILABLE, USER_SYSTEM)?.list.orEmpty().mapNotNull { info ->
             val packageName = info.topComponent()?.packageName ?: info.baseIntent?.component?.packageName ?: return@mapNotNull null
             RecentTaskEntry(
                 taskId = info.taskId,
@@ -59,14 +60,15 @@ class HiddenApiTaskService : TaskService {
                 running = info.isRunning,
             )
         }
+    }
 
     override fun startFromRecents(taskId: Int, displayId: Int) {
         val options = ActivityOptions.makeBasic()
         if (displayId >= 0) options.launchDisplayId = displayId
-        service.startActivityFromRecents(taskId, options.toBundle())
+        service.call { startActivityFromRecents(taskId, options.toBundle()) }
     }
 
-    override fun removeTask(taskId: Int): Boolean = service.removeTask(taskId)
+    override fun removeTask(taskId: Int): Boolean = service.call { removeTask(taskId) }
 
     override fun snapshotFile(taskId: Int): File? {
         val root = File(SNAPSHOT_DIRECTORY)

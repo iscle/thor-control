@@ -1,6 +1,7 @@
 package com.thorctl.daemon.control
 
 import com.thorctl.daemon.config.ConfigStore
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.feature.gamemode.GameMode
 import com.thorctl.daemon.hardware.DisplayController
@@ -8,6 +9,7 @@ import com.thorctl.daemon.hardware.FanController
 import com.thorctl.daemon.hardware.InputRouter
 import com.thorctl.daemon.ipc.DaemonNotifier
 import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.daemon.system.TaskService
 import com.thorctl.protocol.model.BrightnessCurve
 import com.thorctl.protocol.model.ControllerTarget
@@ -44,7 +46,7 @@ class DaemonActions(
     fun saveSoon() {
         synchronized(lock) {
             saveTask?.cancel(false)
-            saveTask = scheduler.schedule({ config.save() }, 400, TimeUnit.MILLISECONDS)
+            saveTask = scheduler.schedule(loggedRunnable("config save", config::save), 400, TimeUnit.MILLISECONDS)
         }
     }
 
@@ -91,7 +93,7 @@ class DaemonActions(
         if (from < 0 || destination < 0) return
         val task = try {
             taskService.topAppTask(from)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "topAppTask failed")
             null
         }
@@ -106,7 +108,7 @@ class DaemonActions(
             if (router.target == ControllerTarget.FREE) taskService.focusTopTask(destination)
             Timber.i("moved task ${task.taskId} (${task.packageName}) to display $destination")
             notifier.hud(HudEvent.Moved(task.packageName.orEmpty(), to), destination)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "move task failed")
         }
     }

@@ -6,7 +6,7 @@
     public static void main(java.lang.String[]);
 }
 
-# Hidden framework classes are reached by reflection (SystemServices); silence warnings about
-# platform internals.
+# The daemon calls hidden framework classes, compiled against the stubs in :hidden-api, which are
+# not packaged: the framework provides them at runtime, so R8 must not warn about them missing.
 -dontwarn android.**
 -dontwarn com.android.**

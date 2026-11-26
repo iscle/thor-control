@@ -1,6 +1,7 @@
 package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.core.PeriodicTask
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.PowerService
 import dev.zacsweers.metro.ContributesIntoSet
@@ -31,7 +32,7 @@ class WakeTask(
         displays.onWake()
         if (displays.bottomForcedOff || displays.gamepadDark) {
             // Waking powers every display back on; hold ours off again.
-            for (delayMs in REASSERT_DELAYS_MS) scheduler.schedule({ displays.reassertOverrides() }, delayMs, TimeUnit.MILLISECONDS)
+            for (delayMs in REASSERT_DELAYS_MS) scheduler.schedule(loggedRunnable("reassert display overrides", displays::reassertOverrides), delayMs, TimeUnit.MILLISECONDS)
         }
     }
 

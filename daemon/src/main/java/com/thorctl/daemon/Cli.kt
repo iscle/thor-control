@@ -5,6 +5,7 @@ import com.thorctl.daemon.cli.CliCommands
 import com.thorctl.daemon.cli.CliRequest
 import com.thorctl.daemon.system.AppProviderUnavailableException
 import com.thorctl.daemon.system.HiddenApiAppProviderClient
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.ipc.ClientBinder
 import com.thorctl.protocol.ipc.IThorDaemon
 import com.thorctl.protocol.ipc.ThorIpc
@@ -37,7 +38,7 @@ object Cli {
             HiddenApiAppProviderClient().call(ThorIpc.METHOD_GET, Bundle())
         } catch (e: AppProviderUnavailableException) {
             providerUnreachable(e)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             providerUnreachable(e)
         }
         val daemon = reply?.getBinder(ThorIpc.KEY_BINDER)?.let { IThorDaemon.Stub.asInterface(it) } ?: run {

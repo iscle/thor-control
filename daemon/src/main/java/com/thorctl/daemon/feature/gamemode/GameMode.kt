@@ -1,10 +1,12 @@
 package com.thorctl.daemon.feature.gamemode
 
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.ipc.DaemonNotifier
 import com.thorctl.daemon.system.PackageService
 import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.SystemServiceException
 import com.thorctl.protocol.model.GameHudState
 import com.thorctl.protocol.model.GameOptions
 import com.thorctl.protocol.model.GameState
@@ -65,14 +67,7 @@ class GameMode(
     /** Leaving or returning to the game: react in [delayMs] instead of on the next tick. */
     fun nudge(delayMs: Long = 500) {
         if (!enabled) return
-        scheduler.schedule({
-            try {
-                tick(powerService.isInteractive())
-            } catch (e: Throwable) {
-                // Task boundary: the scheduler would keep anything thrown in a future nobody reads.
-                Timber.w(e, "game mode tick failed")
-            }
-        }, delayMs, TimeUnit.MILLISECONDS)
+        scheduler.schedule(loggedRunnable("game mode tick") { tick(powerService.isInteractive()) }, delayMs, TimeUnit.MILLISECONDS)
     }
 
     @Volatile
@@ -156,7 +151,7 @@ class GameMode(
         val before = state()
         val running = try {
             packageService.runningApps()
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "game mode: listing processes failed")
             return
         }

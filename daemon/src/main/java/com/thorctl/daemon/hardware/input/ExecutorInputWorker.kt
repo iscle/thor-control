@@ -20,7 +20,7 @@ class ExecutorInputWorker : InputWorker {
     }
 
     override fun schedule(delayMs: Long, block: () -> Unit): Cancellable {
-        val future = executor.schedule(Runnable { runLogged(block) },delayMs, TimeUnit.MILLISECONDS)
+        val future = executor.schedule(Runnable { runLogged(block) }, delayMs, TimeUnit.MILLISECONDS)
         return Cancellable { future.cancel(false) }
     }
 
@@ -28,9 +28,9 @@ class ExecutorInputWorker : InputWorker {
         try {
             block()
         } catch (e: Throwable) {
-            // Thread boundary: listeners reach into the whole daemon (and hidden APIs that may
-            // fail to link), and anything escaping here would kill the worker thread, which
-            // app_process's default handler turns into killing the daemon.
+            // Thread boundary: listeners reach into the whole daemon, and anything escaping a
+            // scheduled task would vanish into its Future (and one posted would end the worker
+            // thread); log it instead.
             Timber.w(e, "input handler failed")
         }
     }

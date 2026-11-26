@@ -119,7 +119,8 @@ class LidPowerKey(
         } catch (_: IOException) {
             // closed when neither needs it any more
         } catch (e: RuntimeException) {
-            // Thread boundary: an exception escaping the reader would make app_process kill the daemon.
+            // Thread boundary: an exception escaping would end this reader (Main's handler only
+            // logs it), and the power button would stay grabbed or ungrabbed until the daemon restarts.
             Timber.e(e, "power button reader failed")
         }
     }

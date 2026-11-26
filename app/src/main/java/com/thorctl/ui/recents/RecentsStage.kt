@@ -59,12 +59,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.thorctl.protocol.model.RecentsAction
 import com.thorctl.ui.theme.qsColors
-import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val Lift = CubicBezierEasing(0.4f, 0f, 1f, 1f)
 

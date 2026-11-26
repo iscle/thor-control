@@ -1,5 +1,6 @@
 package com.thorctl.daemon.system
 
+import android.app.IActivityManager
 import android.content.AttributionSource
 import android.content.Context
 import android.os.Binder
@@ -20,20 +21,20 @@ import dev.zacsweers.metro.SingleIn
 @ContributesBinding(DaemonScope::class)
 class HiddenApiAppProviderClient : AppProviderClient {
     /** Its own handle on the activity manager: this call can wait seconds for Android to start the app. */
-    private val activityManager = SystemServiceProxy(Context.ACTIVITY_SERVICE, "android.app.IActivityManager")
+    private val activityManager = HiddenService(Context.ACTIVITY_SERVICE, IActivityManager.Stub::asInterface)
 
     override fun call(method: String, extras: Bundle): Bundle? {
         val token = Binder()
-        val holder = activityManager.getContentProviderExternal(ThorIpc.AUTHORITY, USER_SYSTEM, token, tag = ThorIpc.AUTHORITY)
+        val holder = activityManager.call { getContentProviderExternal(ThorIpc.AUTHORITY, USER_SYSTEM, token, ThorIpc.AUTHORITY) }
             ?: throw AppProviderUnavailableException("provider ${ThorIpc.AUTHORITY} not found")
         try {
-            val provider = holder.contentProvider() ?: throw AppProviderUnavailableException("provider ${ThorIpc.AUTHORITY} has no binder")
+            val provider = holder.provider ?: throw AppProviderUnavailableException("provider ${ThorIpc.AUTHORITY} has no binder")
             val source = AttributionSource.Builder(Process.myUid()).build()
-            return provider.callProvider(source, ThorIpc.AUTHORITY, method, arg = null, extras)
+            return activityManager.call { provider.call(source, ThorIpc.AUTHORITY, method, null, extras) }
         } finally {
             try {
-                activityManager.removeContentProviderExternalAsUser(ThorIpc.AUTHORITY, token, USER_SYSTEM)
-            } catch (_: ReflectiveOperationException) {
+                activityManager.call { removeContentProviderExternalAsUser(ThorIpc.AUTHORITY, token, USER_SYSTEM) }
+            } catch (_: SystemServiceException) {
             }
         }
     }

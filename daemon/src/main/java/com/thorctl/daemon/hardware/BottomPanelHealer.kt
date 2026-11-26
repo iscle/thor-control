@@ -2,8 +2,10 @@ package com.thorctl.daemon.hardware
 
 import com.thorctl.daemon.core.Clock
 import com.thorctl.daemon.core.Sys
+import com.thorctl.daemon.core.loggedRunnable
 import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.system.DisplayService
+import com.thorctl.daemon.system.SystemServiceException
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
@@ -52,7 +54,7 @@ class BottomPanelHealer(
         }
         val frameworkOn = try {
             displayService.displays().firstOrNull { it.id == bottomId }?.state == DisplayController.STATE_ON
-        } catch (_: ReflectiveOperationException) {
+        } catch (_: SystemServiceException) {
             false
         }
         val panelEnabled = sys.read("$connector/enabled") == "enabled"
@@ -69,18 +71,18 @@ class BottomPanelHealer(
         Timber.i("bottom panel stuck (display ON, ${connector.substringAfterLast('/')} not enabled); power-cycling it")
         try {
             displayService.requestDisplayPower(bottomId, DisplayController.STATE_OFF)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "bottom panel power cycle failed")
             return
         }
-        scheduler.schedule({ handBack(bottomId) }, POWER_CYCLE_OFF_MS, TimeUnit.MILLISECONDS)
+        scheduler.schedule(loggedRunnable("bottom panel hand-back") { handBack(bottomId) }, POWER_CYCLE_OFF_MS, TimeUnit.MILLISECONDS)
     }
 
     /** Second half of the power cycle: the panel's power goes back to the framework's policy. */
     private fun handBack(bottomId: Int) {
         try {
             displayService.requestDisplayPower(bottomId, DisplayController.STATE_UNKNOWN)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "bottom panel power cycle failed")
         }
     }

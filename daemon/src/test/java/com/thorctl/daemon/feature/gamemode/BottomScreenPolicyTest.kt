@@ -8,6 +8,7 @@ import com.thorctl.daemon.system.AppTask
 import com.thorctl.daemon.system.DisplayService
 import com.thorctl.daemon.system.FakeDisplayService
 import com.thorctl.daemon.system.FakeTaskService
+import com.thorctl.daemon.system.SystemServiceException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -22,7 +23,7 @@ class BottomScreenPolicyTest {
     private var powerFails = false
     private val flakyDisplayService = object : DisplayService by displayService {
         override fun requestDisplayPower(displayId: Int, state: Int): Boolean {
-            if (powerFails) throw ReflectiveOperationException("display manager died")
+            if (powerFails) throw SystemServiceException("display manager died")
             return displayService.requestDisplayPower(displayId, state)
         }
     }

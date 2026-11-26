@@ -6,6 +6,7 @@ import com.thorctl.daemon.di.DaemonScope
 import com.thorctl.daemon.hardware.DisplayController
 import com.thorctl.daemon.system.InputService
 import com.thorctl.daemon.system.PowerService
+import com.thorctl.daemon.system.SystemServiceException
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import timber.log.Timber
@@ -32,7 +33,7 @@ class AwakeKeeper(
             if (id < 0) continue
             try {
                 powerService.userActivity(id)
-            } catch (e: ReflectiveOperationException) {
+            } catch (e: SystemServiceException) {
                 Timber.w(e, "gamepad: user activity on display $id failed")
             }
         }
@@ -49,7 +50,7 @@ class AwakeKeeper(
     fun wakeUp() {
         try {
             inputService.injectKey(KeyEvent.KEYCODE_WAKEUP, displays.topId)
-        } catch (e: ReflectiveOperationException) {
+        } catch (e: SystemServiceException) {
             Timber.w(e, "gamepad: waking Android failed")
         }
     }
