@@ -102,6 +102,18 @@ class RecentsSessionTest {
     }
 
     @Test
+    fun opensAndLaunchesEvenWhenTheTaskManagerFails() {
+        val fake = FakeTaskService().apply { recents = listOf(entry(1, displayId = 1, visible = true), entry(2)) }
+        val session = RecentsSession(UnavailableTaskService(fake))
+        val request = session.open(display = 0, origin = null)
+        assertEquals(listOf(1), request.taskIds)
+        assertTrue(session.isOpen)
+        session.launch(1, session.task(1), 0)
+        session.launch(2, session.task(2), 0)
+        assertTrue(fake.actions.isEmpty())
+    }
+
+    @Test
     fun closesOnce() {
         assertFalse(session.close())
         taskService.recents = listOf(entry(1))

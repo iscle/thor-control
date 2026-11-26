@@ -4,6 +4,6 @@ import java.io.File
 
 /** Takes a JPEG picture of what a display shows right now. */
 interface ScreenCapturer {
-    /** Captures [display] into [file], replacing it only with a complete picture. False if none was taken. */
+    /** Captures [display] into [file], replacing it only with a complete picture. False if none was taken; never throws. */
     fun capture(display: Int, file: File): Boolean
 }

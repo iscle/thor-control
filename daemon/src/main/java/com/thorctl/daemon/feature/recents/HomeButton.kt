@@ -10,6 +10,7 @@ import com.thorctl.protocol.model.DaemonEvent
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The Home button outside recents, and the pictures of the screen it needs:
@@ -18,10 +19,13 @@ import java.util.concurrent.ExecutorService
  *  - a short press inside an app has the app animate from that picture to the home screen's, and
  *    Home is sent once the animation covers the screen;
  *  - the home screen is captured whenever it is in front and nothing of ours covers it, so it is
- *    ready when Home is pressed inside an app.
+ *    ready when Home is pressed inside an app. A capture our overlay was in the way of is taken
+ *    once the overlay is gone.
  *
- * Captures run on [captureExecutor], timers and the animation on [thread]; [down] and [short] are
- * called on the input thread.
+ * [down] and [short] are called on the input thread and [maybeCaptureHome] on the periodic one;
+ * everything else runs on [thread], apart from the captures themselves, which run on
+ * [captureExecutor]. The press is the only state shared across threads, and it is handed over
+ * atomically.
  */
 class HomeButton(
     private val displays: DisplayController,
@@ -37,20 +41,23 @@ class HomeButton(
     /** Home was brought to front. */
     private val onHomeShown: () -> Unit,
 ) {
-    @Volatile
-    private var press: HomePress? = null
+    /** The press in progress; whoever acts on it takes it, so it is used once. */
+    private val press = AtomicReference<HomePress?>()
     private val pendingHome = PendingHome()
+
+    /** Display whose home picture our overlay was in the way of (recents thread). */
+    private var owedHomeCapture: Int? = null
 
     /** One of our screens is (or may still be) on screen: don't capture. */
     private fun busy(): Boolean = isRecentsOpen() || guard.overlayShowing
 
     /** Home went down: capture the screen now, in case this becomes the zoom-out of a press or hold. */
     fun down(display: Int) {
-        press = null
+        press.set(null)
         if (display < 0 || busy()) return
         val origin = topAppTask(display)
         val file = files.forPress(display, origin)
-        press = HomePress(display, origin, file, captureExecutor.submit<Boolean> { capturer.capture(display, file) })
+        press.set(HomePress(display, origin, file, captureExecutor.submit<Boolean> { capturer.capture(display, file) }))
     }
 
     /**
@@ -58,8 +65,7 @@ class HomeButton(
      * connected, or no picture of the home screen yet (it is taken the next time home shows).
      */
     fun short(display: Int): Boolean {
-        val homePress = press ?: return false
-        press = null
+        val homePress = press.getAndSet(null) ?: return false
         if (homePress.display != display || homePress.origin == null || !link.appConnected) return false
         val home = files.home(display)
         if (!home.exists()) {
@@ -72,15 +78,10 @@ class HomeButton(
 
     /** Hold (on the recents thread): the screen to open recents from, with the press's picture or one taken now. */
     fun hold(display: Int): HomeShot {
-        val homePress = press?.takeIf { it.display == display }
-        press = null
+        val homePress = press.getAndSet(null)?.takeIf { it.display == display }
         val origin = homePress?.origin ?: topAppTask(display)
         val file = homePress?.file ?: files.forPress(display, origin)
-        val captured = homePress?.captured() ?: try {
-            capturer.capture(display, file)
-        } catch (_: Exception) {
-            false
-        }
+        val captured = homePress?.captured() ?: capturer.capture(display, file)
         return HomeShot(origin, if (captured) file else null)
     }
 
@@ -95,6 +96,12 @@ class HomeButton(
         inputService.injectKey(KeyEvent.KEYCODE_HOME, display)
         onHomeShown()
         captureHomeLater(display)
+    }
+
+    /** The app removed its overlay (on the recents thread): take the home picture it was in the way of. */
+    fun overlayDone() {
+        guard.overlayDone()
+        if (owedHomeCapture != null) thread.schedule(OVERLAY_SETTLE_MS) { captureOwedHome() }
     }
 
     /** Called every couple of seconds: keeps the top screen's home picture fresh while it shows. */
@@ -120,24 +127,55 @@ class HomeButton(
     }
 
     private fun captureHomeLater(display: Int) {
-        thread.schedule(HOME_CAPTURE_DELAY_MS) { captureHomeIfShowing(display) }
+        thread.schedule(HOME_CAPTURE_DELAY_MS) { captureHomeWhenUncovered(display) }
+    }
+
+    /**
+     * Captures the home screen of [display] now, or, while our overlay covers it, once the app says
+     * the overlay is gone (or, should it never say, once the overlay's time is up).
+     */
+    private fun captureHomeWhenUncovered(display: Int) {
+        if (guard.overlayShowing) {
+            owedHomeCapture = display
+            thread.schedule(guard.overlayRemainingMs + OVERLAY_SETTLE_MS) { captureOwedHome() }
+            return
+        }
+        captureHomeIfShowing(display)
+    }
+
+    private fun captureOwedHome() {
+        val display = owedHomeCapture ?: return
+        owedHomeCapture = null
+        captureHomeWhenUncovered(display)
     }
 
     private fun captureHomeIfShowing(display: Int) {
         captureExecutor.execute {
+            // The capture thread's top: anything escaping here would reach Android's default
+            // uncaught exception handler, which ends the whole daemon.
             try {
-                if (busy() || guard.hudShowing) return@execute
-                if (taskService.topAppTask(display) != null) return@execute
-                if (capturer.capture(display, files.home(display))) Timber.i("recents: home screen of display $display captured")
+                captureHomeNow(display)
             } catch (e: Throwable) {
                 Timber.w(e, "home capture failed")
             }
         }
     }
 
+    private fun captureHomeNow(display: Int) {
+        if (busy() || guard.hudShowing) return
+        val app = try {
+            taskService.topAppTask(display)
+        } catch (e: ReflectiveOperationException) {
+            Timber.w(e, "home capture: top task of display $display unknown")
+            return
+        }
+        if (app != null) return
+        if (capturer.capture(display, files.home(display))) Timber.i("recents: home screen of display $display captured")
+    }
+
     private fun topAppTask(display: Int): AppTask? = try {
         taskService.topAppTask(display)
-    } catch (_: Throwable) {
+    } catch (_: ReflectiveOperationException) {
         null
     }
 
@@ -146,5 +184,8 @@ class HomeButton(
         const val ANIMATION_MS = 4000L
         const val HOME_FALLBACK_MS = 800L
         const val HOME_CAPTURE_DELAY_MS = 1500L
+
+        /** After the overlay is removed, for the window to actually leave the screen. */
+        const val OVERLAY_SETTLE_MS = 300L
     }
 }

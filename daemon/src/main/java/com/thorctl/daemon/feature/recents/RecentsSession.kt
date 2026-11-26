@@ -46,7 +46,7 @@ class RecentsSession(private val taskService: TaskService) {
         others.forEach {
             try {
                 taskService.takeSnapshot(it.taskId)
-            } catch (e: Throwable) {
+            } catch (e: ReflectiveOperationException) {
                 Timber.w(e, "snapshot of task ${it.taskId} failed")
             }
         }
@@ -91,7 +91,7 @@ class RecentsSession(private val taskService: TaskService) {
                 taskService.startFromRecents(taskId, display)
             }
             Timber.i("recents: opened task $taskId (${task?.packageName}) on display $display")
-        } catch (e: Throwable) {
+        } catch (e: ReflectiveOperationException) {
             Timber.w(e, "recents: open task $taskId failed")
         }
     }

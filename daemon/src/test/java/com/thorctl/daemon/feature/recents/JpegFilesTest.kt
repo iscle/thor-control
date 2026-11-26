@@ -1,5 +1,6 @@
 package com.thorctl.daemon.feature.recents
 
+import org.junit.Assume.assumeTrue
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -25,5 +26,12 @@ class JpegFilesTest {
         assertNull(JpegFiles.read(directory))
         assertNull(JpegFiles.read(File(directory, "empty.jpg").apply { writeBytes(ByteArray(0)) }))
         assertNull(JpegFiles.read(File(directory, "big.jpg").apply { writeBytes(ByteArray(JpegFiles.MAX_IMAGE_BYTES.toInt() + 1)) }))
+    }
+
+    @Test
+    fun anUnreadablePictureIsNone() {
+        val file = File(directory, "locked.jpg").apply { writeBytes(ByteArray(10)) }
+        assumeTrue(file.setReadable(false) && !file.canRead()) // root reads anything
+        assertNull(JpegFiles.read(file))
     }
 }
